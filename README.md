@@ -4,8 +4,8 @@ A collection of LLDB aliases/regexes and Python scripts to aid in your debugging
 
 ### yoink
 
-  Takes a path on a iOS/tvOS/watchOS and writes to the /tmp/ dir on your computer.
-  If it can be read by -[NSData dataWithContentsOfFile:], it can be written to disk
+  Takes a path on a iOS/tvOS/watchOS and writes to the **/tmp/** dir on your computer.
+  If it can be read by `-[NSData dataWithContentsOfFile:]`, it can be written to disk
 
   Example (on iOS 10 device): 
   
