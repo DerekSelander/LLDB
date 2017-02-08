@@ -23,6 +23,7 @@
 import lldb
 import os
 import optparse
+import shlex
 
 
 def __lldb_init_module(debugger, internal_dict):
