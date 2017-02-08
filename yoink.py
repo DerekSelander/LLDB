@@ -78,9 +78,8 @@ def yoink(debugger, command, result, internal_dict):
 
     fullpath = '/tmp/{}'.format(basename)
     if options.copy_file_path:
-        penis = 'echo -n \"{}\" | pbcopy'.format(fullpath)
-        print (penis)
-        os.system(penis)
+        copy_command = 'echo \"{}\" | pbcopy'.format(fullpath)
+        os.system(copy_command)
         print('copied \"{}\" to clipboard'.format(fullpath))
 
     if options.open_immediately:
