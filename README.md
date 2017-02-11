@@ -21,8 +21,8 @@ A collection of LLDB aliases/regexes and Python scripts to aid in your debugging
       # Find all instances of UIView that are UIViews. Ignore subclasses.
       (lldb) find UIView -e
       
-      #Find all instances of UIView whose tag is equal to 5. Objective-C syntax only
-      (lldb) find UIView -c "[objc tag]==5"
+      #Find all instances of UIView whose tag is equal to 5. Objective-C syntax only. Can reference object by 'obj'
+      (lldb) find UIView -c "[obj tag]==5"
 
 ### yoink
 
