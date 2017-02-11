@@ -3,13 +3,30 @@ A collection of LLDB aliases/regexes and Python scripts to aid in your debugging
 
 ## Installation 
 
+For scripts (anything ending with `.py`), you'll need to do the following: 
   1. Download scripts. Install to a dir of your choosing (i.e. `~/lldb`)
   2. In `~/.lldbinit` add the following:
       `command script import path/to/lldb_file.py`
   
   You must import each file individually in your lldbinit file
 
+For any lldb commands simply just paste the command into your `~/.lldbinit` file
 
+
+## LLDB Commands
+
+**ls** - List a directory from the process's perspective. Useful when working on an actual device. 
+```
+command regex ls 's/(.+)/po @import Foundation; [[NSFileManager defaultManager] contentsOfDirectoryAtPath:@"%1" error:nil]/'
+```
+  Example: 
+      
+      (lldb) ls /
+      (lldb) ls /System/Library
+      
+
+
+## LLDB Scripts
 ### find
   Finds all subclasses of a class. This class must by dynamic (aka inherit from a NSObject class). Currently doesn't work with   NSString or NSNumber (tagged pointer objects). 
   
