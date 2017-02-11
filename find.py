@@ -2,13 +2,34 @@ import lldb
 import os
 import shlex
 import optparse
+import lldb.utils.symbolication
 
 def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand('command script add -f find.find find')
 
 
 def find(debugger, command, result, internal_dict):
+    '''
+    Finds all subclasses of a class. This class must by dynamic 
+    (aka inherit from a NSObject class). Currently doesn't work 
+    with NSString or NSNumber (tagged pointer objects). 
 
+    NOTE: This script will leak memory
+
+Examples:
+
+    # Find all UIViews and subclasses of UIViews
+    (lldb) find UIView
+
+    # Find all UIStatusBar instances
+    (lldb) find UIStatusBar
+
+    # Find all UIViews, ignore subclasses
+    (lldb) find UIView  -e
+
+    # Find all instances of UIViews (and subclasses) where tag == 5
+    (lldb) find UIView -c "[obj tag] == 5"
+    '''
 
     command_args = shlex.split(command)
     parser = generate_option_parser()
@@ -30,13 +51,31 @@ def find(debugger, command, result, internal_dict):
         return
 
     objectiveC_class = 'NSClassFromString(@"{}")'.format(clean_command)
-    command_script = get_command_script(objectiveC_class)
+    command_script = get_command_script(objectiveC_class, options)
 
-    debugger.HandleCommand('po ' + command_script)
+    expr_options = lldb.SBExpressionOptions()
+    expr_options.SetIgnoreBreakpoints(True);
+    expr_options.SetFetchDynamicValue(lldb.eDynamicCanRunTarget);
+    expr_options.SetTimeoutInMicroSeconds (30*1000*1000) # 30 second timeout
+    expr_options.SetTryAllThreads (False)
+    expr_options.SetGenerateDebugInfo(True)
+    expr_options.SetLanguage (lldb.eLanguageTypeObjC_plus_plus)
+    expr_options.SetCoerceResultToId(True)
+    # expr_options.SetAutoApplyFixIts(True)
+    frame = lldb.debugger.GetSelectedTarget().GetProcess().GetSelectedThread().GetSelectedFrame()
+    # debugger.HandleCommand('po ' + command_script)
+
+    debugger.HandleCommand('expression -u0 -O -- ' + command_script)
+    # expr_sbvalue = frame.EvaluateExpression (command_script, expr_options)
+    
+    # if not expr_sbvalue.error.success:
+    #     print("\n***************************************\nerror: " + str(expr_sbvalue.error))
+    # #     import pdb; pdb.set_trace()  # breakpoint 72e231cb //
+    # else: 
+    #     print (expr_sbvalue.description)
 
 
-
-def get_command_script(objectiveC_class):
+def get_command_script(objectiveC_class, options):
     command_script = r'''//grab the zones in the current process
 @import Foundation;
 @import ObjectiveC;
@@ -56,6 +95,39 @@ int classCount = (int)objc_getClassList(NULL, 0);
 CFMutableSetRef set = (CFMutableSetRef)CFSetCreateMutable(0, classCount, NULL);
 Class *classes = (__unsafe_unretained Class *)malloc(sizeof(Class) * classCount);
 objc_getClassList(classes, classCount);
+
+
+typedef struct malloc_introspection_t {
+    kern_return_t (*enumerator)(task_t task, void *, unsigned type_mask, vm_address_t zone_address, memory_reader_t reader, vm_range_recorder_t recorder);
+} malloc_introspection_t;
+
+
+typedef struct malloc_zone_t {
+   // void    *reserved1;
+   // void    *reserved2;
+   // size_t  (*size)(struct _malloc_zone_t *zone, const void *ptr);
+   // void    *(*malloc)(struct _malloc_zone_t *zone, size_t size);
+   // void    *(*calloc)(struct _malloc_zone_t *zone, size_t num_items, size_t size);
+   // void    *(*valloc)(struct _malloc_zone_t *zone, size_t size);
+   // void    (*free)(struct _malloc_zone_t *zone, void *ptr);
+   // void    *(*realloc)(struct _malloc_zone_t *zone, void *ptr, size_t size);
+   // void    (*destroy)(struct _malloc_zone_t *zone);
+    void *reserved1[9];
+    const char  *zone_name;
+    void *reserved2[2];
+   // unsigned    (*batch_malloc)(struct _malloc_zone_t *zone, size_t size, void **results, unsigned num_requested);
+   // void    (*batch_free)(struct _malloc_zone_t *zone, void **to_be_freed, unsigned num_to_be_freed);
+
+    struct malloc_introspection_t   *introspect;
+    unsigned    version;
+    void *reserved3[3];
+    // void *(*memalign)(struct _malloc_zone_t *zone, size_t alignment, size_t size);
+    // 
+    // void (*free_definite_size)(struct _malloc_zone_t *zone, void *ptr, size_t size);
+    // 
+    // size_t  (*pressure_relief)(struct _malloc_zone_t *zone, size_t goal);
+} malloc_zone_t; 
+
   
 for (int i = 0; i < classCount; i++) {
     Class cls = classes[i];
@@ -133,48 +205,61 @@ for (unsigned i = 0; i < count; i++) {
             continue;
             }
             
-            id actualObject = (__bridge id)(void *)potentialObject;
-            if ((int)[potentialClass isSubclassOfClass:query]) {
-                CFSetAddValue(results, (__bridge const void *)(actualObject));
-                printf("%s\n", (char *)[[actualObject description] UTF8String]);
+            id obj = (__bridge id)(void *)potentialObject;
+            '''
+
+    if options.exact_match:
+        isSubclassOfClass = 'if ((int)[potentialClass isKindOfClass:query]'
+    else: 
+        isSubclassOfClass = 'if ((int)[potentialClass isSubclassOfClass:query]'
+
+    command_script +=  isSubclassOfClass
+
+    if options.condition:
+        cmd = options.condition
+        command_script += '&& (int)(' + options.condition + ')'
+
+    command_script += r''') {
+                CFSetAddValue(results, (__bridge const void *)(obj));
             }
         }
-
      });
 }
-  
+ 
 CFIndex index = (CFIndex)CFSetGetCount(context->results);
-  
   
 const void **values = (const void **)calloc(index, sizeof(id));
 CFSetGetValues(context->results, values);
-                 
-//for (int i = 0; i < index; i++) {
-    //id object = (__bridge id)(values[i]);
-    //// NSLog(@"%@", object);
-//}
+    
+NSMutableArray *outputArray = [NSMutableArray arrayWithCapacity:index];
+for (int i = 0; i < index; i++) {
+    id object = (__bridge id)(values[i]);
+    [outputArray addObject:object];
+}
+  
   
 free(values);
 free(set);
 free(context); 
 free(classes);
-'''
-
+[outputArray description];'''
     return command_script
 
-def generate_option_parser():
-    usage = "usage: %prog [options] path/to/item"
-    parser = optparse.OptionParser(usage=usage, prog="yoink")
-    parser.add_option("-o", "--open_immediately",
-                      action="store_true",
-                      default=False,
-                      dest="open_immediately",
-                      help="Opens the copied item immediately using the default 'open' cmd, useful for pics")
 
-    parser.add_option("-c", "--copy_file_path",
+
+def generate_option_parser():
+    usage = "usage: %prog [options] NSObjectSubclass"
+    parser = optparse.OptionParser(usage=usage, prog="find")
+    parser.add_option("-e", "--exact_match",
                       action="store_true",
                       default=False,
-                      dest="copy_file_path",
-                      help="Copies the file path to the clipboard")
+                      dest="exact_match",
+                      help="Searches for exact matches of class, i.e. no subclasses")
+
+    parser.add_option("-c", "--condition",
+                      action="store",
+                      default=None,
+                      dest="condition",
+                      help="a conditional expression to filter hits. Objective-C input only. Use 'obj' to reference object")
 
     return parser
