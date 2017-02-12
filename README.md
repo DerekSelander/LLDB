@@ -15,7 +15,8 @@ For any lldb commands simply just paste the command into your `~/.lldbinit` file
 
 ## LLDB Commands
 
-**ls** - List a directory from the process's perspective. Useful when working on an actual device. 
+### ls 
+List a directory from the process's perspective. Useful when working on an actual device. 
 ```
 command regex ls 's/(.+)/po @import Foundation; [[NSFileManager defaultManager] contentsOfDirectoryAtPath:@"%1" error:nil]/'
 ```
@@ -24,7 +25,12 @@ command regex ls 's/(.+)/po @import Foundation; [[NSFileManager defaultManager] 
       (lldb) ls /
       (lldb) ls /System/Library
       
+### reload_lldbinit
+Reloads all the contents in your ~/.lldbinit file. Useful for seeing if your python script(s) broke or want to do incremental updates to a python script
 
+```
+command alias reload_lldbinit command source ~/.lldbinit
+```
 
 ## LLDB Scripts
 ### find
