@@ -60,10 +60,11 @@ Examples:
     command_script = get_command_script(objectiveC_class, options)
 
     expr_options = lldb.SBExpressionOptions()
-    expr_options.SetIgnoreBreakpoints(True);
+    expr_options.SetIgnoreBreakpoints(False);
     expr_options.SetFetchDynamicValue(lldb.eDynamicCanRunTarget);
     expr_options.SetTimeoutInMicroSeconds (30*1000*1000) # 30 second timeout
     expr_options.SetTryAllThreads (True)
+    expr_options.SetUnwindOnError(False)
     expr_options.SetGenerateDebugInfo(True)
     expr_options.SetLanguage (lldb.eLanguageTypeObjC_plus_plus)
     expr_options.SetCoerceResultToId(True)
@@ -75,13 +76,18 @@ Examples:
         return
     # debugger.HandleCommand('po ' + command_script)
 
-    # debugger.HandleCommand('expression -lobjc++ -u0 -O -- ' + command_script)
+    # debugger.HandleCommand('expression -lobjc++ -g -O -- ' + command_script)
     expr_sbvalue = frame.EvaluateExpression (command_script, expr_options)
-    
+    count = expr_sbvalue.GetNumChildren(100000) # Actually goes up to 2^32 but this is more than enough    
+
     if not expr_sbvalue.error.success:
         print("\n***************************************\nerror: " + str(expr_sbvalue.error))
-    else: 
-        print (expr_sbvalue.description)
+    else:
+        if count > 1000:
+            print ('Exceeded 1000 hits, try narrowing your search with the --condition option')
+            print (expr_sbvalue)
+        else:
+            print (expr_sbvalue.description)
 
 
 def get_command_script(objectiveC_class, options):
@@ -130,7 +136,7 @@ for (int i = 0; i < classCount; i++) {
 }
   
 // Setup callback context
-context->results = (CFMutableSetRef)CFSetCreateMutable(0, 0, NULL);
+context->results = (CFMutableSetRef)CFSetCreateMutable(0, ''' + str(options.max_results) + ''', NULL);
 context->classesSet = set;
 context->query =  ''' + objectiveC_class + r''';
 for (unsigned i = 0; i < count; i++) {
@@ -147,6 +153,8 @@ for (unsigned i = 0; i < count; i++) {
         Class query = context->query;
         CFMutableSetRef classesSet = context->classesSet;
         CFMutableSetRef results = context->results;
+
+        int maxCount = ''' + str(options.max_results) + ''';
         size_t querySize = (size_t)class_getInstanceSize(query);
       
         int (^isBlackListClass)(Class) = ^int(Class aClass) {
@@ -174,6 +182,9 @@ for (unsigned i = 0; i < count; i++) {
         };
       
         for (int i = 0; i < count; i++) {
+            if (i >= maxCount || CFSetGetCount(results) >= maxCount) {
+                break;
+            }
         
             // test 1
             if (ranges[i].size < querySize) {
@@ -235,7 +246,7 @@ free(values);
 free(set);
 free(context); 
 free(classes);
-[outputArray description];'''
+outputArray;'''
     return command_script
 
 
@@ -255,4 +266,10 @@ def generate_option_parser():
                       dest="condition",
                       help="a conditional expression to filter hits. Objective-C input only. Use 'obj' to reference object")
 
+    parser.add_option("-m", "--max_results",
+                      action="store",
+                      default=200,
+                      type="int",
+                      dest="max_results",
+                      help="Specifies the maximum return count that the script should return")
     return parser
