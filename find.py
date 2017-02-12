@@ -41,6 +41,10 @@ Examples:
         result.SetError(parser.usage)
         return
 
+    if not args:
+        result.SetError('Usage: find NSObjectSubclass\n\nUse \'help find\' for more details')
+        return
+
     clean_command = ('').join(args)
     
 
@@ -59,15 +63,19 @@ Examples:
     expr_options.SetIgnoreBreakpoints(True);
     expr_options.SetFetchDynamicValue(lldb.eDynamicCanRunTarget);
     expr_options.SetTimeoutInMicroSeconds (30*1000*1000) # 30 second timeout
-    expr_options.SetTryAllThreads (False)
+    expr_options.SetTryAllThreads (True)
     expr_options.SetGenerateDebugInfo(True)
     expr_options.SetLanguage (lldb.eLanguageTypeObjC_plus_plus)
     expr_options.SetCoerceResultToId(True)
     # expr_options.SetAutoApplyFixIts(True)
-    frame = lldb.debugger.GetSelectedTarget().GetProcess().GetSelectedThread().GetSelectedFrame()
+    frame = debugger.GetSelectedTarget().GetProcess().GetSelectedThread().GetSelectedFrame()
+
+    if frame is None:
+        result.SetError('You must have the process suspended in order to execute this command')
+        return
     # debugger.HandleCommand('po ' + command_script)
 
-    # debugger.HandleCommand('expression -u0 -O -- ' + command_script)
+    # debugger.HandleCommand('expression -lobjc++ -u0 -O -- ' + command_script)
     expr_sbvalue = frame.EvaluateExpression (command_script, expr_options)
     
     if not expr_sbvalue.error.success:
@@ -87,6 +95,11 @@ typedef struct _DSSearchContext {
     CFMutableSetRef results;
 } DSSearchContext;
 
+auto task_peek = [](task_t task, vm_address_t remote_address, vm_size_t size, void **local_memory) -> kern_return_t {
+    *local_memory = (void*) remote_address;
+    return (kern_return_t)0;
+};
+
 vm_address_t *zones = NULL;
 unsigned int count = 0;
 kern_return_t error = (kern_return_t)malloc_get_all_zones(0, 0, &zones, &count);
@@ -99,36 +112,17 @@ objc_getClassList(classes, classCount);
 
 
 typedef struct malloc_introspection_t {
-    kern_return_t (*enumerator)(task_t task, void *, unsigned type_mask, vm_address_t zone_address, memory_reader_t reader, vm_range_recorder_t recorder);
+     kern_return_t (*enumerator)(task_t task, void *, unsigned type_mask, vm_address_t zone_address, memory_reader_t reader, vm_range_recorder_t recorder);
 } malloc_introspection_t;
 
-
-typedef struct malloc_zone_t {
-   // void    *reserved1;
-   // void    *reserved2;
-   // size_t  (*size)(struct _malloc_zone_t *zone, const void *ptr);
-   // void    *(*malloc)(struct _malloc_zone_t *zone, size_t size);
-   // void    *(*calloc)(struct _malloc_zone_t *zone, size_t num_items, size_t size);
-   // void    *(*valloc)(struct _malloc_zone_t *zone, size_t size);
-   // void    (*free)(struct _malloc_zone_t *zone, void *ptr);
-   // void    *(*realloc)(struct _malloc_zone_t *zone, void *ptr, size_t size);
-   // void    (*destroy)(struct _malloc_zone_t *zone);
-    void *reserved1[9];
-    const char  *zone_name;
-    void *reserved2[2];
-   // unsigned    (*batch_malloc)(struct _malloc_zone_t *zone, size_t size, void **results, unsigned num_requested);
-   // void    (*batch_free)(struct _malloc_zone_t *zone, void **to_be_freed, unsigned num_to_be_freed);
-
-    struct malloc_introspection_t   *introspect;
-    unsigned    version;
-    void *reserved3[3];
-    // void *(*memalign)(struct _malloc_zone_t *zone, size_t alignment, size_t size);
-    // 
-    // void (*free_definite_size)(struct _malloc_zone_t *zone, void *ptr, size_t size);
-    // 
-    // size_t  (*pressure_relief)(struct _malloc_zone_t *zone, size_t goal);
-} malloc_zone_t; 
-
+ typedef struct malloc_zone_t {
+     void *reserved1[9];
+     const char  *zone_name;
+     void *reserved2[2];
+     struct malloc_introspection_t   *introspect;
+     unsigned    version;
+     void *reserved3[3];
+ } malloc_zone_t; 
   
 for (int i = 0; i < classCount; i++) {
     Class cls = classes[i];
@@ -146,8 +140,8 @@ for (unsigned i = 0; i < count; i++) {
     }
 
     //for each zone, enumerate using our enumerator callback
-    zone->introspect->enumerator(0, context, 1, zones[i], NULL, 
-    [] (task_t task, void *baton, unsigned type, vm_range_t *ranges, unsigned count) -> void { // Inline function trick lifted from heap.py, pretty cool, right? :]
+    zone->introspect->enumerator(0, context, 1, zones[i], task_peek, 
+    [] (task_t task, void *baton, unsigned type, vm_range_t *ranges, unsigned count) -> void {
 
         DSSearchContext *context =  (DSSearchContext *)baton;
         Class query = context->query;
@@ -203,18 +197,16 @@ for (unsigned i = 0; i < count; i++) {
             
             // Yay, if we are here this is likely an NSObject
             if (isBlackListClass(potentialClass)) {
-            continue;
+                continue;
             }
             
             id obj = (__bridge id)(void *)potentialObject;
             '''
 
     if options.exact_match:
-        isSubclassOfClass = 'if ((int)[potentialClass isKindOfClass:query]'
+        command_script  += 'if ((int)[potentialClass isMemberOfClass:query]'
     else: 
-        isSubclassOfClass = 'if ((int)[potentialClass isSubclassOfClass:query]'
-
-    command_script +=  isSubclassOfClass
+        command_script += 'if ((int)[potentialClass isSubclassOfClass:query]'
 
     if options.condition:
         cmd = options.condition
