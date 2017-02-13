@@ -33,6 +33,20 @@ command alias reload_lldbinit command source ~/.lldbinit
 ```
 
 ## LLDB Scripts
+### dump_classes
+Dumps all the NSObject inherited classes in the process. If you give it a module that exists on disk, it will dump only the classes within that module. You can also filter out classes to only a certain type of class.
+  
+  Example: 
+  
+      # Dump ALL the NSObject classes within the process
+      (lldb) dump_classes 
+
+      # Dump all the classes that are a UIViewController within the process
+      (lldb) dump_classes -f UIViewController
+
+      # Dump all classes in CKConfettiEffect NSBundle that are UIView subclasses
+      (lldb) dump_classes /System/Library/Messages/iMessageEffects/CKConfettiEffect.bundle/CKConfettiEffect -f UIView
+
 ### find
   Finds all subclasses of a class. This class must by dynamic (aka inherit from a NSObject class). Currently doesn't work with   NSString or NSNumber (tagged pointer objects). 
   
