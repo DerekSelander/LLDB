@@ -22,13 +22,13 @@ def dump_classes(debugger, command, result, internal_dict):
 Examples:
 
     # Dump ALL the NSObject classes within the process
-    dump_classes 
+    (lldb) dump_classes 
 
     # Dump all the classes that are a UIViewController within the process
-    dump_classes -f UIViewController
+    (lldb) dump_classes -f UIViewController
 
     # Dump all classes in CKConfettiEffect NSBundle that are UIView subclasses
-    dump_classes /System/Library/Messages/iMessageEffects/CKConfettiEffect.bundle/CKConfettiEffect -f UIView
+    (lldb) dump_classes /System/Library/Messages/iMessageEffects/CKConfettiEffect.bundle/CKConfettiEffect -f UIView
 
     '''
 
