@@ -22,8 +22,8 @@
 
 import lldb
 import os
-import optparse
 import shlex
+import optparse
 
 
 def __lldb_init_module(debugger, internal_dict):
@@ -77,15 +77,13 @@ def yoink(debugger, command, result, internal_dict):
     interpreter.HandleCommand('po [{} dealloc]'.format(response[0]), res)
 
     fullpath = '/tmp/{}'.format(basename)
-    if options.copy_file_path:
-        copy_command = 'echo \"{}\" | pbcopy'.format(fullpath)
-        os.system(copy_command)
-        print('copied \"{}\" to clipboard'.format(fullpath))
 
     if options.open_immediately:
         print('Opening file...')
         os.system('open \"{}\"'.format(fullpath))
-
+    else:
+        os.system('open -R ' + fullpath)
+        print('Opening \"{}\"...'.format(fullpath))
 
 def generate_option_parser():
     usage = "usage: %prog [options] path/to/item"
