@@ -33,19 +33,19 @@ command alias reload_lldbinit command source ~/.lldbinit
 ```
 
 ## LLDB Scripts
-### dump_classes
+### dclass
 Dumps all the NSObject inherited classes in the process. If you give it a module that exists on disk, it will dump only the classes within that module. You can also filter out classes to only a certain type and can also generate a header file for a specific class.
   
   Example: 
   
       # Dump ALL the NSObject classes within the process
-      (lldb) dump_classes 
+      (lldb) dclass 
 
       # Dump all the classes that are a UIViewController within the process
-      (lldb) dump_classes -f UIViewController
+      (lldb) dclass -f UIViewController
 
       # Dump all classes in CKConfettiEffect NSBundle that are UIView subclasses
-      (lldb) dump_classes /System/Library/Messages/iMessageEffects/CKConfettiEffect.bundle/CKConfettiEffect -f UIView
+      (lldb) dclass /System/Library/Messages/iMessageEffects/CKConfettiEffect.bundle/CKConfettiEffect -f UIView
       
       # Generate a header file for the class specified:
       (lldb) dclass -g UIView
