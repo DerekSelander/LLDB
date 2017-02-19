@@ -146,7 +146,7 @@ dtrace:::BEGIN
         else:
             dtrace_script += query_template.format('objc', '')
 
-        dtrace_script += '{\n'
+        dtrace_script += '{\nprogram_counter = uregs[R_PC];\nthis->method_counter = \"Unknown\";' # TODO 64 only change to universal arch
         dtrace_template = "this->method_counter = {} <= program_counter && program_counter <= {} ? \"{}\" : this->method_counter;\n"
         dtrace_template = textwrap.dedent(dtrace_template)
 
