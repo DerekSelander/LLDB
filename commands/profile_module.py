@@ -49,11 +49,11 @@ def profile_module(debugger, command, result, internal_dict):
     # Trace all Objective-C code in UIKit 
     (lldb) pmodule UIKit
 
-    # Trace all non-Objective-C code in UIKit 
-    (lldb) pmodule -n UIKit
+    # Trace all non-Objective-C code in libsystem_kernel.dylib (i.e. pid$target:libsystem_kernel.dylib::entry)
+    (lldb) pmodule -n libsystem_kernel.dylib
 
-    # Trace all non-Objective-C code in UIKit 
-    (lldb) pmodule -n UIKit
+    # Dump errrything. Only displays count of function calls from modules after you end the script. Warning slow
+    (lldb) pmodule -a
     '''
 
     command_args = shlex.split(command)
@@ -69,6 +69,9 @@ def profile_module(debugger, command, result, internal_dict):
     # module_parirs = get_module_pair(, debugger)
     is_cplusplus = options.non_objectivec
 
+    if not args and not options.all_modules:
+        result.SetError('Need a module or use the -a option. You can list all modules by "image list -b"')
+        return
 
     dtrace_script = generate_dtrace_script(debugger, options, args)
 
@@ -131,14 +134,22 @@ dtrace:::BEGIN
 }}
 '''.format('non-Objective-C' if is_cplusplus else 'Objective-C', (', ').join(args))
 
-    dtrace_template = "this->method_counter = {} <= program_counter && program_counter <= {} ? \"{}\" : this->method_counter;\n"
-    dtrace_template = textwrap.dedent(dtrace_template)
 
     pid = target.process.id
     
     is_cplusplus = options.non_objectivec
+    query_template = '{}$target:{}::entry\n'
 
     if options.all_modules:
+        if is_cplusplus:
+            dtrace_script += query_template.format('pid', '')
+        else:
+            dtrace_script += query_template.format('objc', '')
+
+        dtrace_script += '{\n'
+        dtrace_template = "this->method_counter = {} <= program_counter && program_counter <= {} ? \"{}\" : this->method_counter;\n"
+        dtrace_template = textwrap.dedent(dtrace_template)
+
         for module in target.modules:
             section = module.FindSection("__TEXT")
             lower_bounds = section.GetLoadAddress(target)
@@ -146,9 +157,10 @@ dtrace:::BEGIN
             module_name = module.file.basename
             if "_lldb_" not in module_name:
                 dtrace_script += dtrace_template.format(lower_bounds, upper_bounds, module_name)
+        dtrace_script += "\n@num[this->method_counter] = count();\n}\n"
+
     else:
         for module_name in args:
-            query_template = '{}$target:{}::entry\n'
 
             # Objective-C logic:        objc$target:::entry / {} <= uregs[R_PC] && uregs[R_PC] <= {} / { }
             if not is_cplusplus:
