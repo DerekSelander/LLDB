@@ -77,3 +77,15 @@ Dumps all the NSObject inherited classes in the process. If you give it a module
       (lldb) yoink /System/Library/Messages/iMessageEffects/CKConfettiEffect.bundle/CKConfettiEffect
 
 ![yoink example](https://github.com/DerekSelander/LLDB/raw/master/Media/yoink_gif.gif)
+
+### pmodule
+
+  Creates a custom dtrace script that profiles modules in an executable based upon its 
+  memory layout and ASLR. Provide no arguments if you want a count of all the modules firing. 
+  Provide a module if you want to dump all the methods as they occur. 
+  
+      # Trace all Objective-C code in UIKit 
+      (lldb) pmodule UIKit
+
+      # Trace all non-Objective-C code in libsystem_kernel.dylib (i.e. pid$target:libsystem_kernel.dylib::entry)
+      (lldb) pmodule -n libsystem_kernel.dylib 
