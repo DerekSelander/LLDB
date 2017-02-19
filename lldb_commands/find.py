@@ -80,11 +80,11 @@ Examples:
     command_script = get_command_script(objectiveC_class, options)
 
     expr_options = lldb.SBExpressionOptions()
-    expr_options.SetIgnoreBreakpoints(False);
+    expr_options.SetIgnoreBreakpoints(True);
     expr_options.SetFetchDynamicValue(lldb.eDynamicCanRunTarget);
     expr_options.SetTimeoutInMicroSeconds (30*1000*1000) # 30 second timeout
     expr_options.SetTryAllThreads (True)
-    expr_options.SetUnwindOnError(False)
+    expr_options.SetUnwindOnError(True)
     expr_options.SetGenerateDebugInfo(True)
     expr_options.SetLanguage (lldb.eLanguageTypeObjC_plus_plus)
     expr_options.SetCoerceResultToId(True)
@@ -128,6 +128,7 @@ auto task_peek = [](task_t task, vm_address_t remote_address, vm_size_t size, vo
 
 vm_address_t *zones = NULL;
 unsigned int count = 0;
+unsigned int maxresults = ''' + str(options.max_results) + r'''
 kern_return_t error = (kern_return_t)malloc_get_all_zones(0, 0, &zones, &count);
 
 DSSearchContext *context = (DSSearchContext *)calloc(sizeof(DSSearchContext), 1);
@@ -156,7 +157,7 @@ for (int i = 0; i < classCount; i++) {
 }
   
 // Setup callback context
-context->results = (CFMutableSetRef)CFSetCreateMutable(0, ''' + str(options.max_results) + ''', NULL);
+context->results = (CFMutableSetRef)CFSetCreateMutable(0, maxresults, NULL);
 context->classesSet = set;
 context->query =  ''' + objectiveC_class + r''';
 for (unsigned i = 0; i < count; i++) {
