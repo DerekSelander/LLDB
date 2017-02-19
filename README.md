@@ -89,7 +89,10 @@ Dumps all the NSObject inherited classes in the process. If you give it a module
 
   Creates a custom dtrace script that profiles modules in an executable based upon its 
   memory layout and ASLR. Provide no arguments if you want a count of all the modules firing. 
-  Provide a module if you want to dump all the methods as they occur. 
+  Provide a module if you want to dump all the methods as they occur. The location of the script is 
+  copied to your computer so you can paste the soon to be executed dtrace script in the Terminal. 
+  
+  WARNING: YOU MUST DISABLE ROOTLESS TO USE DTRACE
   
       # Trace all Objective-C code in UIKit 
       (lldb) pmodule UIKit
