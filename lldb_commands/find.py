@@ -81,7 +81,7 @@ Examples:
 
     expr_options = lldb.SBExpressionOptions()
     expr_options.SetIgnoreBreakpoints(True);
-    expr_options.SetFetchDynamicValue(lldb.eDynamicCanRunTarget);
+    expr_options.SetFetchDynamicValue(lldb.eNoDynamicValues);
     expr_options.SetTimeoutInMicroSeconds (30*1000*1000) # 30 second timeout
     expr_options.SetTryAllThreads (True)
     expr_options.SetUnwindOnError(True)
