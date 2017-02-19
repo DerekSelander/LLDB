@@ -32,6 +32,13 @@ Reloads all the contents in your ~/.lldbinit file. Useful for seeing if your pyt
 command alias reload_lldbinit command source ~/.lldbinit
 ```
 
+### tv
+Toggle view. Hides/Shows a view depending on it's current state. You don't need to resume LLDB to see changes
+
+```
+command regex -- tv 's/(.+)/expression -l objc -O -- @import QuartzCore; [%1 setHidden:!(BOOL)[%1 isHidden]]; (void)[CATransaction flush];/'
+```
+
 ## LLDB Scripts
 ### dclass
 Dumps all the NSObject inherited classes in the process. If you give it a module that exists on disk, it will dump only the classes within that module. You can also filter out classes to only a certain type and can also generate a header file for a specific class.
