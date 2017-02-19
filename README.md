@@ -88,4 +88,7 @@ Dumps all the NSObject inherited classes in the process. If you give it a module
       (lldb) pmodule UIKit
 
       # Trace all non-Objective-C code in libsystem_kernel.dylib (i.e. pid$target:libsystem_kernel.dylib::entry)
-      (lldb) pmodule -n libsystem_kernel.dylib 
+      (lldb) pmodule -n libsystem_kernel.dylib
+      
+      # Dump errrything. Only displays count of function calls from modules after you end the script. Warning slow
+      (lldb) pmodule -a
