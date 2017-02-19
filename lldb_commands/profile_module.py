@@ -35,9 +35,9 @@ def __lldb_init_module(debugger, internal_dict):
 
 def profile_module(debugger, command, result, internal_dict):
     '''Creates a custom dtrace script that profiles modules in an executable
-    based upon its memory layout and ASLR. Provide no arguments if you want 
-    a count of all the modules firing. Provide a module if you want to dump
-    all the methods as they occur. 
+    based upon its memory layout and ASLR. Provide no arguments w/ '-a' if 
+    you want a count of all the modules firing. Provide a module if you want 
+    to dump all the methods as they occur. 
 
     pmodule [[MODULENAME]...]
 
@@ -80,7 +80,7 @@ def profile_module(debugger, command, result, internal_dict):
 
     copycommand = 'echo \"sudo {0}  -p {1}  2>/dev/null\" | pbcopy'
     os.system(copycommand.format(filename, pid))
-    result.AppendMessage("Copied to clipboard")
+    result.AppendMessage("Copied to clipboard. Paste in Terminal.")
 
     # 10.12.3 beta broke AppleScript's "do script" API. Dammit. Using pbcopy instead...
     # dtraceCommand = 'osascript -e \'tell application \"Terminal\" to activate & do script \"sudo {0}  -p {1}  \"\' 2>/dev/null'
