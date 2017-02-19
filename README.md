@@ -95,7 +95,7 @@ Dumps all the NSObject inherited classes in the process. If you give it a module
 ### pmodule
 
   Creates a custom dtrace script that profiles modules in an executable based upon its 
-  memory layout and ASLR. Provide no arguments if you want a count of all the modules firing. 
+  memory layout and ASLR. Provide no arguments w/ '-a' if you want a count of all the modules firing. 
   Provide a module if you want to dump all the methods as they occur. The location of the script is 
   copied to your computer so you can paste the soon to be executed dtrace script in the Terminal. 
   
