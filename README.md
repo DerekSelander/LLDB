@@ -18,7 +18,7 @@ For any lldb commands simply just paste the command into your `~/.lldbinit` file
 ### ls 
 List a directory from the process's perspective. Useful when working on an actual device. 
 ```
-command regex ls 's/(.+)/po @import Foundation; [[NSFileManager defaultManager] contentsOfDirectoryAtPath:@"%1" error:nil]/'
+command regex ls 's/(.+)/expression -lobjc -O -- @import Foundation; [[NSFileManager defaultManager] contentsOfDirectoryAtPath:@"%1" error:nil]/'
 ```
   Example: 
       
@@ -30,6 +30,20 @@ Reloads all the contents in your ~/.lldbinit file. Useful for seeing if your pyt
 
 ```
 command alias reload_lldbinit command source ~/.lldbinit
+```
+
+### tv
+Toggle view. Hides/Shows a view depending on it's current state. You don't need to resume LLDB to see changes
+
+```
+command regex -- tv 's/(.+)/expression -l objc -O -- @import QuartzCore; [%1 setHidden:!(BOOL)[%1 isHidden]]; (void)[CATransaction flush];/'
+```
+
+### protocol
+Dumps all the required and optional methods for specific protocol (Objective-C only)
+
+```
+command regex protocol 's/(.+)/expression -lobjc -O -- @import Foundation; NSMutableString *string = [NSMutableString string]; Protocol * prot = objc_getProtocol("%1"); [string appendFormat:@"\nProtocol: %s, %@\n", (char *)[prot name], (id)prot]; [string appendString:@"==========================================\n"]; for (int isRequired = 1; isRequired > -1; isRequired--) { [string appendFormat:@" (%@)\n", isRequired ? @"Required" : @"Optional"]; for (int isInstanceMethod = 0; isInstanceMethod < 2; isInstanceMethod++) { unsigned int ds_count = 0; struct objc_method_description * methods = (struct objc_method_description *)protocol_copyMethodDescriptionList(prot, (BOOL)isRequired, (BOOL)isInstanceMethod, &ds_count); for (int i = 0; i < ds_count; i++) { struct objc_method_description method = methods[i]; [string appendFormat:@"%@ %@, %s\n", isInstanceMethod ? @"-": @"+", NSStringFromSelector(method.name), method.types]; }}} string;/'
 ```
 
 ## LLDB Scripts
@@ -82,7 +96,10 @@ Dumps all the NSObject inherited classes in the process. If you give it a module
 
   Creates a custom dtrace script that profiles modules in an executable based upon its 
   memory layout and ASLR. Provide no arguments if you want a count of all the modules firing. 
-  Provide a module if you want to dump all the methods as they occur. 
+  Provide a module if you want to dump all the methods as they occur. The location of the script is 
+  copied to your computer so you can paste the soon to be executed dtrace script in the Terminal. 
+  
+  WARNING: YOU MUST DISABLE ROOTLESS TO USE DTRACE
   
       # Trace all Objective-C code in UIKit 
       (lldb) pmodule UIKit
