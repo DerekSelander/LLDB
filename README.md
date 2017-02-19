@@ -42,8 +42,27 @@ command regex -- tv 's/(.+)/expression -l objc -O -- @import QuartzCore; [%1 set
 ### protocol
 Dumps all the required and optional methods for specific protocol (Objective-C only)
 
+    (lldb) protocol UITableViewDataSource
+
 ```
 command regex protocol 's/(.+)/expression -lobjc -O -- @import Foundation; NSMutableString *string = [NSMutableString string]; Protocol * prot = objc_getProtocol("%1"); [string appendFormat:@"\nProtocol: %s, %@\n", (char *)[prot name], (id)prot]; [string appendString:@"==========================================\n"]; for (int isRequired = 1; isRequired > -1; isRequired--) { [string appendFormat:@" (%@)\n", isRequired ? @"Required" : @"Optional"]; for (int isInstanceMethod = 0; isInstanceMethod < 2; isInstanceMethod++) { unsigned int ds_count = 0; struct objc_method_description * methods = (struct objc_method_description *)protocol_copyMethodDescriptionList(prot, (BOOL)isRequired, (BOOL)isInstanceMethod, &ds_count); for (int i = 0; i < ds_count; i++) { struct objc_method_description method = methods[i]; [string appendFormat:@"%@ %@, %s\n", isInstanceMethod ? @"-": @"+", NSStringFromSelector(method.name), method.types]; }}} string;/'
+```
+
+### methods 
+Dumps all methods inplemented by the NSObject subclass (iOS, NSObject subclass only)
+
+    (lldb) methods UIView 
+```
+command regex methods 's/(.+)/cpo [%1 _shortMethodDescription]/'
+```
+
+### ivars
+Dumps all ivars for an instance of a particular class which inherits from NSObject (iOS, NSObject subclass only)
+
+    (lldb) ivars [UIView new]
+    
+```
+command regex ivars 's/(.+)/cpo [%1 _ivarDescription]/'
 ```
 
 ## LLDB Scripts
