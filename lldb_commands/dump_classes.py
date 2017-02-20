@@ -82,9 +82,9 @@ Examples:
     target = debugger.GetSelectedTarget()
     if options.module is not None:
         module = target.FindModule(lldb.SBFileSpec(options.module))
-        if not module.file.exists:
+        if not module.IsValid():
             result.SetError(
-                "Unable to open module name '{}', to see list of images use 'image list -b'".format(module_name))
+                "Unable to open module name '{}', to see list of images use 'image list -b'".format(options.module))
             return
 
     if options.generate_header or options.generate_protocol:
