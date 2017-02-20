@@ -79,10 +79,18 @@ Examples:
     res = lldb.SBCommandReturnObject()
     interpreter = debugger.GetCommandInterpreter()
 
+    target = debugger.GetSelectedTarget()
+    if options.module is not None:
+        module = target.FindModule(lldb.SBFileSpec(options.module))
+        if not module.file.exists:
+            result.SetError(
+                "Unable to open module name '{}', to see list of images use 'image list -b'".format(module_name))
+            return
+
     if options.generate_header or options.generate_protocol:
         command_script = generate_header_script(options, clean_command)
     else:
-        command_script = generate_class_dump(options, clean_command)
+        command_script = generate_class_dump(debugger, options, clean_command)
 
     if options.generate_header or options.generate_protocol:
         interpreter.HandleCommand('expression -lobjc -O -- (Class)NSClassFromString(@\"{}\")'.format(clean_command), res)
@@ -95,7 +103,7 @@ Examples:
           filepath = "/tmp/DS_" + clean_command + "Protocol.h"
         else:  
           filepath = "/tmp/" + clean_command + ".h"
-        interpreter.HandleCommand('expression -lobjc  -O -- ' + command_script, res)
+        interpreter.HandleCommand('expression -lobjc -u0 -O -- ' + command_script, res)
         if res.GetError():
             result.SetError(res.GetError()) 
             return
@@ -111,19 +119,25 @@ Examples:
     elif clean_command:
         print('Dumping classes for: ' + clean_command)
         debugger.HandleCommand('expression -lobjc -O -- ' + command_script)
+    elif options.module and options.filter:
+        print('Dumping all classes in ' + options.module + ', with filter: ' + options.filter)
+        debugger.HandleCommand('expression -lobjc -O -- ' + command_script)
+    elif options.module is not None:
+        print('Dumping all classes in ' + options.module)
+        debugger.HandleCommand('expression -lobjc -O -- ' + command_script)
     else:
-        print('Dumping all classes...')
+        print('Dumping all classes')
         debugger.HandleCommand('expression -lobjc -O -- ' + command_script)
 
 
-def generate_class_dump(options, clean_command=None):
+def generate_class_dump(debugger, options, clean_command=None):
     command_script = r'''
   @import ObjectiveC;
   unsigned int count = 0;
 
   '''
     if clean_command:
-      command_script += '  const char **allClasses = objc_copyClassNamesForImage("' + clean_command + '", &count);'
+        command_script += '  const char **allClasses = objc_copyClassNamesForImage("' + clean_command + '", &count);'
     else:
         command_script += 'Class *allClasses = objc_copyClassList(&count);\n'
 
@@ -132,6 +146,8 @@ def generate_class_dump(options, clean_command=None):
     Class cls =  '''
 
     command_script += 'objc_getClass(allClasses[i]);' if clean_command else 'allClasses[i];'
+    if options.module is not None: 
+        command_script += generate_module_search_sections_string(options.module, debugger)
 
     if options.filter is None:
         command_script += r'''
@@ -153,10 +169,39 @@ def generate_class_dump(options, clean_command=None):
     }'''
 
 
-    command_script += '\n  free(allClasses);\n  [classes description]'
+    command_script += '\n  free(allClasses);\n  [classes description];'
 
     return command_script
 
+def generate_module_search_sections_string(module_name, debugger):
+    target = debugger.GetSelectedTarget()
+
+    module = target.FindModule(lldb.SBFileSpec(module_name))
+    if not module.file.exists:
+        result.SetError(
+            "Unable to open module name '{}', to see list of images use 'image list -b'".format(module_name))
+        return
+
+    returnString = r'''
+    uintptr_t addr = (uintptr_t)cls;
+    if (!('''
+    section = module.FindSection("__DATA")
+    for idx, subsec in enumerate(section):
+        lower_bounds = subsec.GetLoadAddress(target)
+        upper_bounds = lower_bounds + subsec.file_size
+
+        if idx != 0:
+            returnString += ' || '
+        returnString += '({} <= addr && addr <= {})'.format(lower_bounds, upper_bounds)
+
+    dirtysection = module.FindSection("__DATA_DIRTY")
+    for subsec in dirtysection:
+        lower_bounds = subsec.GetLoadAddress(target)
+        upper_bounds = lower_bounds + subsec.file_size
+        returnString += ' || ({} <= addr && addr <= {})'.format(lower_bounds, upper_bounds)
+
+    returnString += ')) { continue; }\n'
+    return returnString
 
 def generate_header_script(options, class_to_generate_header):
   script = '@import @ObjectiveC;\n'
@@ -241,15 +286,17 @@ def generate_header_script(options, class_to_generate_header):
         if (multipleOptions) {
           [generatedPropertyString appendString:@", "];
         }
-        
-        [generatedPropertyString appendString:(NSString *)[[NSString alloc] initWithFormat:@"getter=%@", [parsedInput substringFromIndex:1]]];
+       [generatedPropertyString appendString:(NSString *)@"getter="];
+       [generatedPropertyString appendString:(NSString *)[parsedInput substringFromIndex:1]];
+
         multipleOptions = 1;
       } else if ([parsedInput hasPrefix:@"S"]) {
         if (multipleOptions) {
           [generatedPropertyString appendString:@", "];
         }
         
-        [generatedPropertyString appendString:(NSString *)[[NSString alloc] initWithFormat:@"setter=%@", [parsedInput substringFromIndex:1]]];
+       [generatedPropertyString appendString:(NSString *)@"setter="];
+       [generatedPropertyString appendString:(NSString *)[parsedInput substringFromIndex:1]];
         multipleOptions = 1;
       } else if ([parsedInput isEqualToString:@"&"]) {
         if (multipleOptions) {
@@ -342,7 +389,7 @@ def generate_header_script(options, class_to_generate_header):
   NSString *generatedInstanceMethods = generateMethodsForClass((Class)cls);
   
   // Class Methods
-  Class metaClass = objc_getMetaClass(cls);
+  Class metaClass = (Class)objc_getMetaClass((char *)class_getName(cls));
   NSString *generatedClassMethods = generateMethodsForClass(metaClass);
   
 
@@ -392,6 +439,12 @@ def generate_option_parser():
                       default=None,
                       dest="filter",
                       help="List all the classes in the module that are subclasses of class. -f UIView")
+
+    parser.add_option("-m", "--module",
+                      action="store",
+                      default=None,
+                      dest="module",
+                      help="Filter class by module. You only need to give the module name and not fullpath")
 
     parser.add_option("-g", "--generate_header",
                       action="store_true",
