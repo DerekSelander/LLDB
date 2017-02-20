@@ -177,7 +177,7 @@ def generate_module_search_sections_string(module_name, debugger):
     target = debugger.GetSelectedTarget()
 
     module = target.FindModule(lldb.SBFileSpec(module_name))
-    if not module.file.exists:
+    if not module.IsValid():
         result.SetError(
             "Unable to open module name '{}', to see list of images use 'image list -b'".format(module_name))
         return
