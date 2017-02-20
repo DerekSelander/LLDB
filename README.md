@@ -18,7 +18,7 @@ For any lldb commands simply just paste the command into your `~/.lldbinit` file
 ### ls 
 List a directory from the process's perspective. Useful when working on an actual device. 
 ```
-command regex ls 's/(.+)/expression -lobjc -O -- @import Foundation; [[NSFileManager defaultManager] contentsOfDirectoryAtPath:@"%1" error:nil]/'
+command regex ls 's/(.+)/po @import Foundation; NSError *err = nil; NSArray *arr = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:@"%1" error:&err]; id retValue = err ? [err localizedDescription] : arr; retValue/'
 ```
   Example: 
       
