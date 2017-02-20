@@ -369,8 +369,9 @@ def generate_header_script(options, class_to_generate_header):
         free(argumentType);
         [realizedMethod appendFormat:(NSString *)[(NSString *)[@"(" stringByAppendingString:argumentBlock(argumentTypeString)] stringByAppendingString:@")"]];
         
-        [realizedMethod appendFormat:(NSString *)[[NSString alloc] initWithFormat:@"arg%d ", index]];
-        
+        [realizedMethod appendString:@"arg"];
+        [realizedMethod appendString:[@(index) stringValue]];
+        [realizedMethod appendString:@" "];
       }
       [generatedMethodString appendString:realizedMethod];
       if (arguments == 2) {
