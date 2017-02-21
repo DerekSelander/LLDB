@@ -52,11 +52,22 @@ def rlook(debugger, command, result, internal_dict):
 
     clean_command = ('').join(args)
     target = debugger.GetSelectedTarget()
+    if options.module: 
+        module = target.FindModule(lldb.SBFileSpec(options.module))
+        if not module.IsValid():
+            result.SetError(
+                "Unable to open module name '{}', to see list of images use 'image list -b'".format(module_name))
+            return
+
+
     module_dict = {}
 
     symbol_context_list = target.FindGlobalFunctions(clean_command, 0, lldb.eMatchTypeRegex)
     for symbol_context in symbol_context_list:
         key = symbol_context.module.file.basename
+        if options.module and key != options.module:
+            continue
+
         if not key in module_dict:
             module_dict[key] = []
 
