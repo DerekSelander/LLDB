@@ -1,0 +1,96 @@
+# MIT License
+
+# Copyright (c) 2017 Derek Selander
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+import lldb
+import os
+import shlex
+import optparse
+
+
+def __lldb_init_module(debugger, internal_dict):
+    debugger.HandleCommand(
+        'command script add -f rlook.rlook rlook')
+
+
+def rlook(debugger, command, result, internal_dict):
+    '''
+    A more attractive alternative to image lookup -rn. Performs a regular expression
+    search on all modules loaded into the application. You can filter modules using the
+    --module command
+
+    Example:
+
+    (lldb) rlook UIViewController.viewDid
+    '''
+
+    command_args = shlex.split(command)
+    parser = generate_option_parser()
+    try:
+        (options, args) = parser.parse_args(command_args)
+    except:
+        result.SetError(parser.usage)
+        return
+
+    clean_command = ('').join(args)
+    target = debugger.GetSelectedTarget()
+    module_dict = {}
+
+    symbol_context_list = target.FindGlobalFunctions(clean_command, 0, lldb.eMatchTypeRegex)
+    for symbol_context in symbol_context_list:
+        key = symbol_context.module.file.basename
+        if not key in module_dict:
+            module_dict[key] = []
+
+        module_dict[key].append(symbol_context)
+
+    return_string = generate_return_string(module_dict, options)
+    result.AppendMessage(return_string)
+
+def generate_return_string(module_dict, options):
+    return_string = ''
+    for key in module_dict:
+        count = len(module_dict[key])
+        tmp = module_dict[key][0]
+        return_string += '****************************************************\n'
+        return_string += str(count) + ' hits in: ' + key + '\n'
+        return_string += '****************************************************\n'
+
+        for symbol_context in module_dict[key]:
+            str_addr = str(hex(symbol_context.symbol.addr.load_addr))
+            end_addr = str(hex(symbol_context.symbol.end_addr.load_addr))
+            return_string += symbol_context.symbol.name + ', load_addr=[' + str_addr + '-' + end_addr + ']\n\n'
+
+
+    return return_string
+
+
+def generate_option_parser():
+    usage = "usage: %prog [options] path/to/item"
+    parser = optparse.OptionParser(usage=usage, prog="rlook")
+
+    parser.add_option("-m", "--module",
+                      action="store",
+                      default=None,
+                      dest="module",
+                      help="Copies the file path to the clipboard")
+
+    return parser
