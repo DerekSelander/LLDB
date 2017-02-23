@@ -3,14 +3,13 @@ A collection of LLDB aliases/regexes and Python scripts to aid in your debugging
 
 ## Installation 
 
-For scripts (anything ending with `.py`), you'll need to do the following: 
-  1. Download scripts. Install to a dir of your choosing (i.e. `~/lldb`)
-  2. In `~/.lldbinit` add the following:
-      `command script import path/to/lldb_file.py`
-  
-  You must import each file individually in your lldbinit file
+1. To Install, copy the **lldb_commands** folder to a dir of your choosing.
+2. Open up **~/.lldbinit** or `touch ~/.lldbinit` if that file doesn't exist
+3. Add the following command to your ~/.lldbinit file: `command script import /path/to/lldb_commands/lldb.py`
 
-For any lldb commands simply just paste the command into your `~/.lldbinit` file
+Boom! You're good to go!
+
+You can test to make sure everything worked successfully by just trying one of the commands in the debugger... i.e. `(lldb) ls /`
 
 
 ## LLDB Commands
@@ -33,7 +32,7 @@ command alias reload_lldbinit command source ~/.lldbinit
 ```
 
 ### tv
-Toggle view. Hides/Shows a view depending on it's current state. You don't need to resume LLDB to see changes
+Toggle view. Hides/Shows a view depending on it's current state. You don't need to resume LLDB to see changes. ObjC only
 
 ```
 command regex -- tv 's/(.+)/expression -l objc -O -- @import QuartzCore; [%1 setHidden:!(BOOL)[%1 isHidden]]; (void)[CATransaction flush];/'
@@ -53,7 +52,7 @@ Dumps all methods inplemented by the NSObject subclass (iOS, NSObject subclass o
 
     (lldb) methods UIView 
 ```
-command regex methods 's/(.+)/cpo [%1 _shortMethodDescription]/'
+command regex methods 's/(.+)/expression -lobjc -O -- [%1 _shortMethodDescription]/'
 ```
 
 ### ivars
@@ -62,7 +61,7 @@ Dumps all ivars for an instance of a particular class which inherits from NSObje
     (lldb) ivars [UIView new]
     
 ```
-command regex ivars 's/(.+)/cpo [%1 _ivarDescription]/'
+command regex ivars 's/(.+)/expression -lobjc -O -- [%1 _ivarDescription]/'
 ```
 
 ## LLDB Scripts
