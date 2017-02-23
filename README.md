@@ -52,7 +52,7 @@ Dumps all methods inplemented by the NSObject subclass (iOS, NSObject subclass o
 
     (lldb) methods UIView 
 ```
-command regex methods 's/(.+)/cpo [%1 _shortMethodDescription]/'
+command regex methods 's/(.+)/expression -lobjc -O -- [%1 _shortMethodDescription]/'
 ```
 
 ### ivars
@@ -61,7 +61,7 @@ Dumps all ivars for an instance of a particular class which inherits from NSObje
     (lldb) ivars [UIView new]
     
 ```
-command regex ivars 's/(.+)/cpo [%1 _ivarDescription]/'
+command regex ivars 's/(.+)/expression -lobjc -O -- [%1 _ivarDescription]/'
 ```
 
 ## LLDB Scripts
