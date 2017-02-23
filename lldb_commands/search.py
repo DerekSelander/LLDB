@@ -27,10 +27,10 @@ import optparse
 import lldb.utils.symbolication
 
 def __lldb_init_module(debugger, internal_dict):
-    debugger.HandleCommand('command script add -f find.find find')
+    debugger.HandleCommand('command script add -f search.search search')
 
 
-def find(debugger, command, result, internal_dict):
+def search(debugger, command, result, internal_dict):
     '''
     Finds all subclasses of a class. This class must by dynamic 
     (aka inherit from a NSObject class). Currently doesn't work 
@@ -274,7 +274,7 @@ outputArray;'''
 
 def generate_option_parser():
     usage = "usage: %prog [options] NSObjectSubclass"
-    parser = optparse.OptionParser(usage=usage, prog="find")
+    parser = optparse.OptionParser(usage=usage, prog="search")
     parser.add_option("-e", "--exact_match",
                       action="store_true",
                       default=False,
