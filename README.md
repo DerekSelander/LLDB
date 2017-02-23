@@ -5,7 +5,7 @@ A collection of LLDB aliases/regexes and Python scripts to aid in your debugging
 
 1. To Install, copy the **lldb_commands** folder to a dir of your choosing.
 2. Open up **~/.lldbinit** or `touch ~/.lldbinit` if that file doesn't exist
-3. Add the following command to your ~/.lldbinit file: `command script import /path/to/lldb_commands/lldb.py` (
+3. Add the following command to your ~/.lldbinit file: `command script import /path/to/lldb_commands/lldb.py`
 
 Boom! You're good to go!
 
