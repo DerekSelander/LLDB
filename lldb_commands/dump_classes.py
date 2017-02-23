@@ -103,7 +103,7 @@ Examples:
           filepath = "/tmp/DS_" + clean_command + "Protocol.h"
         else:  
           filepath = "/tmp/" + clean_command + ".h"
-        interpreter.HandleCommand('expression -lobjc -u0 -O -- ' + command_script, res)
+        interpreter.HandleCommand('expression -lobjc -O -- ' + command_script, res)
         if res.GetError():
             result.SetError(res.GetError()) 
             return
@@ -112,22 +112,24 @@ Examples:
         create_or_touch_filepath(filepath, contents)
         print('Written output to: ' + filepath + '... opening file')
         os.system('open -R ' + filepath)
+    else: 
+        if options.filter and clean_command:
+            result.AppendMessage('Dumping classes for: ' + clean_command + ', with filter: ' + options.filter)
+        elif clean_command:
+            result.AppendMessage('Dumping classes for: ' + clean_command)
+        elif options.module and options.filter:
+            result.AppendMessage('Dumping all classes in ' + options.module + ', with filter: ' + options.filter)
+        elif options.module is not None:
+            result.AppendMessage('Dumping all classes in ' + options.module)
+        else:
+            result.AppendMessage('Dumping all classes')
 
-    elif options.filter and clean_command:
-        print('Dumping classes for: ' + clean_command + ', with filter: ' + options.filter)
-        debugger.HandleCommand('expression -lobjc -O -- ' + command_script)
-    elif clean_command:
-        print('Dumping classes for: ' + clean_command)
-        debugger.HandleCommand('expression -lobjc -O -- ' + command_script)
-    elif options.module and options.filter:
-        print('Dumping all classes in ' + options.module + ', with filter: ' + options.filter)
-        debugger.HandleCommand('expression -lobjc -O -- ' + command_script)
-    elif options.module is not None:
-        print('Dumping all classes in ' + options.module)
-        debugger.HandleCommand('expression -lobjc -O -- ' + command_script)
-    else:
-        print('Dumping all classes')
-        debugger.HandleCommand('expression -lobjc -O -- ' + command_script)
+        interpreter.HandleCommand('expression -lobjc -O -- ' + command_script, res)
+
+        # debugger.HandleCommand('expression -lobjc -O -g -- ' + command_script)
+        result.AppendMessage('************************************************************')
+        if res.Succeeded(): 
+            result.AppendMessage(res.GetOutput())
 
 
 def generate_class_dump(debugger, options, clean_command=None):
@@ -141,7 +143,7 @@ def generate_class_dump(debugger, options, clean_command=None):
     else:
         command_script += 'Class *allClasses = objc_copyClassList(&count);\n'
 
-    command_script += '''  NSMutableArray *classes = [NSMutableArray arrayWithCapacity:count];
+    command_script += '''  NSMutableString *classesString = [NSMutableString string];
   for (int i = 0; i < count; i++) {
     Class cls =  '''
 
@@ -151,25 +153,17 @@ def generate_class_dump(debugger, options, clean_command=None):
 
     if options.filter is None:
         command_script += r'''
-        if (count > 200) {
-          printf("%s\n", class_getName(cls));
-        } else {
-          [classes addObject:cls];
-        }
+          [classesString appendString:(NSString *)[cls description]];
+          [classesString appendString:@"\n"];
   }'''
     else:
-        command_script += '\nif (class_getSuperclass(cls) && (BOOL)[cls isSubclassOfClass:[' + str(options.filter) + r''' class]]) {    
-
-         if (count > 200) {
-          printf("%s\n", class_getName(cls));
-        } else {
-          [classes addObject:cls];
-        }  
+        command_script += '\n    if (class_getSuperclass(cls) && (BOOL)[cls isSubclassOfClass:(Class)NSClassFromString(@"' + str(options.filter) + r'''")]) {    
+          [classesString appendString:(NSString *)[cls description]];
+          [classesString appendString:@"\n"];
       }
     }'''
 
-
-    command_script += '\n  free(allClasses);\n  [classes description];'
+    command_script += '\n  free(allClasses);\n  [classesString description];'
 
     return command_script
 
