@@ -85,19 +85,19 @@ Dumps all the NSObject inherited classes in the process. If you give it a module
       # Generate a protocol that you can cast an object to. Ideal when working with private classes at dev time
       (lldb) dclass -p UIView
 
-### find
-  Finds all subclasses of a class. This class must by dynamic (aka inherit from a NSObject class). Currently doesn't work with   NSString or NSNumber (tagged pointer objects). 
+### search
+  Searchs all subclasses of a class in the program. This class must by dynamic (aka inherit from a NSObject class). Currently doesn't work with NSString or NSNumber (tagged pointer objects). 
   
   Example: 
   
       # Find all instances and subclasses of UIView
-      (lldb)  find UIView
+      (lldb)  search UIView
       
       # Find all instances of UIView that are UIViews. Ignore subclasses.
-      (lldb) find UIView -e
+      (lldb) search UIView -e
       
       #Find all instances of UIView whose tag is equal to 5. Objective-C syntax only. Can reference object by 'obj'
-      (lldb) find UIView -c "[obj tag]==5"
+      (lldb) search UIView -c "(int)[obj tag]==5"
 
 ### yoink
 
