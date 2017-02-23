@@ -32,7 +32,7 @@ command alias reload_lldbinit command source ~/.lldbinit
 ```
 
 ### tv
-Toggle view. Hides/Shows a view depending on it's current state. You don't need to resume LLDB to see changes
+Toggle view. Hides/Shows a view depending on it's current state. You don't need to resume LLDB to see changes. ObjC only
 
 ```
 command regex -- tv 's/(.+)/expression -l objc -O -- @import QuartzCore; [%1 setHidden:!(BOOL)[%1 isHidden]]; (void)[CATransaction flush];/'
