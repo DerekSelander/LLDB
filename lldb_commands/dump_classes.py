@@ -125,8 +125,10 @@ Examples:
             result.AppendMessage('Dumping all classes')
 
         interpreter.HandleCommand('expression -lobjc -O -- ' + command_script, res)
-
         # debugger.HandleCommand('expression -lobjc -O -g -- ' + command_script)
+        if res.GetError():
+            result .SetError(res.GetError())
+            return
         result.AppendMessage('************************************************************')
         if res.Succeeded(): 
             result.AppendMessage(res.GetOutput())
@@ -143,6 +145,9 @@ def generate_class_dump(debugger, options, clean_command=None):
     else:
         command_script += 'Class *allClasses = objc_copyClassList(&count);\n'
 
+    if options.regular_expression is not None: 
+        command_script += '  NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:@"' + options.regular_expression + '" options:0 error:nil];\n'
+
     command_script += '''  NSMutableString *classesString = [NSMutableString string];
   for (int i = 0; i < count; i++) {
     Class cls =  '''
@@ -151,14 +156,46 @@ def generate_class_dump(debugger, options, clean_command=None):
     if options.module is not None: 
         command_script += generate_module_search_sections_string(options.module, debugger)
 
-    if options.filter is None:
+    command_script += '  NSString *clsString = (NSString *)NSStringFromClass(cls);\n'
+    if options.regular_expression is not None:
         command_script += r'''
-          [classesString appendString:(NSString *)[cls description]];
+    typedef struct _NSRange {
+      NSUInteger location;
+      NSUInteger length;
+    } NSRange;
+    NSRange r;
+    r.length = [clsString length];
+    r.location = 0;
+    NSUInteger matches = (NSUInteger)[regex numberOfMatchesInString:clsString options:0 range:r];
+    if (matches == 0) {
+      continue;
+    }
+        '''
+   
+
+    if options.filter is None:
+        if options.verbose: 
+            command_script += r'''
+        NSString *imageString = [[[[NSString alloc] initWithUTF8String:class_getImageName(cls)] lastPathComponent] stringByDeletingPathExtension];
+        [classesString appendString:imageString];
+        [classesString appendString:@": "];
+        '''
+
+
+        command_script += r'''
+          [classesString appendString:(NSString *)clsString];
           [classesString appendString:@"\n"];
   }'''
     else:
-        command_script += '\n    if (class_getSuperclass(cls) && (BOOL)[cls isSubclassOfClass:(Class)NSClassFromString(@"' + str(options.filter) + r'''")]) {    
-          [classesString appendString:(NSString *)[cls description]];
+        command_script += '\n    if (class_getSuperclass(cls) && (BOOL)[cls isSubclassOfClass:(Class)NSClassFromString(@"' + str(options.filter) + '")]) {\n'    
+        if options.verbose: 
+            command_script += r'''
+        NSString *imageString = [[[[NSString alloc] initWithUTF8String:class_getImageName(cls)] lastPathComponent] stringByDeletingPathExtension];
+        [classesString appendString:imageString];
+        [classesString appendString:@": "];
+        '''
+        command_script += r'''
+          [classesString appendString:(NSString *)clsString];
           [classesString appendString:@"\n"];
       }
     }'''
@@ -440,6 +477,18 @@ def generate_option_parser():
                       default=None,
                       dest="module",
                       help="Filter class by module. You only need to give the module name and not fullpath")
+
+    parser.add_option("-r", "--regular_expression",
+                      action="store",
+                      default=None,
+                      dest="regular_expression",
+                      help="Search the available classes using a regular expression search")
+
+    parser.add_option("-v", "--verbose",
+                      action="store_true",
+                      default=False,
+                      dest="verbose",
+                      help="Enables verbose mode for dumping classes. Doesn't work w/ -g or -p")
 
     parser.add_option("-g", "--generate_header",
                       action="store_true",
