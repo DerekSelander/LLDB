@@ -104,6 +104,7 @@ Examples:
         else:  
           filepath = "/tmp/" + clean_command + ".h"
         interpreter.HandleCommand('expression -lobjc -O -- ' + command_script, res)
+        # debugger.HandleCommand('expression -lobjc -O -g -- ' + command_script)
         if res.GetError():
             result.SetError(res.GetError()) 
             return
@@ -235,9 +236,9 @@ def generate_module_search_sections_string(module_name, debugger):
     return returnString
 
 def generate_header_script(options, class_to_generate_header):
-  script = '@import @ObjectiveC;\n'
-  script += 'NSString *className = @"' + str(class_to_generate_header) + '";\n'
-  script += r'''
+    script = '@import @ObjectiveC;\n'
+    script += 'NSString *className = @"' + str(class_to_generate_header) + '";\n'
+    script += r'''
   //Dang it. LLDB JIT Doesn't like NSString stringWithFormat on device. Need to use stringByAppendingString instead
 
   // Runtime declarations in case we're running on a stripped executable
@@ -358,7 +359,13 @@ def generate_header_script(options, class_to_generate_header):
         }
       }
     }
-    [generatedPropertyString appendString:(NSString *)[(NSString *)[(NSString *)[(NSString *)[@") " stringByAppendingString:propertyType] stringByAppendingString:@" "] stringByAppendingString:name] stringByAppendingString:@";\n"]];
+    '''
+    if options.generate_protocol:
+        script += r'[generatedPropertyString appendString:(NSString *)[(NSString *)[(NSString *)[(NSString *)[(NSString *)[(NSString *)[@") " stringByAppendingString:@"id"] stringByAppendingString:@" "] stringByAppendingString:name] stringByAppendingString:@";  // "] stringByAppendingString:propertyType] stringByAppendingString:@"\n"]];'
+    else:
+        script += r'[generatedPropertyString appendString:(NSString *)[(NSString *)[(NSString *)[(NSString *)[@") " stringByAppendingString:propertyType] stringByAppendingString:@" "] stringByAppendingString:name] stringByAppendingString:@";\n"]];'
+
+    script += r'''
     [generatedProperties appendString:generatedPropertyString];
     [blackListMethodNames addObject:name];
   }
@@ -428,19 +435,19 @@ def generate_header_script(options, class_to_generate_header):
   NSMutableString *finalString = [NSMutableString string];
   [finalString appendString:@"#import <Foundation/Foundation.h>\n\n"];'''
 
-  if options.generate_protocol:
-      script += r'''
+    if options.generate_protocol:
+        script += r'''
   [finalString appendString:@"\n@protocol DS_"];
   [finalString appendString:(NSString *)[cls description]];
   [finalString appendString:@"Protocol <NSObject>"];'''
-  else: 
-      script += r'''
+    else: 
+        script += r'''
   [finalString appendString:@"\n@interface "];
   [finalString appendString:(NSString *)[cls description]];
   [finalString appendString:@" : "];
   [finalString appendString:(NSString *)[[cls superclass] description]];'''
   
-  script += r'''
+    script += r'''
   [finalString appendString:@"\n\n"];
   [finalString appendString:generatedProperties];
   [finalString appendString:@"\n"];
@@ -453,7 +460,7 @@ def generate_header_script(options, class_to_generate_header):
   free(properties);
   returnString;
 '''
-  return script
+    return script
 
 
 def create_or_touch_filepath(filepath, contents):
