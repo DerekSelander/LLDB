@@ -251,6 +251,8 @@ def generate_header_script(options, class_to_generate_header):
   // Properties
   NSMutableString *generatedProperties = [NSMutableString string];
   NSMutableSet *blackListMethodNames = [NSMutableSet set];
+  NSMutableSet *exportedClassesSet = [NSMutableSet set];
+  NSMutableSet *exportedProtocolsSet = [NSMutableSet set];
   [blackListMethodNames addObjectsFromArray:@[@".cxx_destruct", @"dealloc"]];
   unsigned int propertyCount = 0;
   Class cls = NSClassFromString(className);
@@ -347,7 +349,12 @@ def generate_header_script(options, class_to_generate_header):
             component = [component stringByReplacingOccurrencesOfString:@"><" withString:@", "];
             if ([component hasPrefix:@"<"]) {
               propertyType = (NSString *)[@"id" stringByAppendingString:component];
+              NSString *formatted = [[component stringByReplacingOccurrencesOfString:@"<" withString:@""] stringByReplacingOccurrencesOfString:@">" withString:@""];
+              for (NSString *f in [formatted componentsSeparatedByString:@", "]) {
+                [exportedProtocolsSet addObject:f];
+              }
             } else {
+              [exportedClassesSet addObject:component];
               propertyType = (NSString *)[component stringByAppendingString:@"*"];
             }
           } else {
@@ -359,13 +366,8 @@ def generate_header_script(options, class_to_generate_header):
         }
       }
     }
-    '''
-    if options.generate_protocol:
-        script += r'[generatedPropertyString appendString:(NSString *)[(NSString *)[(NSString *)[(NSString *)[(NSString *)[(NSString *)[@") " stringByAppendingString:@"id"] stringByAppendingString:@" "] stringByAppendingString:name] stringByAppendingString:@";  // "] stringByAppendingString:propertyType] stringByAppendingString:@"\n"]];'
-    else:
-        script += r'[generatedPropertyString appendString:(NSString *)[(NSString *)[(NSString *)[(NSString *)[@") " stringByAppendingString:propertyType] stringByAppendingString:@" "] stringByAppendingString:name] stringByAppendingString:@";\n"]];'
+    [generatedPropertyString appendString:(NSString *)[(NSString *)[(NSString *)[(NSString *)[@") " stringByAppendingString:propertyType] stringByAppendingString:@" "] stringByAppendingString:name] stringByAppendingString:@";\n"]];
 
-    script += r'''
     [generatedProperties appendString:generatedPropertyString];
     [blackListMethodNames addObject:name];
   }
@@ -433,7 +435,31 @@ def generate_header_script(options, class_to_generate_header):
   
 
   NSMutableString *finalString = [NSMutableString string];
-  [finalString appendString:@"#import <Foundation/Foundation.h>\n\n"];'''
+  [finalString appendString:@"#import <Foundation/Foundation.h>\n\n"];
+  if ([exportedClassesSet count] > 0) {
+    NSMutableString *importString = [NSMutableString string];
+    [importString appendString:@"@class "];
+    for (NSString *str in [exportedClassesSet allObjects]) {
+      [importString appendString:str];
+      [importString appendString:@", "];
+    }
+    [importString appendString:@";"];
+    NSString *finalImport = [importString stringByReplacingOccurrencesOfString:@", ;" withString:@";\n\n"];
+    [finalString appendString:finalImport];
+  }
+
+
+    if ([exportedProtocolsSet count] > 0) {
+    NSMutableString *importString = [NSMutableString string];
+    [importString appendString:@"@protocol "];
+    for (NSString *str in [exportedProtocolsSet allObjects]) {
+      [importString appendString:str];
+      [importString appendString:@", "];
+    }
+    [importString appendString:@";"];
+    NSString *finalImport = [importString stringByReplacingOccurrencesOfString:@", ;" withString:@";\n\n"];
+    [finalString appendString:finalImport];
+  }'''
 
     if options.generate_protocol:
         script += r'''
@@ -456,6 +482,7 @@ def generate_header_script(options, class_to_generate_header):
   [finalString appendString:@"\n@end"];
 
   [returnString appendString:finalString];
+
   // Free stuff
   free(properties);
   returnString;
