@@ -71,6 +71,16 @@ Examples:
     res = lldb.SBCommandReturnObject()
     interpreter = debugger.GetCommandInterpreter()
 
+    if options.module:
+        target = debugger.GetSelectedTarget()
+        module = target.FindModule(lldb.SBFileSpec(options.module))
+        if not module.IsValid():
+            result.SetError(
+                "Unable to open module name '{}', to see list of images use 'image list -b'".format(options.module))
+            return
+        options.module = generate_module_search_sections_string(module, target)
+
+
     interpreter.HandleCommand('po (Class)NSClassFromString(@\"{}\")'.format(clean_command), res)
     if 'nil' in res.GetOutput():
         result.SetError('Can\'t find class named "{}". Womp womp...'.format(clean_command))
@@ -244,7 +254,12 @@ for (unsigned i = 0; i < count; i++) {
         cmd = options.condition
         command_script += '&& (int)(' + options.condition + ')'
 
-    command_script += r''') {
+    command_script += r') {'
+
+    if options.module:
+        command_script += options.module
+
+    command_script += r'''
                 CFSetAddValue(results, (__bridge const void *)(obj));
             }
         }
@@ -270,7 +285,28 @@ free(classes);
 outputArray;'''
     return command_script
 
+def generate_module_search_sections_string(module, target):
 
+    returnString = r'''
+    uintptr_t addr = (uintptr_t)potentialClass;
+    if (!('''
+    section = module.FindSection("__DATA")
+    for idx, subsec in enumerate(section):
+        lower_bounds = subsec.GetLoadAddress(target)
+        upper_bounds = lower_bounds + subsec.file_size
+
+        if idx != 0:
+            returnString += ' || '
+        returnString += '({} <= addr && addr <= {})'.format(lower_bounds, upper_bounds)
+
+    dirtysection = module.FindSection("__DATA_DIRTY")
+    for subsec in dirtysection:
+        lower_bounds = subsec.GetLoadAddress(target)
+        upper_bounds = lower_bounds + subsec.file_size
+        returnString += ' || ({} <= addr && addr <= {})'.format(lower_bounds, upper_bounds)
+
+    returnString += ')) { continue; }\n'
+    return returnString
 
 def generate_option_parser():
     usage = "usage: %prog [options] NSObjectSubclass"
@@ -287,7 +323,13 @@ def generate_option_parser():
                       dest="condition",
                       help="a conditional expression to filter hits. Objective-C input only. Use 'obj' to reference object")
 
-    parser.add_option("-m", "--max_results",
+    parser.add_option("-m", "--module",
+                      action="store",
+                      default=None,
+                      dest="module",
+                      help="Filters results to only be in a certain module. i.e. -m UIKit")
+
+    parser.add_option("-x", "--max_results",
                       action="store",
                       default=200,
                       type="int",
