@@ -28,10 +28,10 @@ import optparse
 
 def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(
-        'command script add -f rlook.rlook rlook')
+        'command script add -f query.query query')
 
 
-def rlook(debugger, command, result, internal_dict):
+def query(debugger, command, result, internal_dict):
     '''
     A more attractive alternative to image lookup -rn. Performs a regular expression
     search on all modules loaded into the application. You can filter modules using the
@@ -39,7 +39,7 @@ def rlook(debugger, command, result, internal_dict):
 
     Example:
 
-    (lldb) rlook UIViewController.viewDid
+    (lldb) query UIViewController.viewDid
     '''
 
     command_args = shlex.split(command)
