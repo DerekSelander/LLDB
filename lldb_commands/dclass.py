@@ -138,6 +138,7 @@ Examples:
 def generate_class_dump(debugger, options, clean_command=None):
     command_script = r'''
   @import ObjectiveC;
+  @import Foundation;
   unsigned int count = 0;
 
   '''
@@ -160,14 +161,7 @@ def generate_class_dump(debugger, options, clean_command=None):
     command_script += '  NSString *clsString = (NSString *)NSStringFromClass(cls);\n'
     if options.regular_expression is not None:
         command_script += r'''
-    typedef struct _NSRange {
-      NSUInteger location;
-      NSUInteger length;
-    } NSRange;
-    NSRange r;
-    r.length = [clsString length];
-    r.location = 0;
-    NSUInteger matches = (NSUInteger)[regex numberOfMatchesInString:clsString options:0 range:r];
+    NSUInteger matches = (NSUInteger)[regex numberOfMatchesInString:clsString options:0 range:NSMakeRange(0, [clsString length])];
     if (matches == 0) {
       continue;
     }
