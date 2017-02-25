@@ -1,13 +1,4 @@
- 
-###############################################################################
-# Command Aliases
-###############################################################################
-
 command alias -H "Reload ~/.lldbinit" -h "Reload ~/.lldbinit" -- reload_lldbinit command source ~/.lldbinit
-
-###############################################################################
-# Command Regexes
-###############################################################################
 
 command regex -h "Regex search" -s "rlook UIViewController.viewDidLoad" -- rlook 's/(.+)/image lookup -rn %1/'
 
