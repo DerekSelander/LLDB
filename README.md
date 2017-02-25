@@ -5,7 +5,7 @@ A collection of LLDB aliases/regexes and Python scripts to aid in your debugging
 
 1. To Install, copy the **lldb_commands** folder to a dir of your choosing.
 2. Open up **~/.lldbinit** or `touch ~/.lldbinit` if that file doesn't exist
-3. Add the following command to your ~/.lldbinit file: `command script import /path/to/lldb_commands/lldb.py`
+3. Add the following command to your ~/.lldbinit file: `command script import /path/to/lldb_commands/dslldb.py`
 
 Boom! You're good to go!
 
@@ -38,10 +38,10 @@ Toggle view. Hides/Shows a view depending on it's current state. You don't need 
 command regex -- tv 's/(.+)/expression -l objc -O -- @import QuartzCore; [%1 setHidden:!(BOOL)[%1 isHidden]]; (void)[CATransaction flush];/'
 ```
 
-### protocol
+### pprotocol
 Dumps all the required and optional methods for specific protocol (Objective-C only)
 
-    (lldb) protocol UITableViewDataSource
+    (lldb) pprotocol UITableViewDataSource
 
 ```
 command regex protocol 's/(.+)/expression -lobjc -O -- @import Foundation; NSMutableString *string = [NSMutableString string]; Protocol * prot = objc_getProtocol("%1"); [string appendFormat:@"\nProtocol: %s, %@\n", (char *)[prot name], (id)prot]; [string appendString:@"==========================================\n"]; for (int isRequired = 1; isRequired > -1; isRequired--) { [string appendFormat:@" (%@)\n", isRequired ? @"Required" : @"Optional"]; for (int isInstanceMethod = 0; isInstanceMethod < 2; isInstanceMethod++) { unsigned int ds_count = 0; struct objc_method_description * methods = (struct objc_method_description *)protocol_copyMethodDescriptionList(prot, (BOOL)isRequired, (BOOL)isInstanceMethod, &ds_count); for (int i = 0; i < ds_count; i++) { struct objc_method_description method = methods[i]; [string appendFormat:@"%@ %@, %s\n", isInstanceMethod ? @"-": @"+", NSStringFromSelector(method.name), method.types]; }}} string;/'
