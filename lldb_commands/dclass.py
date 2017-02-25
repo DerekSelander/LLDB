@@ -28,7 +28,6 @@ import lldb.utils.symbolication
 
 
 def __lldb_init_module(debugger, internal_dict):
-    print('wtf')
     debugger.HandleCommand(
         'command script add -f dclass.dclass dclass')
 

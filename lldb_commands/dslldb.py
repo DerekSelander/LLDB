@@ -35,12 +35,11 @@ def load_python_scripts_dir(dir_name):
         if file.endswith('.py'):
             cmd = 'command script import ' 
         elif file.endswith('.txt'):
+            continue
             cmd = 'command source  '
         else: 
             continue
 
         if file != this_files_basename:
             fullpath = dir_name + '/' + file
-            moduleName = os.path.splitext(file)[0]
-            print(fullpath)
             lldb.debugger.HandleCommand(cmd + fullpath)
