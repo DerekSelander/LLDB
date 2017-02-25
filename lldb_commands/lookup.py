@@ -39,7 +39,7 @@ def lookup(debugger, command, result, internal_dict):
 
     Example:
 
-    (lldb) query UIViewController.viewDid
+    (lldb) lookup UIViewController.viewDid
     '''
 
     command_args = shlex.split(command)
@@ -73,10 +73,10 @@ def lookup(debugger, command, result, internal_dict):
 
         module_dict[key].append(symbol_context)
 
-    return_string = generate_return_string(module_dict, options)
+    return_string = generate_return_string(debugger, module_dict, options)
     result.AppendMessage(return_string)
 
-def generate_return_string(module_dict, options):
+def generate_return_string(debugger, module_dict, options):
     return_string = ''
     for key in module_dict:
         count = len(module_dict[key])
@@ -86,8 +86,8 @@ def generate_return_string(module_dict, options):
         return_string += '****************************************************\n'
 
         for symbol_context in module_dict[key]:
-            str_addr = str(hex(symbol_context.symbol.addr.load_addr))
-            end_addr = str(hex(symbol_context.symbol.end_addr.load_addr))
+            str_addr = str(hex(symbol_context.GetSymbol().GetStartAddress().GetLoadAddress(debugger.GetSelectedTarget())))
+            end_addr = str(hex(symbol_context.GetSymbol().GetEndAddress().GetLoadAddress(debugger.GetSelectedTarget())))
             return_string += symbol_context.symbol.name + ', load_addr=[' + str_addr + '-' + end_addr + ']\n\n'
 
 
@@ -96,12 +96,12 @@ def generate_return_string(module_dict, options):
 
 def generate_option_parser():
     usage = "usage: %prog [options] path/to/item"
-    parser = optparse.OptionParser(usage=usage, prog="query")
+    parser = optparse.OptionParser(usage=usage, prog="lookup")
 
     parser.add_option("-m", "--module",
                       action="store",
                       default=None,
                       dest="module",
-                      help="Copies the file path to the clipboard")
+                      help="Limit scope to a specific module")
 
     return parser
