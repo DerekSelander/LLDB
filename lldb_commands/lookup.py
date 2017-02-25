@@ -28,10 +28,10 @@ import optparse
 
 def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(
-        'command script add -f query.query query')
+        'command script add -f lookup.lookup lookup')
 
 
-def query(debugger, command, result, internal_dict):
+def lookup(debugger, command, result, internal_dict):
     '''
     A more attractive alternative to image lookup -rn. Performs a regular expression
     search on all modules loaded into the application. You can filter modules using the
@@ -96,7 +96,7 @@ def generate_return_string(module_dict, options):
 
 def generate_option_parser():
     usage = "usage: %prog [options] path/to/item"
-    parser = optparse.OptionParser(usage=usage, prog="rlook")
+    parser = optparse.OptionParser(usage=usage, prog="query")
 
     parser.add_option("-m", "--module",
                       action="store",

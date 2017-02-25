@@ -22,29 +22,25 @@
 
 import lldb
 import os
-import shlex
-import optparse
-import json
-
 
 def __lldb_init_module(debugger, internal_dict):
-    load_python_scripts_in_this_dir(debugger, True)
-    load_python_scripts_in_this_dir(debugger, False)
-
-def load_python_scripts_in_this_dir(debugger, is_scripts):
-    res = lldb.SBCommandReturnObject()
-    interpreter = debugger.GetCommandInterpreter()
     file_path = os.path.realpath(__file__)
     dir_name = os.path.dirname(file_path)
+    load_python_scripts_dir(dir_name)
+
+def load_python_scripts_dir(dir_name):
     this_files_basename = os.path.basename(__file__)
-    filetype = '.py' if is_scripts else '.txt'
-    cmd = 'command script import ' if is_scripts else 'command source -s1 '
+    cmd = ''
     for file in os.listdir(dir_name):
-        if file.endswith(filetype) and file != this_files_basename:
+        if file.endswith('.py'):
+            cmd = 'command script import ' 
+        elif file.endswith('.txt'):
+            cmd = 'command source  '
+        else: 
+            continue
+
+        if file != this_files_basename:
             fullpath = dir_name + '/' + file
-            interpreter.HandleCommand(cmd + fullpath, res)
-            if res.GetError():
-                print ('***************************************\nError in' + fullpath + '\n' + res.GetError())
-                return
-
-
+            moduleName = os.path.splitext(file)[0]
+            print(fullpath)
+            lldb.debugger.HandleCommand(cmd + fullpath)

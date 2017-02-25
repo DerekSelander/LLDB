@@ -28,11 +28,12 @@ import lldb.utils.symbolication
 
 
 def __lldb_init_module(debugger, internal_dict):
+    print('wtf')
     debugger.HandleCommand(
-        'command script add -f dump_classes.dump_classes dclass')
+        'command script add -f dclass.dclass dclass')
 
 
-def dump_classes(debugger, command, result, internal_dict):
+def dclass(debugger, command, result, internal_dict):
     '''
     Dumps all the NSObject inherited classes in the process. If you give it a 
     module that exists on disk, it will dump only the classes within that module. 
@@ -120,7 +121,7 @@ Examples:
             result.AppendMessage('Dumping classes for: ' + clean_command)
         elif options.module and options.filter:
             result.AppendMessage('Dumping all classes in ' + options.module + ', with filter: ' + options.filter)
-        elif options.module is not None:
+        elif options.module:
             result.AppendMessage('Dumping all classes in ' + options.module)
         else:
             result.AppendMessage('Dumping all classes')
