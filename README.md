@@ -75,6 +75,12 @@ Dumps all the NSObject inherited classes in the process. If you give it a module
 
       # Dump all the classes that are a UIViewController within the process
       (lldb) dclass -f UIViewController
+      
+      # Dump all the classes with the regex case insensitive search "viewcontroller" in the class name
+      (lldb) dclass -r (?i)viewCoNtrolLer
+      
+      # Dump all the classes within the UIKit module
+      (lldb) dclass -m UIKit
 
       # Dump all classes in CKConfettiEffect NSBundle that are UIView subclasses
       (lldb) dclass /System/Library/Messages/iMessageEffects/CKConfettiEffect.bundle/CKConfettiEffect -f UIView
