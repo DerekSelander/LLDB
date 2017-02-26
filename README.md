@@ -92,7 +92,7 @@ Dumps all the NSObject inherited classes in the process. If you give it a module
       (lldb) dclass -p UIView
 
 ### search
-  Searchs all subclasses of a class in the program. This class must by dynamic (aka inherit from a NSObject class). Currently doesn't work with NSString or NSNumber (tagged pointer objects). 
+  Searchs the heap for all alive instances of a certain class. This class must by dynamic (aka inherit from a NSObject class). Currently doesn't work with NSString or NSNumber (tagged pointer objects). 
   
   Example: 
   
@@ -104,6 +104,9 @@ Dumps all the NSObject inherited classes in the process. If you give it a module
       
       #Find all instances of UIView whose tag is equal to 5. Objective-C syntax only. Can reference object by 'obj'
       (lldb) search UIView -c "(int)[obj tag]==5"
+      
+      # Find all instances of a UIView subclass whose class is implemented in the SpringBoardUI module
+      (lldb) search UIView -m SpringBoardUI
 
 ### yoink
 
