@@ -127,3 +127,5 @@ Dumps all the NSObject inherited classes in the process. If you give it a module
       
       # Dump errrything. Only displays count of function calls from modules after you end the script. Warning slow
       (lldb) pmodule -a
+      
+![pmodule example](https://github.com/DerekSelander/LLDB/raw/master/Media/pmodule_gif.gif)
