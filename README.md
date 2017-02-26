@@ -17,7 +17,7 @@ You can test to make sure everything worked successfully by just trying one of t
 ### ls 
 List a directory from the process's perspective. Useful when working on an actual device. 
 ```
-command regex ls 's/(.+)/po @import Foundation; NSError *err = nil; NSArray *arr = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:@"%1" error:&err]; id retValue = err ? [err localizedDescription] : arr; retValue/'
+command regex ls 's/(.+)/expression -lobjc -O -- @import Foundation; NSError *err = nil; NSArray *arr = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:@"%1" error:&err]; id retValue = err ? [err localizedDescription] : arr; retValue/'
 ```
   Example: 
       
