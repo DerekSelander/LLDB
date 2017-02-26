@@ -205,7 +205,7 @@ def generate_option_parser():
                       action="store_true",
                       default=False,
                       dest="non_objectivec",
-                      help="Use Objective-C instead of using target")
+                      help="Use pid$target instead of objc$target")
 
     parser.add_option("-c", "--count",
                       action="store_true",
@@ -217,5 +217,5 @@ def generate_option_parser():
                       action="store_true",
                       default=False,
                       dest="all_modules",
-                      help="Profile all modules. If this is selected, specific modules are ignored and counts are returned when scrit finishes")
+                      help="Profile all modules. If this is selected, specific modules are ignored and counts are returned when script finishes")
     return parser
