@@ -9,7 +9,7 @@ A collection of LLDB aliases/regexes and Python scripts to aid in your debugging
 
 Boom! You're good to go!
 
-You can test to make sure everything worked successfully by just trying one of the commands in the debugger... i.e. `(lldb) ls /`
+You can test to make sure everything worked successfully by just trying one of the commands in the debugger... i.e. `(lldb) help methods`
 
 
 ## LLDB Commands
