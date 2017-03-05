@@ -1,5 +1,16 @@
-# MIT License
+# Credit where credit is due. 
+# This script was inspired by libBeagle https://github.com/heardrwt/RHObjectiveBeagle 
+# which in turn was inspired by Saurik's 'choose' command in cycript http://www.cycript.org/
+# which in turn was inspired by Apple's heap python script '(lldb) command script import lldb.macosx.heap'
+# which (I think) in turn was inspired by Apple's heap_find.cpp sourcefile found here
+# https://opensource.apple.com/source/lldb/lldb-179.1/examples/darwin/heap_find/heap/heap_find.cpp
 
+# All have made great progress in their own right. 
+# This tool improves upon its predecessors by adding options that lldb can use to filter queries
+# For exmple filtering all NSObject subclasses found within a given dynamic library
+
+# MIT License
+# 
 # Copyright (c) 2017 Derek Selander
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -111,13 +122,18 @@ Examples:
     count = expr_sbvalue.GetNumChildren(100000) # Actually goes up to 2^32 but this is more than enough    
 
     if not expr_sbvalue.error.success:
-        print("\n***************************************\nerror: " + str(expr_sbvalue.error))
+        result.SetError("\n***************************************\nerror: " + str(expr_sbvalue.error))
     else:
         if count > 1000:
-            print ('Exceeded 1000 hits, try narrowing your search with the --condition option')
-            print (expr_sbvalue)
+            result.AppendWarning('Exceeded 1000 hits, try narrowing your search with the --condition option')
+            result.AppendMessage (expr_sbvalue)
         else:
-            print (expr_sbvalue.description)
+            if options.barebones:
+                for val in expr_sbvalue:
+                    val_description = val.GetTypeName() + ' [' + val.GetValue()  + ']'
+                    result.AppendMessage(val_description)
+            else:
+                result.AppendMessage(expr_sbvalue.description)
 
 
 def get_command_script(objectiveC_class, options):
@@ -332,6 +348,12 @@ def generate_option_parser():
                       default=None,
                       dest="module",
                       help="Filters results to only be in a certain module. i.e. -m UIKit")
+
+    parser.add_option("-b", "--barebones",
+                      action="store_true",
+                      default=False,
+                      dest="barebones",
+                      help="Only dump out the classname and pointer, no description")
 
     parser.add_option("-x", "--max_results",
                       action="store",
