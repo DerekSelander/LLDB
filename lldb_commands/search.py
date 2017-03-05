@@ -7,7 +7,8 @@
 
 # All have made great progress in their own right. 
 # This tool improves upon its predecessors by adding options that lldb can use to filter queries
-# For exmple filtering all NSObject subclasses found within a given dynamic library
+# For exmple, filtering all NSObject subclasses found within a given dynamic library
+# i.e (lldb) search NSObject -m UIKit
 
 # MIT License
 # 
@@ -301,8 +302,16 @@ for (int i = 0; i < index; i++) {
 free(values);
 free(set);
 free(context); 
-free(classes);
-outputArray;'''
+free(classes);'''
+
+    if options.perform_action:
+        command_script += r'''
+[outputArray enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop){;
+    '''
+        command_script += options.perform_action + ' }];\n'
+     
+     
+    command_script += 'outputArray;'
     return command_script
 
 def generate_module_search_sections_string(module, target):
@@ -341,6 +350,12 @@ def generate_option_parser():
                       action="store",
                       default=None,
                       dest="condition",
+                      help="a conditional expression to filter hits. Objective-C input only. Use 'obj' to reference object")
+
+    parser.add_option("-p", "--perform-action",
+                      action="store",
+                      default=None,
+                      dest="perform_action",
                       help="a conditional expression to filter hits. Objective-C input only. Use 'obj' to reference object")
 
     parser.add_option("-m", "--module",
