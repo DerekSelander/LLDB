@@ -12,3 +12,15 @@ command regex ivars -h "Dumps all ivars for an instance of a particular class wh
 
 command regex methods -h "Dumps all methods implemented by the NSObject subclass (iOS, NSObject subclass only)" -s "methods UIView" -- 's/(.+)/expression -lobjc -O -- [%1 _shortMethodDescription]/'
 
+command alias cpo expression -l objc++ -O --
+
+command alias cp expression -l objc++  --
+
+command alias spo expression -l swift -O --
+
+command alias sp expression -l swift  --
+
+command alias iheap command script import lldb.macosx.heap
+
+command alias ff expression -l objc++ -- (void)[CATransaction flush]
+
