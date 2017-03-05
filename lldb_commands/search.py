@@ -243,6 +243,10 @@ for (unsigned i = 0; i < count; i++) {
             }
             
             id obj = (__bridge id)(void *)potentialObject;
+
+            if (!(BOOL)[obj respondsToSelector:@selector(description)]) {
+                continue;
+            }
             '''
 
     if options.exact_match:
