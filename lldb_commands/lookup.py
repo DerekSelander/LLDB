@@ -42,7 +42,7 @@ def lookup(debugger, command, result, internal_dict):
     (lldb) lookup UIViewController.viewDid
     '''
 
-    command_args = shlex.split(command)
+    command_args = shlex.split(command, posix=False)
     parser = generate_option_parser()
     try:
         (options, args) = parser.parse_args(command_args)
@@ -53,7 +53,8 @@ def lookup(debugger, command, result, internal_dict):
     clean_command = ('').join(args)
     target = debugger.GetSelectedTarget()
     if options.module: 
-        module = target.FindModule(lldb.SBFileSpec(options.module))
+        module_name = options.module
+        module = target.FindModule(lldb.SBFileSpec(module_name))
         if not module.IsValid():
             result.SetError(
                 "Unable to open module name '{}', to see list of images use 'image list -b'".format(module_name))
@@ -61,7 +62,6 @@ def lookup(debugger, command, result, internal_dict):
 
 
     module_dict = {}
-
     symbol_context_list = target.FindGlobalFunctions(clean_command, 0, lldb.eMatchTypeRegex)
     for symbol_context in symbol_context_list:
         key = symbol_context.module.file.basename
@@ -81,14 +81,32 @@ def generate_return_string(debugger, module_dict, options):
     for key in module_dict:
         count = len(module_dict[key])
         tmp = module_dict[key][0]
+
+        if options.module_summary:
+            return_string += str(count) + ' hits in: ' + key + '\n'
+            continue
+
         return_string += '****************************************************\n'
         return_string += str(count) + ' hits in: ' + key + '\n'
         return_string += '****************************************************\n'
 
         for symbol_context in module_dict[key]:
-            str_addr = str(hex(symbol_context.GetSymbol().GetStartAddress().GetLoadAddress(debugger.GetSelectedTarget())))
-            end_addr = str(hex(symbol_context.GetSymbol().GetEndAddress().GetLoadAddress(debugger.GetSelectedTarget())))
-            return_string += symbol_context.symbol.name + ', load_addr=[' + str_addr + '-' + end_addr + ']\n\n'
+            if symbol_context.function.name is not None: 
+                name = symbol_context.function.name
+            elif symbol_context.symbol.name is not None: 
+                name = symbol_context.symbol.name
+            else:
+                return_string += 'Can\'t find info for ' + str(symbol_context) + '\n\n'
+                continue
+
+
+            return_string += name
+            if options.load_address:
+                str_addr = str(hex(symbol_context.GetSymbol().GetStartAddress().GetLoadAddress(debugger.GetSelectedTarget())))
+                end_addr = str(hex(symbol_context.GetSymbol().GetEndAddress().GetLoadAddress(debugger.GetSelectedTarget())))
+                return_string += ', load_addr=[' + str_addr + '-' + end_addr + ']'
+
+            return_string += '\n\n'
 
 
     return return_string
@@ -104,4 +122,15 @@ def generate_option_parser():
                       dest="module",
                       help="Limit scope to a specific module")
 
+    parser.add_option("-s", "--module_summary",
+                      action="store_true",
+                      default=False,
+                      dest="module_summary",
+                      help="Give the summary of return hits from the different modules")
+
+    parser.add_option("-l", "--load_address",
+                      action="store_true",
+                      default=False,
+                      dest="load_address",
+                      help="Only print out the simple description with method name, don't print anything else")
     return parser
