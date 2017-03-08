@@ -23,6 +23,7 @@
 import lldb
 import os
 import shlex
+import re 
 import optparse
 
 
@@ -52,6 +53,32 @@ def lookup(debugger, command, result, internal_dict):
 
     clean_command = ('').join(args)
     target = debugger.GetSelectedTarget()
+    if options.stripped_executable:
+        command_script = generate_main_executable_class_address_script()
+        expr_options = lldb.SBExpressionOptions()
+        expr_options.SetIgnoreBreakpoints(False);
+        expr_options.SetFetchDynamicValue(lldb.eDynamicCanRunTarget);
+        expr_options.SetTimeoutInMicroSeconds (30*1000*1000) # 30 second timeout
+        expr_options.SetTryAllThreads (True)
+        expr_options.SetUnwindOnError(False)
+        expr_options.SetGenerateDebugInfo(True)
+        expr_options.SetLanguage (lldb.eLanguageTypeObjC_plus_plus)
+        expr_options.SetCoerceResultToId(True)
+        frame = debugger.GetSelectedTarget().GetProcess().GetSelectedThread().GetSelectedFrame()
+        if frame is None:
+            result.SetError('You must have the process suspended in order to execute this command')
+            return
+
+        # debugger.HandleCommand('expression -g -lobjc -O -- ' + command_script)
+        expr_value = frame.EvaluateExpression (command_script, expr_options)
+        output_description = expr_value.GetObjectDescription()
+        # result.AppendMessage(output_description)
+        # print(output_description.split())
+        output = '\n\n'.join([line for line in output_description.split('\n') if re.search(clean_command, line)])
+        result.AppendMessage(output)
+        return
+
+
     if options.module: 
         module_name = options.module
         module = target.FindModule(lldb.SBFileSpec(module_name))
@@ -112,6 +139,44 @@ def generate_return_string(debugger, module_dict, options):
     return return_string
 
 
+def generate_main_executable_class_address_script():
+        command_script = r'''
+  @import ObjectiveC;
+  @import Foundation;
+  NSMutableString *retstr = [NSMutableString string];
+  unsigned int count = 0;
+  const char *path = [[[NSBundle mainBundle] executablePath] UTF8String];
+  const char **allClasses = objc_copyClassNamesForImage(path, &count);
+  for (int i = 0; i < count; i++) {
+    Class cls = objc_getClass(allClasses[i]);
+    if (!class_getSuperclass(cls)) {
+      continue;
+    }
+    unsigned int methCount = 0;
+    Method *methods = class_copyMethodList(cls, &methCount);
+    for (int j = 0; j < methCount; j++) {
+      Method meth = methods[j];
+      NSString *methodName = [[[[@"-[" stringByAppendingString:NSStringFromClass(cls)] stringByAppendingString:@" "] stringByAppendingString:NSStringFromSelector(method_getName(meth))] stringByAppendingString:@"]\n"];
+      [retstr appendString:methodName];
+    }
+    
+    unsigned int classMethCount = 0;
+    Method *classMethods = class_copyMethodList(objc_getMetaClass(class_getName(cls)), &classMethCount);
+    for (int j = 0; j < classMethCount; j++) {
+      Method meth = classMethods[j];
+      NSString *methodName = [[[[@"+[" stringByAppendingString:NSStringFromClass(cls)] stringByAppendingString:@" "] stringByAppendingString:NSStringFromSelector(method_getName(meth))] stringByAppendingString:@"]\n"];
+      [retstr appendString:methodName];
+    }
+    
+    free(methods);
+    free(classMethods);
+  }
+  free(allClasses);
+  retstr
+  '''
+        return command_script
+
+
 def generate_option_parser():
     usage = "usage: %prog [options] path/to/item"
     parser = optparse.OptionParser(usage=usage, prog="lookup")
@@ -133,4 +198,10 @@ def generate_option_parser():
                       default=False,
                       dest="load_address",
                       help="Only print out the simple description with method name, don't print anything else")
+
+    parser.add_option("-x", "--search_stripped_executable",
+                      action="store_true",
+                      default=False,
+                      dest="stripped_executable",
+                      help="Typically, a release executable will be stripped. This searches the executables Objective-C classes by using the Objective-C runtiem")
     return parser
