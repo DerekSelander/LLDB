@@ -120,8 +120,14 @@ def generate_return_string(debugger, module_dict, options):
         for symbol_context in module_dict[key]:
             if symbol_context.function.name is not None: 
                 name = symbol_context.function.name
+                if options.mangled_name:
+                    mangledName = symbol_context.symbol.GetMangledName()
+                    name += ', ' + mangledName if mangledName else '[NONE]'
             elif symbol_context.symbol.name is not None: 
                 name = symbol_context.symbol.name
+                if options.mangled_name:
+                    mangledName = symbol_context.symbol.GetMangledName()
+                    name += ', ' + mangledName if mangledName else '[NONE]'
             else:
                 return_string += 'Can\'t find info for ' + str(symbol_context) + '\n\n'
                 continue
@@ -192,6 +198,12 @@ def generate_option_parser():
                       default=False,
                       dest="module_summary",
                       help="Give the summary of return hits from the different modules")
+
+    parser.add_option("-M", "--mangled_name",
+                      action="store_true",
+                      default=False,
+                      dest="mangled_name",
+                      help="Get the mangled name of the function (i.e. Swift)")
 
     parser.add_option("-l", "--load_address",
                       action="store_true",
