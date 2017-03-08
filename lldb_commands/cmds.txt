@@ -22,5 +22,12 @@ command alias sp expression -l swift  --
 
 command alias iheap command script import lldb.macosx.heap
 
+command regex xo 's/(.+)/po *(id *)(%1)/'
+
 command alias ff expression -l objc++ -- (void)[CATransaction flush]
+
+# Jailbreak stuff
+
+command alias qqq process connect connect://localhost:1234
+
 
