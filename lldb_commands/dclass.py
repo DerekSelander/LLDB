@@ -58,7 +58,7 @@ Examples:
 
     '''
 
-    command_args = shlex.split(command)
+    command_args = shlex.split(command, posix=False)
     parser = generate_option_parser()
     try:
         (options, args) = parser.parse_args(command_args)
