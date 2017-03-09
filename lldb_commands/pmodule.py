@@ -68,8 +68,7 @@ def pmodule(debugger, command, result, internal_dict):
 
     # module_parirs = get_module_pair(, debugger)
     is_cplusplus = options.non_objectivec
-
-    if not args and not options.all_modules:
+    if not args and not (options.all_modules or options.all_modules_output):
         result.SetError('Need a module or use the -a option. You can list all modules by "image list -b"')
         return
 
@@ -126,8 +125,13 @@ def generate_dtrace_script(debugger, options, args):
     target = debugger.GetSelectedTarget()
     is_cplusplus = options.non_objectivec
     dtrace_script = '''#!/usr/sbin/dtrace -s
-#pragma D option quiet  
+#pragma D option quiet
 
+'''
+    if options.flow_indent:
+        dtrace_script +=  '#pragma D option flowindent'
+
+    dtrace_script += '''
 dtrace:::BEGIN
 {{
     printf("Starting... Hit Ctrl-C to end. Observing {} functions in {}\\n");
@@ -140,24 +144,28 @@ dtrace:::BEGIN
     is_cplusplus = options.non_objectivec
     query_template = '{}$target:{}::entry\n'
 
-    if options.all_modules:
+    if options.all_modules or options.all_modules_output:
         if is_cplusplus:
             dtrace_script += query_template.format('pid', '')
         else:
             dtrace_script += query_template.format('objc', '')
 
-        dtrace_script += '{\nprogram_counter = uregs[R_PC];\nthis->method_counter = \"Unknown\";' # TODO 64 only change to universal arch
-        dtrace_template = "this->method_counter = {} <= program_counter && program_counter <= {} ? \"{}\" : this->method_counter;\n"
-        dtrace_template = textwrap.dedent(dtrace_template)
+        if options.all_modules_output:
+             dtrace_script += '{\nprintf("0x%012p %c[%s %s]\\n", uregs[R_RDI], probefunc[0], probemod, (string)&probefunc[1]);\n}'
+        else:
+            dtrace_script += '{\nprogram_counter = uregs[R_PC];\nthis->method_counter = \"Unknown\";' # TODO 64 only change to universal arch
+            dtrace_template = "this->method_counter = {} <= program_counter && program_counter <= {} ? \"{}\" : this->method_counter;\n"
+            dtrace_template = textwrap.dedent(dtrace_template)
 
-        for module in target.modules:
-            section = module.FindSection("__TEXT")
-            lower_bounds = section.GetLoadAddress(target)
-            upper_bounds = lower_bounds + section.file_size
-            module_name = module.file.basename
-            if "_lldb_" not in module_name:
-                dtrace_script += dtrace_template.format(lower_bounds, upper_bounds, module_name)
-        dtrace_script += "\n@num[this->method_counter] = count();\n}\n"
+            for module in target.modules:
+                section = module.FindSection("__TEXT")
+                lower_bounds = section.GetLoadAddress(target)
+                upper_bounds = lower_bounds + section.file_size
+                module_name = module.file.basename
+                if "_lldb_" not in module_name:
+                    dtrace_script += dtrace_template.format(lower_bounds, upper_bounds, module_name)
+            dtrace_script += "\n@num[this->method_counter] = count();\n}\n"
+
 
     else:
         for module_name in args:
@@ -218,4 +226,16 @@ def generate_option_parser():
                       default=False,
                       dest="all_modules",
                       help="Profile all modules. If this is selected, specific modules are ignored and counts are returned when script finishes")
+
+    parser.add_option("-A", "--all_modules_output",
+                      action="store_true",
+                      default=False,
+                      dest="all_modules_output",
+                      help="Dumps EVERYTHING. Only execute single commands with this one in lldb")
+
+    parser.add_option("-f", "--flow_indent",
+                      action="store_true",
+                      default=False,
+                      dest="flow_indent",
+                      help="Adds the flow indent flag")
     return parser
