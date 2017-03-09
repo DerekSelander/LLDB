@@ -87,6 +87,13 @@ Examples:
                 "Unable to open module name '{}', to see list of images use 'image list -b'".format(options.module))
             return
 
+    if options.conforms_to_protocol is not None:
+        interpreter.HandleCommand('expression -lobjc -O -- (id)NSProtocolFromString(@\"{}\")'.format(options.conforms_to_protocol), res)
+        if 'nil' in res.GetOutput() or not res.GetOutput():
+            result.SetError("No such Protocol name '{}'".format(options.conforms_to_protocol))
+            return
+        res.Clear()
+
     if options.generate_header or options.generate_protocol:
         command_script = generate_header_script(options, clean_command)
     else:
@@ -122,6 +129,8 @@ Examples:
             result.AppendMessage('Dumping all classes in ' + options.module + ', with filter: ' + options.filter)
         elif options.module:
             result.AppendMessage('Dumping all classes in ' + options.module)
+        elif options.conforms_to_protocol:
+            result.AppendMessage('Dumping all classes which conform to ' + options.conforms_to_protocol)
         else:
             result.AppendMessage('Dumping all classes')
 
@@ -157,6 +166,10 @@ def generate_class_dump(debugger, options, clean_command=None):
     command_script += 'objc_getClass(allClasses[i]);' if clean_command else 'allClasses[i];'
     if options.module is not None: 
         command_script += generate_module_search_sections_string(options.module, debugger)
+
+    if options.conforms_to_protocol is not None:
+      command_script +=  'if (!class_conformsToProtocol(cls, NSProtocolFromString(@"'+ options.conforms_to_protocol + '"))) { continue; }'
+  
 
     command_script += '  NSString *clsString = (NSString *)NSStringFromClass(cls);\n'
     if options.regular_expression is not None:
@@ -529,4 +542,10 @@ def generate_option_parser():
                       default=False,
                       dest="generate_protocol",
                       help="Generate a protocol that you can cast to any object")
+
+    parser.add_option("-c", "--conforms_to_protocol",
+                      action="store",
+                      default=None,
+                      dest="conforms_to_protocol",
+                      help="Only returns the classes that conforms to a particular protocol")
     return parser
