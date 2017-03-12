@@ -329,7 +329,7 @@ def generate_header_script(options, class_to_generate_header):
         }
        [generatedPropertyString appendString:(NSString *)@"getter="];
        [generatedPropertyString appendString:(NSString *)[parsedInput substringFromIndex:1]];
-
+       [blackListMethodNames addObject:[parsedInput substringFromIndex:1]];
         multipleOptions = 1;
       } else if ([parsedInput hasPrefix:@"S"]) {
         if (multipleOptions) {
@@ -338,6 +338,7 @@ def generate_header_script(options, class_to_generate_header):
         
        [generatedPropertyString appendString:(NSString *)@"setter="];
        [generatedPropertyString appendString:(NSString *)[parsedInput substringFromIndex:1]];
+       [blackListMethodNames addObject:[parsedInput substringFromIndex:1]];
         multipleOptions = 1;
       } else if ([parsedInput isEqualToString:@"&"]) {
         if (multipleOptions) {
@@ -380,7 +381,7 @@ def generate_header_script(options, class_to_generate_header):
   }
   NSMutableArray *tmpSetArray = [NSMutableArray array];
   for (NSString *propertyName in [blackListMethodNames allObjects]) {
-    NSString *setter = (NSString *)[@"set" stringByAppendingString:[propertyName capitalizedString]];
+    NSString *setter = (NSString *)[@"set" stringByAppendingString:(NSString *)[(NSString *)[(NSString *)[[propertyName substringToIndex:1] uppercaseString] stringByAppendingString:[propertyName substringFromIndex:1]] stringByAppendingString:@":"]];
     [tmpSetArray addObject:setter];
   }
  
