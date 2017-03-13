@@ -28,7 +28,9 @@ command alias ff expression -l objc++ -- (void)[CATransaction flush]
 
 command alias dump_app_contents e -l objc++ -O -- NSError *err = nil; id manager = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:((id)[[NSBundle mainBundle] bundlePath]) error:&err]; id retval = err ? (id)[err localizedDescription] : [[[NSBundle mainBundle] bundlePath] stringByAppendingString:(id)[manager description]]; retval
 
-command regex mload 's/(.+)/expression -lobjc -O -- void *handle = dlopen("%1", 2); id retVal = handle ? @"Success" : [[NSString alloc] initWithUTF8String:dlerror()]; retVal /'
+command regex mload 's/(.+)/expression -lobjc -O -- void *handle = (void *)dlopen("%1", 2); id retVal = handle ? @"Success" : (NSString *)[[NSString alloc] initWithUTF8String:(char *)dlerror()]; retVal/'
+
+command alias lnetwork expression -lobjc -O --   const char *className = (const char *)[[@"URLProtocolObserver" stringByAppendingString: [@((uint32_t)arc4random()) stringValue]] UTF8String];  Class cls = objc_allocateClassPair((Class)NSClassFromString(@"NSURLProtocol"), className, 0);  objc_registerClassPair(cls);    Method m = (Method)class_getClassMethod((Class)NSClassFromString(@"NSURLProtocol"), @selector(canInitWithRequest:));    class_addMethod((Class)objc_getMetaClass(className), @selector(canInitWithRequest:), (id (*)(__strong id, SEL, ...))imp_implementationWithBlock(^(id cls, id request){        id url = [request URL];    id path = [url absoluteString];        printf("%s\n\n", (char *)[[request debugDescription] UTF8String]);        return NO;  }) , (char *)method_getTypeEncoding(m));    [cls performSelector:@selector(registerClass:) withObject:cls];
 
 # Jailbreak stuff
 
