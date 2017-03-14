@@ -34,8 +34,8 @@ def __lldb_init_module(debugger, internal_dict):
 
 def sclass(debugger, command, result, internal_dict):
     '''
-    Generates a NSObject category file that swizzles the class
-    That you supply. 
+    Swizzle Class. Generates a NSObject category file 
+    that swizzles the class that you supply. 
 
 Examples:
 
