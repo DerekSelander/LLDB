@@ -34,28 +34,25 @@ def __lldb_init_module(debugger, internal_dict):
 
 def sclass(debugger, command, result, internal_dict):
     '''
-    Dumps all the NSObject inherited classes in the process. If you give it a 
-    module that exists on disk, it will dump only the classes within that module. 
-    You can also filter out classes to only a certain type and can also generate 
-    a header file for a specific class.
+    Generates a NSObject category file that swizzles the class
+    That you supply. 
 
 Examples:
 
-    # Dump ALL the NSObject classes within the process
-    (lldb) dclass 
+    # Generates a category to swizzle all created or overriden methods in UIViewController
+    sclass UIViewController
 
-    # Dump all the classes that are a UIViewController within the process
-    (lldb) dclass -f UIViewController
+    # Only generate a category to swizzle viewDidLoad
+    sclass UIViewController -m viewDidLoad
 
-    # Dump all classes in CKConfettiEffect NSBundle that are UIView subclasses
-    (lldb) dclass /System/Library/Messages/iMessageEffects/CKConfettiEffect.bundle/CKConfettiEffect -f UIView
+    # Generates a category which prints all functions when executed
+    sclass UIViewController -p
 
-    # Generate a header file for the class specified:
-    (lldb) dclass -g UIView
+    # Generates a category which stops every time the method is hit
+    sclass UIViewController -s
 
-    # Generate a protocol that you can cast an object to. Ideal when working with private classes at dev time
-    (lldb) dclass -p UIView
-
+    # Generates a category which enables all swizzles to be enabled by default
+    sclass UIViewController -e
     '''
 
     command_args = shlex.split(command, posix=False)
