@@ -23,9 +23,8 @@
 import lldb
 import os
 import shlex
-import re 
+import re
 import optparse
-
 
 def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(
@@ -38,9 +37,10 @@ def lookup(debugger, command, result, internal_dict):
     search on all modules loaded into the application. You can filter modules using the
     --module command
 
-    Example:
+    Examples:
 
-    (lldb) lookup UIViewController.viewDid
+    # Perform regex search on UIViewController.viewDid
+    lookup UIViewController.viewDid
     '''
 
     command_args = shlex.split(command, posix=False)
@@ -53,8 +53,7 @@ def lookup(debugger, command, result, internal_dict):
 
     clean_command = ('').join(args)
     target = debugger.GetSelectedTarget()
-    if options.stripped_executable:
-        command_script = generate_main_executable_class_address_script()
+    if options.stripped_executable is not None or options.stripped_executable_main:
         expr_options = lldb.SBExpressionOptions()
         expr_options.SetIgnoreBreakpoints(False);
         expr_options.SetFetchDynamicValue(lldb.eDynamicCanRunTarget);
@@ -69,6 +68,19 @@ def lookup(debugger, command, result, internal_dict):
             result.SetError('You must have the process suspended in order to execute this command')
             return
 
+        if options.stripped_executable:
+            module_name = options.stripped_executable
+
+            target = debugger.GetSelectedTarget() 
+            module = target.module[module_name]
+
+            if module is None:
+                result.SetError('Couldn\'t find the module, "', module_name + '"')
+                return
+
+            command_script = generate_main_executable_class_address_script(module.file.dirname)
+        else:
+            command_script = generate_main_executable_class_address_script()
         # debugger.HandleCommand('expression -g -lobjc -O -- ' + command_script)
         expr_value = frame.EvaluateExpression (command_script, expr_options)
         output_description = expr_value.GetObjectDescription()
@@ -79,7 +91,7 @@ def lookup(debugger, command, result, internal_dict):
         return
 
 
-    if options.module: 
+    if options.module:
         module_name = options.module
         module = target.FindModule(lldb.SBFileSpec(module_name))
         if not module.IsValid():
@@ -118,12 +130,12 @@ def generate_return_string(debugger, module_dict, options):
         return_string += '****************************************************\n'
 
         for symbol_context in module_dict[key]:
-            if symbol_context.function.name is not None: 
+            if symbol_context.function.name is not None:
                 name = symbol_context.function.name
                 if options.mangled_name:
                     mangledName = symbol_context.symbol.GetMangledName()
                     name += ', ' + mangledName if mangledName else '[NONE]'
-            elif symbol_context.symbol.name is not None: 
+            elif symbol_context.symbol.name is not None:
                 name = symbol_context.symbol.name
                 if options.mangled_name:
                     mangledName = symbol_context.symbol.GetMangledName()
@@ -145,13 +157,23 @@ def generate_return_string(debugger, module_dict, options):
     return return_string
 
 
-def generate_main_executable_class_address_script():
-        command_script = r'''
+def generate_main_executable_class_address_script(bundlePath = None):
+    command_script = r'''
   @import ObjectiveC;
   @import Foundation;
   NSMutableString *retstr = [NSMutableString string];
   unsigned int count = 0;
-  const char *path = [[[NSBundle mainBundle] executablePath] UTF8String];
+
+  NSBundle *bundle = [NSBundle '''
+
+    if bundlePath is not None:
+        command_script += 'bundleWithPath:@"' + bundlePath + '"];'
+    else:
+        command_script += 'mainBundle];' 
+
+
+    command_script += r'''
+  const char *path = [[bundle executablePath] UTF8String];
   const char **allClasses = objc_copyClassNamesForImage(path, &count);
   for (int i = 0; i < count; i++) {
     Class cls = objc_getClass(allClasses[i]);
@@ -165,7 +187,7 @@ def generate_main_executable_class_address_script():
       NSString *methodName = [[[[@"-[" stringByAppendingString:NSStringFromClass(cls)] stringByAppendingString:@" "] stringByAppendingString:NSStringFromSelector(method_getName(meth))] stringByAppendingString:@"]\n"];
       [retstr appendString:methodName];
     }
-    
+
     unsigned int classMethCount = 0;
     Method *classMethods = class_copyMethodList(objc_getMetaClass(class_getName(cls)), &classMethCount);
     for (int j = 0; j < classMethCount; j++) {
@@ -173,14 +195,14 @@ def generate_main_executable_class_address_script():
       NSString *methodName = [[[[@"+[" stringByAppendingString:NSStringFromClass(cls)] stringByAppendingString:@" "] stringByAppendingString:NSStringFromSelector(method_getName(meth))] stringByAppendingString:@"]\n"];
       [retstr appendString:methodName];
     }
-    
+
     free(methods);
     free(classMethods);
   }
   free(allClasses);
   retstr
   '''
-        return command_script
+    return command_script
 
 
 def generate_option_parser():
@@ -212,8 +234,14 @@ def generate_option_parser():
                       help="Only print out the simple description with method name, don't print anything else")
 
     parser.add_option("-x", "--search_stripped_executable",
+                      action="store",
+                      default=None,
+                      dest="stripped_executable",
+                      help="Typically, a release executable will be stripped. This searches the executables Objective-C classes by using the Objective-C runtime")
+
+    parser.add_option("-X", "--search_main_stripped_executable",
                       action="store_true",
                       default=False,
-                      dest="stripped_executable",
-                      help="Typically, a release executable will be stripped. This searches the executables Objective-C classes by using the Objective-C runtiem")
+                      dest="stripped_executable_main",
+                      help="Searches the main, stripped executable for the regex. This searches the executables Objective-C classes by using the Objective-C runtime")
     return parser
