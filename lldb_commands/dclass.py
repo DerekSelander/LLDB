@@ -42,19 +42,19 @@ def dclass(debugger, command, result, internal_dict):
 Examples:
 
     # Dump ALL the NSObject classes within the process
-    (lldb) dclass 
+    dclass 
 
     # Dump all the classes that are a UIViewController within the process
-    (lldb) dclass -f UIViewController
+    dclass -f UIViewController
 
     # Dump all classes in CKConfettiEffect NSBundle that are UIView subclasses
-    (lldb) dclass /System/Library/Messages/iMessageEffects/CKConfettiEffect.bundle/CKConfettiEffect -f UIView
+    dclass /System/Library/Messages/iMessageEffects/CKConfettiEffect.bundle/CKConfettiEffect -f UIView
 
     # Generate a header file for the class specified:
-    (lldb) dclass -g UIView
+    dclass -g UIView
 
     # Generate a protocol that you can cast an object to. Ideal when working with private classes at dev time
-    (lldb) dclass -p UIView
+    dclass -p UIView
 
     '''
 

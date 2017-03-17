@@ -38,7 +38,7 @@ def yoink(debugger, command, result, internal_dict):
 
     Example (on iOS 10 device): 
 
-    (lldb) yoink /System/Library/Messages/iMessageEffects/CKConfettiEffect.bundle/CKConfettiEffect
+    yoink /System/Library/Messages/iMessageEffects/CKConfettiEffect.bundle/CKConfettiEffect
     '''
 
     command_args = shlex.split(command)

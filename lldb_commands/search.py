@@ -1,14 +1,14 @@
 # Credit where credit is due. 
 # This script was inspired by libBeagle https://github.com/heardrwt/RHObjectiveBeagle 
 # which in turn was inspired by Saurik's 'choose' command in cycript http://www.cycript.org/
-# which in turn was inspired by Apple's heap python script '(lldb) command script import lldb.macosx.heap'
+# which in turn was inspired by Apple's heap python script 'command script import lldb.macosx.heap'
 # which (I think) in turn was inspired by Apple's heap_find.cpp sourcefile found here
 # https://opensource.apple.com/source/lldb/lldb-179.1/examples/darwin/heap_find/heap/heap_find.cpp
 
 # All have made great progress in their own right. 
 # This tool improves upon its predecessors by adding options that lldb can use to filter queries
 # For exmple, filtering all NSObject subclasses found within a given dynamic library
-# i.e (lldb) search NSObject -m UIKit
+# i.e search NSObject -m UIKit
 
 # MIT License
 # 
@@ -53,16 +53,16 @@ def search(debugger, command, result, internal_dict):
 Examples:
 
     # Find all UIViews and subclasses of UIViews
-    (lldb) find UIView
+    find UIView
 
     # Find all UIStatusBar instances
-    (lldb) find UIStatusBar
+    find UIStatusBar
 
     # Find all UIViews, ignore subclasses
-    (lldb) find UIView  -e
+    find UIView  -e
 
     # Find all instances of UIViews (and subclasses) where tag == 5
-    (lldb) find UIView -c "[obj tag] == 5"
+    find UIView -c "[obj tag] == 5"
     '''
 
     command_args = shlex.split(command)

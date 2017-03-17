@@ -47,13 +47,13 @@ def pmodule(debugger, command, result, internal_dict):
     Examples:
     
     # Trace all Objective-C code in UIKit 
-    (lldb) pmodule UIKit
+    pmodule UIKit
 
     # Trace all non-Objective-C code in libsystem_kernel.dylib (i.e. pid$target:libsystem_kernel.dylib::entry)
-    (lldb) pmodule -n libsystem_kernel.dylib
+    pmodule -n libsystem_kernel.dylib
 
     # Dump errrything. Only displays count of function calls from modules after you end the script. Warning slow
-    (lldb) pmodule -a
+    pmodule -a
     '''
 
     command_args = shlex.split(command)
