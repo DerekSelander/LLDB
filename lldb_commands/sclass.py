@@ -191,6 +191,7 @@ def generate_header_script(options, class_to_generate_header):
   };
   
   NSMutableString *swizzledImplementationsString = [NSMutableString string];
+  [swizzledImplementationsString appendString:@"\n  static dispatch_once_t onceToken;\n  dispatch_once (&onceToken, ^{"];
 
   NSString *(^generateMethodsForClass)(Class) = ^(Class cls) {
     NSMutableString* generatedMethods = [NSMutableString stringWithString:@""];
@@ -332,6 +333,7 @@ def generate_header_script(options, class_to_generate_header):
     [finalString appendString:finalImport];
   }
   
+  [swizzledImplementationsString appendString:@"\n  });\n"];
 
   [loadCommandString appendString:swizzledImplementationsString];
   [loadCommandString appendString:@"\n}\n"];
