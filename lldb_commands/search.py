@@ -230,7 +230,7 @@ for (unsigned i = 0; i < count; i++) {
         };
       
         for (int i = 0; i < count; i++) {
-            if (i >= maxCount || CFSetGetCount(results) >= maxCount) {
+            if (CFSetGetCount(results) >= maxCount) {
                 break;
             }
         
