@@ -356,7 +356,7 @@ def generate_option_parser():
                       action="store",
                       default=None,
                       dest="perform_action",
-                      help="a conditional expression to filter hits. Objective-C input only. Use 'obj' to reference object")
+                      help="Perform an action on every returned query. Objective-C input only. Use 'obj' to reference object")
 
     parser.add_option("-m", "--module",
                       action="store",
