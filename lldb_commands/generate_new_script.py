@@ -104,7 +104,6 @@ class LLDBCustomCommand:
         result.AppendMessage('Hello! the ''' + resolved_name + r''' command is working!')
 
 
-
     def generate_option_parser(self):
         usage = "usage: %prog [options] path/to/item"
         parser = optparse.OptionParser(usage=usage, prog="''' + resolved_name + r'''")
@@ -161,6 +160,8 @@ def handle_command(debugger, command, result, internal_dict):
 
     script += "result.AppendMessage('Hello! the " + resolved_name + " command is working!')"
     script += r'''
+
+    
 def generate_option_parser():
     usage = "usage: %prog [options] TODO Description Here :]"
     parser = optparse.OptionParser(usage=usage, prog="''' + resolved_name + r'''")
