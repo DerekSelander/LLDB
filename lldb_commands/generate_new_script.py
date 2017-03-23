@@ -101,6 +101,9 @@ class LLDBCustomCommand:
         except:
             result.SetError(parser.usage)
             return
+
+        # Uncomment if you are expecting at least one argument
+        # clean_command = shlex.split(args[0])[0]
         result.AppendMessage('Hello! the ''' + resolved_name + r''' command is working!')
 
 
@@ -156,12 +159,15 @@ def handle_command(debugger, command, result, internal_dict):
     except:
         result.SetError(parser.usage)
         return
+
+    # Uncomment if you are expecting at least one argument
+    # clean_command = shlex.split(args[0])[0]
     '''
 
     script += "result.AppendMessage('Hello! the " + resolved_name + " command is working!')"
     script += r'''
 
-    
+
 def generate_option_parser():
     usage = "usage: %prog [options] TODO Description Here :]"
     parser = optparse.OptionParser(usage=usage, prog="''' + resolved_name + r'''")
@@ -188,18 +194,18 @@ def create_or_touch_filepath(filepath, script):
     file.close()
 
 def generate_option_parser():
-    usage = "usage: %prog [options] path/to/item"
-    parser = optparse.OptionParser(usage=usage, prog="lookup")
+    usage = "usage: %prog [options] nameofscript"
+    parser = optparse.OptionParser(usage=usage, prog="__generate_script")
 
     parser.add_option("-n", "--command_name",
                       action="store",
                       default=None,
                       dest="command_name",
-                      help="By default the command name will match the filename. This will override the command name to a str of your choosing")
+                      help="By default, the script will use filename for the LLDB command. This will override the command name to a name of your choosing")
 
     parser.add_option("-c", "--create_class",
                       action="store_true",
                       default=False,
                       dest="create_class",
-                      help="By default, this script uses functions. This will use a class instead")
+                      help="By default, this script creates a function. This will use a class instead")
     return parser

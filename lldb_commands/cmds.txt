@@ -32,6 +32,8 @@ command regex mload 's/(.+)/expression -lobjc -O -- void *handle = (void *)dlope
 
 command alias lnetwork expression -lobjc -O --   const char *className = (const char *)[[@"URLProtocolObserver" stringByAppendingString: [@((uint32_t)arc4random()) stringValue]] UTF8String];  Class cls = objc_allocateClassPair((Class)NSClassFromString(@"NSURLProtocol"), className, 0);  objc_registerClassPair(cls);    Method m = (Method)class_getClassMethod((Class)NSClassFromString(@"NSURLProtocol"), @selector(canInitWithRequest:));    class_addMethod((Class)objc_getMetaClass(className), @selector(canInitWithRequest:), (id (*)(__strong id, SEL, ...))imp_implementationWithBlock(^(id cls, id request){        id url = [request URL];    id path = [url absoluteString];        printf("%s\n\n", (char *)[[request debugDescription] UTF8String]);        return NO;  }) , (char *)method_getTypeEncoding(m));    [cls performSelector:@selector(registerClass:) withObject:cls];
 
+command regex gdocumentation 's/(.+)/script import os; os.system("open https:" + unichr(47) + unichr(47) + "lldb.llvm.org" + unichr(47) + "python_reference" + unichr(47) + "lldb.%1-class.html")/'
+
 # Jailbreak stuff
 
 command alias qqq process connect connect://localhost:1234
