@@ -184,7 +184,7 @@ dtrace:::BEGIN
 
             # Logic to append counting at the termination of script
             if options.count:
-                dtrace_script += '    @numWrites{}[probefunc] = count();\n'.format(module_name)
+                dtrace_script += '    @numWrites{}[probefunc] = count();\n'.format(os.path.splitext(module_name)[0])
 
             dtrace_script += '}\n'
 
