@@ -80,7 +80,11 @@ def handle_command(debugger, command, result, internal_dict):
         else:
             symbol_name = symbol.name
 
-        frame_string = 'frame #{}: {} {}`{}'.format(index, hex(frame.addr.load_addr), frame.module.file.basename, symbol_name)
+        offset_str = ''
+        offset = frame.addr.load_addr - frame.symbol.addr.load_addr
+        if offset > 0:
+            offset_str = '+ {}'.format(offset)
+        frame_string = 'frame #{}: {} {}`{} {}'.format(index, hex(frame.addr.load_addr), frame.module.file.basename, symbol_name, offset_str)
         result.AppendMessage(frame_string)
 
 
