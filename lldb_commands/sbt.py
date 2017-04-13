@@ -54,13 +54,12 @@ def handle_command(debugger, command, result, internal_dict):
 
     frame_addresses = []
     for f in thread.frames:
-        frame_addresses.append(f.symbol.addr.load_addr)
+        frame_addresses.append(f.GetSymbol().GetStartAddress().GetLoadAddress(target))
     script = generate_executable_methods_script(frame_addresses)
 
 
     # debugger.HandleCommand('expression -lobjc -O -- ' + script)
     methods_dictionary = target.EvaluateExpression(script, generate_expression_options())
-
 
     for index, frame in enumerate(thread.frames):
         function = frame.GetFunction()
@@ -68,7 +67,7 @@ def handle_command(debugger, command, result, internal_dict):
         
         # LLDB Generates this method if synthetic... i.e. it's stripped & we don't have symbolic info
         if symbol.synthetic:
-            load_addr = symbol.addr.load_addr
+            load_addr = symbol.addr.GetLoadAddress(target)
 
             children = methods_dictionary.GetNumChildren()
             symbol_name = symbol.name + r' ... unresolved womp womp'
@@ -81,10 +80,10 @@ def handle_command(debugger, command, result, internal_dict):
             symbol_name = symbol.name
 
         offset_str = ''
-        offset = frame.addr.load_addr - frame.symbol.addr.load_addr
+        offset = frame.addr.GetLoadAddress(target) - frame.symbol.addr.GetLoadAddress(target)
         if offset > 0:
             offset_str = '+ {}'.format(offset)
-        frame_string = 'frame #{}: {} {}`{} {}'.format(index, hex(frame.addr.load_addr), frame.module.file.basename, symbol_name, offset_str)
+        frame_string = 'frame #{}: {} {}`{} {}'.format(index, hex(frame.addr.GetLoadAddress(target)), frame.module.file.basename, symbol_name, offset_str)
         result.AppendMessage(frame_string)
 
 
@@ -110,6 +109,7 @@ def generate_executable_methods_script(frame_addresses):
 
     command_script = r'''
   @import ObjectiveC;
+  @import Foundation;
   NSMutableDictionary *retdict = [NSMutableDictionary dictionary];
   unsigned int count = 0;
   const char *path = (char *)[[[NSBundle mainBundle] executablePath] UTF8String];
@@ -123,9 +123,9 @@ def generate_executable_methods_script(frame_addresses):
     Method *methods = class_copyMethodList(cls, &methCount);
     for (int j = 0; j < methCount; j++) {
       Method meth = methods[j];
-      IMP implementation = method_getImplementation(meth);
+      id implementation = (id)method_getImplementation(meth);
       NSString *methodName = [[[[@"-[" stringByAppendingString:NSStringFromClass(cls)] stringByAppendingString:@" "] stringByAppendingString:NSStringFromSelector(method_getName(meth))] stringByAppendingString:@"]"];
-      [retdict setObject:methodName forKey:[@((uintptr_t)implementation) stringValue]];
+      [retdict setObject:methodName forKey:(id)[@((uintptr_t)implementation) stringValue]];
     }
     
     unsigned int classMethCount = 0;
@@ -133,9 +133,9 @@ def generate_executable_methods_script(frame_addresses):
     Method *classMethods = class_copyMethodList(objc_getMetaClass(class_getName(cls)), &classMethCount);
     for (int j = 0; j < classMethCount; j++) {
       Method meth = classMethods[j];
-      IMP implementation = method_getImplementation(meth);
+      id implementation = (id)method_getImplementation(meth);
       NSString *methodName = [[[[@"+[" stringByAppendingString:NSStringFromClass(cls)] stringByAppendingString:@" "] stringByAppendingString:NSStringFromSelector(method_getName(meth))] stringByAppendingString:@"]"];
-      [retdict setObject:methodName forKey:@((uintptr_t)implementation)];
+      [retdict setObject:methodName forKey:(id)[@((uintptr_t)implementation) stringValue]];
     }
     
     free(methods);
