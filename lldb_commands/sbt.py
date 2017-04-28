@@ -36,15 +36,6 @@ def handle_command(debugger, command, result, internal_dict):
     code. Currently doesn't work on aarch64 stripped executables
     but works great on x64 :]
     '''
-
-    command_args = shlex.split(command, posix=False)
-    parser = generate_option_parser()
-    try:
-        (options, args) = parser.parse_args(command_args)
-    except:
-        result.SetError(parser.usage)
-        return
-
     target = debugger.GetSelectedTarget()
     process = target.GetProcess()
     thread = process.GetSelectedThread()
@@ -52,54 +43,66 @@ def handle_command(debugger, command, result, internal_dict):
         result.SetError('LLDB must be paused to execute this command')
         return
 
-    frame_addresses = []
-    for f in thread.frames:
-        frame_addresses.append(f.GetSymbol().GetStartAddress().GetLoadAddress(target))
-    script = generate_executable_methods_script(frame_addresses)
+    frameAddresses = [f.addr.GetLoadAddress(target) 
+                      for f 
+                      in thread.frames]
+
+    frameString = processStackTraceStringFromAddresses(frameAddresses, target)
+
+    result.AppendMessage(frameString)
 
 
-    # debugger.HandleCommand('expression -lobjc -O -- ' + script)
-    methods_dictionary = target.EvaluateExpression(script, generate_expression_options())
+def processStackTraceStringFromAddresses(frameAddresses, target):
+    frame_string = ''
+    startAddresses = [target.ResolveLoadAddress(f).symbol.addr.GetLoadAddress(target) 
+                     for f 
+                     in frameAddresses]
+    script = generateExecutableMethodsScript(startAddresses)
 
-    for index, frame in enumerate(thread.frames):
-        function = frame.GetFunction()
-        symbol = frame.symbol
-        
-        # LLDB Generates this method if synthetic... i.e. it's stripped & we don't have symbolic info
-        if symbol.synthetic:
-            load_addr = symbol.addr.GetLoadAddress(target)
+    # New content start 1
+    methods = target.EvaluateExpression(script, generateOptions())
+    methodsVal = lldb.value(methods.deref)
+    # New content end 1
 
-            children = methods_dictionary.GetNumChildren()
-            symbol_name = symbol.name + r' ... unresolved womp womp'
+
+    # Enumerate each of the SBFrames in address list
+    for index, frameAddr in enumerate(frameAddresses):
+        addr = target.ResolveLoadAddress(frameAddr)
+        symbol = addr.symbol
+
+        # New content start 2
+        if symbol.synthetic: # 1
+            children = methodsVal.sbvalue.GetNumChildren() # 4
+            name = symbol.name + r' ... unresolved womp womp' # 2
+
+            loadAddr = symbol.addr.GetLoadAddress(target) # 3
             for i in range(children):
-                key = long(methods_dictionary.GetChildAtIndex(i).GetChildMemberWithName('key').description)
-                if key == load_addr:
-                    symbol_name = methods_dictionary.GetChildAtIndex(i).GetChildMemberWithName('value').description
+                key = long(methodsVal[i].key.sbvalue.description) # 5
+                if key == loadAddr:
+                    name = methodsVal[i].value.sbvalue.description # 6
                     break
         else:
-            symbol_name = symbol.name
+            name = symbol.name # 7
+        # New content end 2
 
         offset_str = ''
-        offset = frame.addr.GetLoadAddress(target) - frame.symbol.addr.GetLoadAddress(target)
+        offset = addr.GetLoadAddress(target) - addr.symbol.addr.GetLoadAddress(target)
         if offset > 0:
             offset_str = '+ {}'.format(offset)
-        frame_string = 'frame #{}: {} {}`{} {}'.format(index, hex(frame.addr.GetLoadAddress(target)), frame.module.file.basename, symbol_name, offset_str)
-        result.AppendMessage(frame_string)
 
+        frame_string += 'frame #{:<2}: {} {}`{} {}\n'.format(index, hex(addr.GetLoadAddress(target)), addr.module.file.basename, name, offset_str)
 
+    return frame_string
 
-def generate_expression_options():
+def generateOptions():
     expr_options = lldb.SBExpressionOptions()
-    expr_options.SetIgnoreBreakpoints(True);
-    expr_options.SetFetchDynamicValue(lldb.eDynamicCanRunTarget);
-    expr_options.SetTimeoutInMicroSeconds (30*1000*1000) # 30 second timeout
     expr_options.SetUnwindOnError(True)
     expr_options.SetLanguage (lldb.eLanguageTypeObjC_plus_plus)
     expr_options.SetCoerceResultToId(False)
     return expr_options
 
 
-def generate_executable_methods_script(frame_addresses):
+def generateExecutableMethodsScript(frame_addresses):
     frame_addr_str = 'NSArray *ar = @['
     for f in frame_addresses:
         frame_addr_str += '@"' + str(f) + '",'
@@ -108,8 +111,8 @@ def generate_executable_methods_script(frame_addresses):
     frame_addr_str += '];'
 
     command_script = r'''
-  @import ObjectiveC;
-  @import Foundation;
+    @import ObjectiveC;
+    @import Foundation;
   NSMutableDictionary *retdict = [NSMutableDictionary dictionary];
   unsigned int count = 0;
   const char *path = (char *)[[[NSBundle mainBundle] executablePath] UTF8String];
@@ -159,9 +162,3 @@ def generate_executable_methods_script(frame_addresses):
   stackDict;
   '''
     return command_script
-
-def generate_option_parser():
-    usage = "usage: %prog"
-    parser = optparse.OptionParser(usage=usage, prog="sbt")
-    return parser
-    
