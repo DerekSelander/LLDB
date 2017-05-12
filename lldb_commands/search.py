@@ -308,7 +308,7 @@ free(classes);'''
         command_script += r'''
 [outputArray enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop){;
     '''
-        command_script += options.perform_action + ' }];\n'
+        command_script += options.perform_action + ' }];\n (void)[CATransaction flush];'
      
      
     command_script += 'outputArray;'
