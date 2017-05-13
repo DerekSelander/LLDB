@@ -273,7 +273,7 @@ for (unsigned i = 0; i < count; i++) {
 
     if options.condition:
         cmd = options.condition
-        command_script += '&& (int)(' + options.condition + ')'
+        command_script += '&& (BOOL)(' + options.condition + ')'
 
     command_script += r') {'
 
