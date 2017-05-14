@@ -9,7 +9,7 @@ import sbt
 def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(
     'command script add -f msl.handle_command msl')
-    debugger.HandleCommand('command alias slog_on expression -lobjc -O -- extern void turn_on_stack_logging(int); turn_on_stack_logging(1);')
+    debugger.HandleCommand('command alias enable_logging expression -lobjc -O -- extern void turn_on_stack_logging(int); turn_on_stack_logging(1);')
 
 
 def handle_command(debugger, command, result, internal_dict):
