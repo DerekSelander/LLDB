@@ -119,22 +119,32 @@ Examples:
     # debugger.HandleCommand('po ' + command_script)
 
     # debugger.HandleCommand('expression -lobjc++ -g -O -- ' + command_script)
-    expr_sbvalue = frame.EvaluateExpression (command_script, expr_options)
-    count = expr_sbvalue.GetNumChildren(100000) # Actually goes up to 2^32 but this is more than enough    
+    # return
+    expr_sbvalue = frame.EvaluateExpression(command_script, expr_options)
 
     if not expr_sbvalue.error.success:
-        result.SetError("\n***************************************\nerror: " + str(expr_sbvalue.error))
+        result.SetError("\n**************************************\nerror: " + str(expr_sbvalue.error))
+        return
+    
+    val = lldb.value(expr_sbvalue)
+    count = val.count.sbvalue.unsigned
+
+    if count > 100:
+        result.AppendWarning('Exceeded 100 hits, try narrowing your search with the --condition option')
+        count = 100
+
+    if options.barebones:
+        for i in range(count):
+            v = val.values[i].sbvalue
+            val_description = str(v.GetTypeName()) + ' [' + str(v.GetValue())  + ']'
+            result.AppendMessage(val_description)
     else:
-        if count > 1000:
-            result.AppendWarning('Exceeded 1000 hits, try narrowing your search with the --condition option')
-            result.AppendMessage (expr_sbvalue)
-        else:
-            if options.barebones:
-                for val in expr_sbvalue:
-                    val_description = val.GetTypeName() + ' [' + val.GetValue()  + ']'
-                    result.AppendMessage(val_description)
-            else:
-                result.AppendMessage(expr_sbvalue.description)
+        for i in range(count):
+            v = val.values[i].sbvalue
+            if not v.description:
+                continue
+            desc = v.description 
+            result.AppendMessage(desc + '\n')
 
 
 def get_command_script(objectiveC_class, options):
@@ -289,29 +299,32 @@ for (unsigned i = 0; i < count; i++) {
  
 CFIndex index = (CFIndex)CFSetGetCount(context->results);
   
-const void **values = (const void **)calloc(index, sizeof(id));
-CFSetGetValues(context->results, values);
-    
-NSMutableArray *outputArray = [NSMutableArray arrayWithCapacity:index];
-for (int i = 0; i < index; i++) {
-    id object = (__bridge id)(values[i]);
-    [outputArray addObject:object];
-}
+typedef struct $LLDBHeapObjects {
+    const void **values;
+    uint32_t count = 0;
+} $LLDBHeapObjects;
+
+$LLDBHeapObjects lldbheap;
+
+lldbheap.values = (const void **)calloc(index, sizeof(id));
+CFSetGetValues(context->results, lldbheap.values);
+lldbheap.count = index;  
   
-  
-free(values);
+
 free(set);
 free(context); 
 free(classes);'''
 
     if options.perform_action:
         command_script += r'''
-[outputArray enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop){;
+        for (int i = 0; i < index; i++) {
+            id obj = ((id)lldbheap.values[i]);
+
     '''
-        command_script += options.perform_action + ' }];\n (void)[CATransaction flush];'
+        command_script += options.perform_action + ' };\n (void)[CATransaction flush];'
      
      
-    command_script += 'outputArray;'
+    command_script += 'lldbheap;'
     return command_script
 
 def generate_module_search_sections_string(module, target):
