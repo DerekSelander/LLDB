@@ -22,7 +22,6 @@ def handle_command(debugger, command, result, internal_dict):
     
     createOrTouchFilePath(filename, script)
     cmd = 'sudo {0}  -p {1}'.format(filename, pid)
-    print(script)
     copycommand = 'echo \"{} \" | pbcopy'.format(cmd)
     os.system(copycommand)
 
@@ -79,9 +78,28 @@ pid$target::objc_msgSend:entry ''' + predicate + r'''
   this->rax = *((uintptr_t *)copyin((this->rax + 0x8),  size));  
   this->rax = *((uintptr_t *)copyin((this->rax + 0x18), size));  
 
+  this->isMetaFlag = *((uintptr_t *)copyin((this->isa + 0x20), size));  
+  this->isMetaFlag = *((uintptr_t *)copyin((this->isa + 0x8), size)) & 1;  
+  this->isMeta = this->isMetaFlag ? '+' : '-';
+
+
   this->classname = copyinstr(this->rbx != 0 ? 
                                this->rbx  : this->rax);   
-  printf("0x%016p +|-[%s %s]\n", arg0, this->classname, 
+
+  this->misa = *((uintptr_t *)copyin(this->isa, size));
+  this->mrax = *((uintptr_t *)copyin((this->misa + 0x20), size)); 
+  this->mrax =  (this->mrax & 0x7ffffffffff8); 
+  this->mrbx = *((uintptr_t *)copyin((this->mrax + 0x38), size)); 
+
+  this->mrax = *((uintptr_t *)copyin((this->mrax + 0x8),  size));  
+  this->mrax = *((uintptr_t *)copyin((this->mrax + 0x18), size));  
+
+  this->mclassname = copyinstr(this->mrbx != 0 ? 
+                               this->mrbx  : this->mrax);   
+
+  this->instanceOrClass = (this->mclassname == this->classname) ? '-' : '+';
+
+  printf("0x%016p %c[%s %s]\n", arg0, this->instanceOrClass, this->classname, 
                                        this->selector);
 }'''
     return script
