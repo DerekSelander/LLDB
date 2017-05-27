@@ -101,16 +101,28 @@ def lookup(debugger, command, result, internal_dict):
 
 
     module_dict = {}
-    symbol_context_list = target.FindGlobalFunctions(clean_command, 0, lldb.eMatchTypeRegex)
+
+    if options.global_var:
+        symbol_context_list = target.FindGlobalVariables(clean_command, 100000, lldb.eMatchTypeRegex)
+    else:
+        symbol_context_list = target.FindGlobalFunctions(clean_command, 0, lldb.eMatchTypeRegex)
+
     for symbol_context in symbol_context_list:
-        key = symbol_context.module.file.basename
+        if type(symbol_context) is lldb.SBValue:
+            key = symbol_context.addr.module.file.basename
+        else:
+            key = symbol_context.module.file.basename
         if options.module and key != options.module:
             continue
 
         if not key in module_dict:
             module_dict[key] = []
 
-        module_dict[key].append(symbol_context)
+
+        if type(symbol_context) is lldb.SBValue:
+            module_dict[key].append(symbol_context.addr.GetSymbolContext(lldb.eSymbolContextEverything))
+        else:
+            module_dict[key].append(symbol_context)
 
     return_string = generate_return_string(debugger, module_dict, options)
     result.AppendMessage(return_string)
@@ -130,7 +142,10 @@ def generate_return_string(debugger, module_dict, options):
         return_string += '****************************************************\n'
 
         for symbol_context in module_dict[key]:
-            if symbol_context.function.name is not None:
+            if options.global_var:
+                name = symbol_context.symbol.name
+                # TODO mangled names? needed?
+            elif symbol_context.function.name is not None:
                 name = symbol_context.function.name
                 if options.mangled_name:
                     mangledName = symbol_context.symbol.GetMangledName()
@@ -214,6 +229,12 @@ def generate_option_parser():
                       default=None,
                       dest="module",
                       help="Limit scope to a specific module")
+
+    parser.add_option("-g", "--global_var",
+                      action="store_true",
+                      default=False,
+                      dest="global_var",
+                      help="Search for global variables (i.e. static NSString woot) instead of functions")
 
     parser.add_option("-s", "--module_summary",
                       action="store_true",
