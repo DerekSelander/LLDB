@@ -160,7 +160,7 @@ def generate_return_string(debugger, module_dict, options):
                     target = ds.getTarget()
                     addr = hex(symbol_context.symbol.addr.GetLoadAddress(target))
                     val = frame.EvaluateExpression('*(void**)' + addr)
-                    name += '\n' + val.description if val.description else '0x%010x' % val.unsigned
+                    name += '\n' + (val.description if val.description else '0x%010x' % val.unsigned)
 
             elif symbol_context.function.name is not None:
                 name = symbol_context.function.name
