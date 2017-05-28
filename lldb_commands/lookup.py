@@ -158,7 +158,7 @@ def generate_return_string(debugger, module_dict, options):
                 frame = dscommons.getSelectedFrame()
                 target = dscommons.getSelectedTarget()
                 # val = frame.EvaluateExpression('*(void**)' + hex(symbol_context.addr), dscommons.genExpressionOptions())
-                val = frame.EvaluateExpression('*(void**)' + hex(symbol_context.symbol.addr))
+                val = frame.EvaluateExpression('*(void**)' + str(hex(symbol_context.symbol.addr)))
                 name += '\n' + (val.description if val.description else hex(val.unsigned))
 
             elif symbol_context.function.name is not None:
