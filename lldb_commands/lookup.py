@@ -22,6 +22,7 @@
 
 import lldb
 import os
+import dscommons
 import shlex
 import re
 import optparse
@@ -42,7 +43,6 @@ def lookup(debugger, command, result, internal_dict):
     # Perform regex search on UIViewController.viewDid
     lookup UIViewController.viewDid
     '''
-
     command_args = shlex.split(command, posix=False)
     parser = generate_option_parser()
     try:
@@ -103,15 +103,23 @@ def lookup(debugger, command, result, internal_dict):
     module_dict = {}
 
     if options.global_var:
-        symbol_context_list = target.FindGlobalVariables(clean_command, 100000, lldb.eMatchTypeRegex)
+        module_name = options.global_var
+        module = target.FindModule(lldb.SBFileSpec(module_name))
+        if not module.IsValid():
+            result.SetError(
+                "Unable to open module name '{}', to see list of images use 'image list -b'".format(module_name))
+            return
+        symbol_context_list = [i for i in module.get_symbols_array() if i.GetType() == 4 and i.addr.IsValid()]
+
     else:
         symbol_context_list = target.FindGlobalFunctions(clean_command, 0, lldb.eMatchTypeRegex)
 
     for symbol_context in symbol_context_list:
-        if type(symbol_context) is lldb.SBValue:
+        if options.global_var is not None:
             key = symbol_context.addr.module.file.basename
         else:
             key = symbol_context.module.file.basename
+
         if options.module and key != options.module:
             continue
 
@@ -119,8 +127,9 @@ def lookup(debugger, command, result, internal_dict):
             module_dict[key] = []
 
 
-        if type(symbol_context) is lldb.SBValue:
-            module_dict[key].append(symbol_context.addr.GetSymbolContext(lldb.eSymbolContextEverything))
+        if options.global_var:
+            if re.search(clean_command, symbol_context.name):
+                module_dict[key].append(symbol_context.addr.GetSymbolContext(lldb.eSymbolContextEverything))
         else:
             module_dict[key].append(symbol_context)
 
@@ -131,6 +140,8 @@ def generate_return_string(debugger, module_dict, options):
     return_string = ''
     for key in module_dict:
         count = len(module_dict[key])
+        if len(module_dict[key]) == 0:
+            continue
         tmp = module_dict[key][0]
 
         if options.module_summary:
@@ -144,7 +155,12 @@ def generate_return_string(debugger, module_dict, options):
         for symbol_context in module_dict[key]:
             if options.global_var:
                 name = symbol_context.symbol.name
-                # TODO mangled names? needed?
+                frame = dscommons.getSelectedFrame()
+                target = dscommons.getSelectedTarget()
+                # val = frame.EvaluateExpression('*(void**)' + hex(symbol_context.addr), dscommons.genExpressionOptions())
+                val = frame.EvaluateExpression('*(void**)' + hex(symbol_context.symbol.addr))
+                name += '\n' + (val.description if val.description else hex(val.unsigned))
+
             elif symbol_context.function.name is not None:
                 name = symbol_context.function.name
                 if options.mangled_name:
@@ -160,11 +176,12 @@ def generate_return_string(debugger, module_dict, options):
                 continue
 
 
-            return_string += name
             if options.load_address:
                 str_addr = str(hex(symbol_context.GetSymbol().GetStartAddress().GetLoadAddress(debugger.GetSelectedTarget())))
                 end_addr = str(hex(symbol_context.GetSymbol().GetEndAddress().GetLoadAddress(debugger.GetSelectedTarget())))
-                return_string += ', load_addr=[' + str_addr + '-' + end_addr + ']'
+                return_string += '[' + str_addr + '-' + end_addr + '] ' + name
+            else:  
+                return_string += name
 
             return_string += '\n\n'
 
@@ -231,10 +248,10 @@ def generate_option_parser():
                       help="Limit scope to a specific module")
 
     parser.add_option("-g", "--global_var",
-                      action="store_true",
-                      default=False,
+                      action="store",
+                      default=None,
                       dest="global_var",
-                      help="Search for global variables (i.e. static NSString woot) instead of functions")
+                      help="Search for global variables in a module (i.e. static NSString woot) instead of functions")
 
     parser.add_option("-s", "--module_summary",
                       action="store_true",
