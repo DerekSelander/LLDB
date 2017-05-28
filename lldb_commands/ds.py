@@ -40,13 +40,47 @@ def genExpressionOptions(useSwift=False, ignoreBreakpoints=False, useID=True):
     options.SetCoerceResultToId(useID)
     return options
 
-def getSelectedTarget(error=None):
+def getTarget(error=None):
     target = lldb.debugger.GetSelectedTarget()
     return target
 
-def getSelectedFrame(error=None):
+def getFrame(error=None):
     frame = lldb.debugger.GetSelectedTarget().GetProcess().GetSelectedThread().GetSelectedFrame()
     # if frame is None and error is not None:
     #     pass # TODO
     return frame
+
+def getSection(module=None, name=None):
+    if module is None:
+        path = getTarget().executable.fullpath
+        module = getTarget().module[path]
+
+    if name is None:
+        return module.sections
+
+    sections = name.split('.')
+    index = 0
+    if len(sections) == 0:
+        return None
+    section = module.FindSection(sections[0])
+    while index < len(sections):
+        name = sections[index]
+        for subsec in section:
+            if sections[index] in subsec.name:
+                section = subsec
+                if sections[-1] in subsec.name:
+                    return subsec
+                continue
+        index += 1
+
+
+    return None
+
+def getDataFromSection(section):
+    pass
+
+
+
+
+
 

@@ -22,7 +22,7 @@
 
 import lldb
 import os
-import dscommons
+import ds
 import shlex
 import re
 import optparse
@@ -102,20 +102,20 @@ def lookup(debugger, command, result, internal_dict):
 
     module_dict = {}
 
-    if options.global_var:
-        module_name = options.global_var
+    if options.global_var or options.global_var_noeval:
+        module_name = options.global_var if options.global_var else options.global_var_noeval
         module = target.FindModule(lldb.SBFileSpec(module_name))
         if not module.IsValid():
             result.SetError(
                 "Unable to open module name '{}', to see list of images use 'image list -b'".format(module_name))
             return
-        symbol_context_list = [i for i in module.get_symbols_array() if i.GetType() == 4 and i.addr.IsValid()]
+        symbol_context_list = [i for i in module.get_symbols_array() if i.GetType() == lldb.eSymbolTypeData and i.addr.IsValid() and i.IsValid()]
 
     else:
         symbol_context_list = target.FindGlobalFunctions(clean_command, 0, lldb.eMatchTypeRegex)
 
     for symbol_context in symbol_context_list:
-        if options.global_var is not None:
+        if options.global_var is not None or options.global_var_noeval is not None:
             key = symbol_context.addr.module.file.basename
         else:
             key = symbol_context.module.file.basename
@@ -127,7 +127,7 @@ def lookup(debugger, command, result, internal_dict):
             module_dict[key] = []
 
 
-        if options.global_var:
+        if options.global_var or options.global_var_noeval:
             if re.search(clean_command, symbol_context.name):
                 module_dict[key].append(symbol_context.addr.GetSymbolContext(lldb.eSymbolContextEverything))
         else:
@@ -153,13 +153,14 @@ def generate_return_string(debugger, module_dict, options):
         return_string += '****************************************************\n'
 
         for symbol_context in module_dict[key]:
-            if options.global_var:
+            if options.global_var or options.global_var_noeval:
                 name = symbol_context.symbol.name
-                frame = dscommons.getSelectedFrame()
-                target = dscommons.getSelectedTarget()
-                # val = frame.EvaluateExpression('*(void**)' + hex(symbol_context.addr), dscommons.genExpressionOptions())
-                val = frame.EvaluateExpression('*(void**)' + str(hex(symbol_context.symbol.addr)))
-                name += '\n' + (val.description if val.description else hex(val.unsigned))
+                if options.global_var:
+                    frame = ds.getFrame()
+                    target = ds.getTarget()
+                    addr = hex(symbol_context.symbol.addr.GetLoadAddress(target))
+                    val = frame.EvaluateExpression('*(void**)' + addr)
+                    name += '\n' + val.description if val.description else '0x%010x' % val.unsigned
 
             elif symbol_context.function.name is not None:
                 name = symbol_context.function.name
@@ -251,6 +252,12 @@ def generate_option_parser():
                       action="store",
                       default=None,
                       dest="global_var",
+                      help="Search for global variables in a module (i.e. static NSString woot) instead of functions")
+
+    parser.add_option("-G", "--global_var_noeval",
+                      action="store",
+                      default=None,
+                      dest="global_var_noeval",
                       help="Search for global variables in a module (i.e. static NSString woot) instead of functions")
 
     parser.add_option("-s", "--module_summary",
