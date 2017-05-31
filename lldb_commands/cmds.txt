@@ -34,6 +34,9 @@ command alias lnetwork expression -lobjc -O --   const char *className = (const 
 
 command regex gdocumentation 's/(.+)/script import os; os.system("open https:" + unichr(47) + unichr(47) + "lldb.llvm.org" + unichr(47) + "python_reference" + unichr(47) + "lldb.%1-class.html")/'
 
+command alias enable_logging expression -lobjc -O -- extern void turn_on_stack_logging(int); turn_on_stack_logging(1);
+
+
 # Jailbreak stuff
 
 command alias qqq process connect connect://localhost:1234

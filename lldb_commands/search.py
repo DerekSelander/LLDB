@@ -219,22 +219,15 @@ for (unsigned i = 0; i < count; i++) {
             NSString *className = (NSString *)NSStringFromClass(aClass);
 
             if ([@"_NSZombie_" isEqualToString:className]) return 1;
-            if ([@"NSPlaceholderMutableString" isEqualToString:className]) return 1;
             if ([@"__ARCLite__" isEqualToString:className]) return 1;
             if ([@"__NSCFCalendar" isEqualToString:className]) return 1;
             if ([@"__NSCFTimer" isEqualToString:className]) return 1;
             if ([@"NSCFTimer" isEqualToString:className]) return 1;
             if ([@"__NSMessageBuilder" isEqualToString:className]) return 1;
             if ([@"__NSGenericDeallocHandler" isEqualToString:className]) return 1;
-            if ([@"NSTaggedPointerStringCStringContainer" isEqualToString:className]) return 1;
             if ([@"NSAutoreleasePool" isEqualToString:className]) return 1;
-            if ([@"NSPlaceholderNumber" isEqualToString:className]) return 1;
-            if ([@"NSPlaceholderString" isEqualToString:className]) return 1;
-            if ([@"NSPlaceholderValue" isEqualToString:className]) return 1;
             if ([@"Object" isEqualToString:className]) return 1;
-            if ([@"NSPlaceholderNumber" isEqualToString:className]) return 1;
             if ([@"VMUArchitecture" isEqualToString:className]) return 1;
-            if ([className hasPrefix:@"__NSPlaceholder"]) return 1;
 
             return 0;
         };
@@ -251,6 +244,10 @@ for (unsigned i = 0; i < count; i++) {
 
         
             vm_address_t potentialObject = ranges[i].address;
+
+            if (0xFFFF800000000000 & potentialObject != 0) {
+                continue;
+            }
          
             Class potentialClass = object_getClass((__bridge id)((void *)potentialObject));
 
@@ -261,6 +258,11 @@ for (unsigned i = 0; i < count; i++) {
             
             // test 3
             if ((size_t)malloc_good_size((size_t)class_getInstanceSize(potentialClass)) != ranges[i].size) {
+                continue;
+            }
+
+            // test 4 is a tagged pointer 0x8000000000000000
+            if (potentialObject & 0x8000000000000000 == 0x8000000000000000) {
                 continue;
             }
             

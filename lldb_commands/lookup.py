@@ -90,6 +90,11 @@ def lookup(debugger, command, result, internal_dict):
         result.AppendMessage(output)
         return
 
+    if options.strings:
+        output = generate_cstring_dict(debugger, args[0], options)
+        result.AppendMessage(output)
+        return
+
 
     if options.module:
         module_name = options.module
@@ -135,6 +140,64 @@ def lookup(debugger, command, result, internal_dict):
 
     return_string = generate_return_string(debugger, module_dict, options)
     result.AppendMessage(return_string)
+
+def generate_cstring_dict(debugger, command, options):
+
+    target = ds.getTarget()
+    if options.module:
+        module_name = options.module
+        module = target.FindModule(lldb.SBFileSpec(module_name))
+        if not module.IsValid():
+            result.SetError(
+                "Unable to open module name '{}', to see list of images use 'image list -b'".format(module_name))
+            return
+        modules = [module]
+    else:
+        modules = ds.getTarget().modules
+
+    return_string = ''
+    error = lldb.SBError()
+    prog = re.compile(command)
+    for m in modules: 
+        section = ds.getSection(m, '__TEXT.__cstring')
+        if section is None:
+            continue
+
+        data = section.data
+        dataArray = section.data.sint8s
+        # print(section.data.GetString(error, 0))
+
+        # return
+        # print(section.data)
+        sectionAddress = section.addr.GetLoadAddress(ds.getTarget())
+
+        moduleString = ''
+        indices = [i for i, x in enumerate(dataArray) if x > 1 and dataArray[i-1] == 0 and x != 0]
+        returnDict = {}
+        for i in indices:
+            cString = data.GetString(error, i)
+            if prog.match(cString):
+                returnDict[hex(sectionAddress + i)] = cString
+
+        if len(returnDict) == 0:
+            continue
+
+        if options.module_summary:
+            return_string += '{} hits in: {}\n'.format(str(len(returnDict)), m.file.basename)
+        else:
+            moduleString = '****************************************************\n{} hits in: {}\n****************************************************\n'.format(str(len(returnDict)), m.file.basename)
+
+            
+            for k, v in returnDict.iteritems():
+                if options.load_address:
+                    moduleString += k + ', '
+                moduleString += v + '\n'
+
+        return_string += moduleString
+
+
+
+    return return_string
 
 def generate_return_string(debugger, module_dict, options):
     return_string = ''
@@ -265,6 +328,12 @@ def generate_option_parser():
                       default=False,
                       dest="module_summary",
                       help="Give the summary of return hits from the different modules")
+
+    parser.add_option("-S", "--strings",
+                      action="store_true",
+                      default=False,
+                      dest="strings",
+                      help="Search the __TEXT.__cstring segment for a regular expression")
 
     parser.add_option("-M", "--mangled_name",
                       action="store_true",
