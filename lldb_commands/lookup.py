@@ -34,14 +34,28 @@ def __lldb_init_module(debugger, internal_dict):
 
 def lookup(debugger, command, result, internal_dict):
     '''
-    A more attractive alternative to image lookup -rn. Performs a regular expression
-    search on all modules loaded into the application. You can filter modules using the
-    --module command
+    Perform a regular expression search for stuff in an executable
 
-    Examples:
-
-    # Perform regex search on UIViewController.viewDid
-    lookup UIViewController.viewDid
+    # Find all methods that contain the phrase viewDidLoad
+    (lldb) lookup viewDidLoad
+    
+    # Find a summary of all the modules that have a (known) function containing the phrase viewDidLoad
+    (lldb) lookup viewDidLoad -s
+    
+    # Search for Objective-C code in a stripped module (i.e. in SpringBoard)
+    (lldb) loo -x StocksFramework .
+    
+    # Search for Objective-C code containing the case insensitive phrase init inside a stripped main bundle
+    (lldb) lookup -X (?i)init
+    
+    # Search for all hardcoded, embeded `char *` inside an executable containing the phrase *http* inside UIKit
+    (lldb) lookup -S http -m UIKit
+    
+    # Dump all the md5'd keys in libMobileGestalt along w/ the address in memory
+    (lldb) loo -S ^[a-zA-Z0-9\+]{22,22}$ -m libMobileGestalt.dylib -l
+    
+    # Dump all the global bss code referenced by DWARF. Ideal for accessing `static` variables when not in scope
+    (lldb) lookup . -g HonoluluArt -l
     '''
     command_args = shlex.split(command, posix=False)
     parser = generate_option_parser()
