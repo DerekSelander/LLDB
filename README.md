@@ -111,7 +111,7 @@ Perform a regular expression search for stuff in an executable
       # Search for all hardcoded, embeded `char *` inside an executable containing the phrase *http* inside UIKit
       (lldb) lookup -S http -m UIKit
       
-      # Dump all the md5'd keys in libMobileGestalt along w/ the address in memory
+      # Dump all the md5'd base64 keys in libMobileGestalt along w/ the address in memory
       (lldb) loo -S ^[a-zA-Z0-9\+]{22,22}$ -m libMobileGestalt.dylib -l
       
       # Dump all the global bss code referenced by DWARF. Ideal for accessing `static` variables when not in scope
