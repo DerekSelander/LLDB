@@ -91,6 +91,32 @@ Dumps all the NSObject inherited classes in the process. If you give it a module
       # Generate a protocol that you can cast an object to. Ideal when working with private classes at dev time
       (lldb) dclass -p UIView
 
+### lookup
+  Perform a regular expression search for stuff in an executable
+      # Find all methods that contain the phrase viewDidLoad
+      (lldb) lookup viewDidLoad
+      
+      # Find a summary of all the modules that have a (known) function containing the phrase viewDidLoad
+      (lldb) lookup viewDidLoad -s
+      
+      # Search for Objective-C code in a stripped module (i.e. in SpringBoard)
+      (lldb) loo -x StocksFramework .
+      
+      # Search for Objective-C code containing the case insensitive phrase init inside a stripped main bundle
+      (lldb) lookup -X (?i)init
+      
+      # Search for all hardcoded, embeded `char *` inside an executable containing the phrase *http* inside UIKit
+      (lldb) lookup -S http -m UIKit
+      
+      # Dump all the md5'd keys in libMobileGestalt along w/ the address in memory
+      (lldb) loo -S ^[a-zA-Z0-9\+]{22,22}$ -m libMobileGestalt.dylib -l
+      
+      # Dump all the global bss code referenced by DWARF. Ideal for accessing `static` variables when not in scope
+      (lldb) lookup . -g HonoluluArt -l
+      
+      
+      
+
 ### search
   Searchs the heap for all alive instances of a certain class. This class must by dynamic (aka inherit from a NSObject class). Currently doesn't work with NSString or NSNumber (tagged pointer objects). 
   
