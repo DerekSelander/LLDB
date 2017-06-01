@@ -165,10 +165,6 @@ def generate_cstring_dict(debugger, command, options):
 
         data = section.data
         dataArray = section.data.sint8s
-        # print(section.data.GetString(error, 0))
-
-        # return
-        # print(section.data)
         sectionAddress = section.addr.GetLoadAddress(ds.getTarget())
 
         moduleString = ''
@@ -176,7 +172,7 @@ def generate_cstring_dict(debugger, command, options):
         returnDict = {}
         for i in indices:
             cString = data.GetString(error, i)
-            if prog.match(cString):
+            if prog.search(cString):
                 returnDict[hex(sectionAddress + i)] = cString
 
         if len(returnDict) == 0:
@@ -185,7 +181,7 @@ def generate_cstring_dict(debugger, command, options):
         if options.module_summary:
             return_string += '{} hits in: {}\n'.format(str(len(returnDict)), m.file.basename)
         else:
-            moduleString = '****************************************************\n{} hits in: {}\n****************************************************\n'.format(str(len(returnDict)), m.file.basename)
+            moduleString = '\n****************************************************\n{} hits in: {}\n****************************************************\n'.format(str(len(returnDict)), m.file.basename)
 
             
             for k, v in returnDict.iteritems():
@@ -194,8 +190,6 @@ def generate_cstring_dict(debugger, command, options):
                 moduleString += v + '\n'
 
         return_string += moduleString
-
-
 
     return return_string
 
