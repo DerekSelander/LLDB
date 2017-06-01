@@ -92,7 +92,10 @@ Dumps all the NSObject inherited classes in the process. If you give it a module
       (lldb) dclass -p UIView
 
 ### lookup
-  Perform a regular expression search for stuff in an executable
+Perform a regular expression search for stuff in an executable
+
+  Example:
+  
       # Find all methods that contain the phrase viewDidLoad
       (lldb) lookup viewDidLoad
       
