@@ -168,7 +168,7 @@ unsigned int count = 0;
 unsigned int maxresults = ''' + str(options.max_results) + r'''
 kern_return_t error = (kern_return_t)malloc_get_all_zones(0, 0, &zones, &count);
 
-DSSearchContext *context = (DSSearchContext *)calloc(sizeof(DSSearchContext), 1);
+DSSearchContext *_ds_context = (DSSearchContext *)calloc(sizeof(DSSearchContext), 1);
 int classCount = (int)objc_getClassList(NULL, 0);
 CFMutableSetRef set = (CFMutableSetRef)CFSetCreateMutable(0, classCount, NULL);
 Class *classes = (__unsafe_unretained Class *)malloc(sizeof(Class) * classCount);
@@ -194,9 +194,9 @@ for (int i = 0; i < classCount; i++) {
 }
   
 // Setup callback context
-context->results = (CFMutableSetRef)CFSetCreateMutable(0, maxresults, NULL);
-context->classesSet = set;
-context->query =  ''' + objectiveC_class + r''';
+_ds_context->results = (CFMutableSetRef)CFSetCreateMutable(0, maxresults, NULL);
+_ds_context->classesSet = set;
+_ds_context->query =  ''' + objectiveC_class + r''';
 for (unsigned i = 0; i < count; i++) {
     const malloc_zone_t *zone = (const malloc_zone_t *)zones[i];
     if (zone == NULL || zone->introspect == NULL){
@@ -204,13 +204,13 @@ for (unsigned i = 0; i < count; i++) {
     }
 
     //for each zone, enumerate using our enumerator callback
-    zone->introspect->enumerator(0, context, 1, zones[i], task_peek, 
+    zone->introspect->enumerator(0, _ds_context, 1, zones[i], task_peek, 
     [] (task_t task, void *baton, unsigned type, vm_range_t *ranges, unsigned count) -> void {
 
-        DSSearchContext *context =  (DSSearchContext *)baton;
-        Class query = context->query;
-        CFMutableSetRef classesSet = context->classesSet;
-        CFMutableSetRef results = context->results;
+        DSSearchContext *_ds_context =  (DSSearchContext *)baton;
+        Class query = _ds_context->query;
+        CFMutableSetRef classesSet = _ds_context->classesSet;
+        CFMutableSetRef results = _ds_context->results;
 
         int maxCount = ''' + str(options.max_results) + ''';
         size_t querySize = (size_t)class_getInstanceSize(query);
@@ -299,7 +299,7 @@ for (unsigned i = 0; i < count; i++) {
      });
 }
  
-CFIndex index = (CFIndex)CFSetGetCount(context->results);
+CFIndex index = (CFIndex)CFSetGetCount(_ds_context->results);
   
 typedef struct $LLDBHeapObjects {
     const void **values;
@@ -309,12 +309,12 @@ typedef struct $LLDBHeapObjects {
 $LLDBHeapObjects lldbheap;
 
 lldbheap.values = (const void **)calloc(index, sizeof(id));
-CFSetGetValues(context->results, lldbheap.values);
+CFSetGetValues(_ds_context->results, lldbheap.values);
 lldbheap.count = index;  
   
 
 free(set);
-free(context); 
+free(_ds_context); 
 free(classes);'''
 
     if options.perform_action:
