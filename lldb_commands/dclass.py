@@ -21,6 +21,7 @@
 # SOFTWARE.
 
 import lldb
+import ds
 import os
 import shlex
 import optparse
@@ -78,7 +79,6 @@ Examples:
 
     res = lldb.SBCommandReturnObject()
     interpreter = debugger.GetCommandInterpreter()
-
     target = debugger.GetSelectedTarget()
     if options.module is not None:
         module = target.FindModule(lldb.SBFileSpec(options.module))
@@ -86,6 +86,12 @@ Examples:
             result.SetError(
                 "Unable to open module name '{}', to see list of images use 'image list -b'".format(options.module))
             return
+
+    if options.output_dir:
+        command_script = generate_module_header_script(options, None)
+        debugger.HandleCommand('expression -lobjc -O -- ' + command_script)
+        return
+
 
     if options.conforms_to_protocol is not None:
         interpreter.HandleCommand('expression -lobjc -O -- (id)NSProtocolFromString(@\"{}\")'.format(options.conforms_to_protocol), res)
@@ -117,7 +123,7 @@ Examples:
             return
         contents = res.GetOutput()
 
-        create_or_touch_filepath(filepath, contents)
+        ds.create_or_touch_filepath(filepath, contents)
         print('Written output to: ' + filepath + '... opening file')
         os.system('open -R ' + filepath)
     else: 
@@ -415,7 +421,7 @@ def generate_header_script(options, class_to_generate_header):
         char *argumentType = (char *)method_copyArgumentType(m, j);
         NSString *argumentTypeString = [NSString stringWithUTF8String:argumentType];
         free(argumentType);
-        [realizedMethod appendFormat:(NSString *)[(NSString *)[@"(" stringByAppendingString:argumentBlock(argumentTypeString)] stringByAppendingString:@")"]];
+        [realizedMethod appendString:(NSString *)[(NSString *)[@"(" stringByAppendingString:argumentBlock(argumentTypeString)] stringByAppendingString:@")"]];
         
         [realizedMethod appendString:@"arg"];
         [realizedMethod appendString:[@(index) stringValue]];
@@ -497,12 +503,239 @@ def generate_header_script(options, class_to_generate_header):
 '''
     return script
 
+def generate_module_header_script(options, moduleName):
+    script = r'''@import @ObjectiveC;
+  //Dang it. LLDB JIT Doesn't like NSString stringWithFormat on device. Need to use stringByAppendingString instead
 
-def create_or_touch_filepath(filepath, contents):
-    file = open(filepath, "w")
-    file.write(contents)
-    file.flush()
-    file.close()
+  // Runtime declarations in case we're running on a stripped executable
+  typedef struct objc_method *Method;
+  typedef struct objc_ivar *Ivar;
+  typedef struct objc_category *Category;
+  typedef struct objc_property *objc_property_t;
+
+  NSMutableString *returnString = [NSMutableString string];
+  // Properties
+  NSMutableSet *exportedClassesSet = [NSMutableSet set];
+  NSMutableSet *exportedProtocolsSet = [NSMutableSet set];
+  
+  unsigned int count = 0;
+  const char *path = (char *)[[[NSBundle mainBundle] executablePath] UTF8String];
+  const char **allClasses = (const char **)objc_copyClassNamesForImage(path, &count);
+  NSMutableDictionary *returnDict = [NSMutableDictionary dictionaryWithCapacity:count];
+
+  for (int i = 0; i < count; i++) {
+    Class cls = objc_getClass(allClasses[i]);
+
+    NSMutableString *generatedProperties = [NSMutableString string];
+    NSMutableSet *blackListMethodNames = [NSMutableSet set];
+    [blackListMethodNames addObjectsFromArray:@[@".cxx_destruct", @"dealloc"]];
+
+    unsigned int propertyCount = 0;
+    objc_property_t *properties = (objc_property_t *)class_copyPropertyList(cls, &propertyCount);
+    NSCharacterSet *charSet = [NSCharacterSet characterSetWithCharactersInString:@","];
+    
+    NSString *(^argumentBlock)(NSString *) = ^(NSString *arg) {
+      if ([arg isEqualToString:@"@"]) {
+        return @"id";
+      } else if ([arg isEqualToString:@"v"]) {
+        return @"void";
+      } else if ([arg hasPrefix:@"{CGRect"]) {
+        return @"CGRect";
+      } else if ([arg hasPrefix:@"{CGPoint"]) {
+        return @"CGPoint";
+      } else if ([arg hasPrefix:@"{CGSize"]) {
+        return @"CGSize";
+      } else if ([arg isEqualToString:@"q"]) {
+        return @"NSInteger";
+      } else if ([arg isEqualToString:@"B"]) {
+        return @"BOOL";
+      } else if ([arg isEqualToString:@":"]) {
+          return @"SEL";
+      } else if ([arg isEqualToString:@"d"]) {
+        return @"CGFloat";
+      } else if ([arg isEqualToString:@"@?"]) { // A block?
+        return @"id";
+      }
+      return @"void *";
+    };
+
+    NSMutableSet *blackListPropertyNames = [NSMutableSet setWithArray:@[@"hash", @"superclass", @"class", @"description", @"debugDescription"]];
+    for (int i = 0; i < propertyCount; i++) {
+      objc_property_t property = properties[i];
+      NSString *attributes = [NSString stringWithUTF8String:(char *)property_getAttributes(property)];
+      
+      NSString *name = [NSString stringWithUTF8String:(char *)property_getName(property)];
+      if ([blackListPropertyNames containsObject:name]) {
+        continue;
+      }
+      NSMutableString *generatedPropertyString = [NSMutableString stringWithString:@"@property ("];
+      
+      NSScanner *scanner = [[NSScanner alloc] initWithString:attributes];
+      [scanner setCharactersToBeSkipped:charSet];
+      
+      BOOL multipleOptions = 0;
+      NSString *propertyType;
+      NSString *parsedInput;
+      while ([scanner scanUpToCharactersFromSet:charSet intoString:&parsedInput]) {
+        if ([parsedInput isEqualToString:@"N"]) {
+          if (multipleOptions) {
+            [generatedPropertyString appendString:@", "];
+          }
+          
+          [generatedPropertyString appendString:@"nonatomic"];
+          multipleOptions = 1;
+        } else if ([parsedInput isEqualToString:@"W"]) {
+          if (multipleOptions) {
+            [generatedPropertyString appendString:@", "];
+          }
+          
+          [generatedPropertyString appendString:@"weak"];
+          multipleOptions = 1;
+        } else if ([parsedInput hasPrefix:@"G"]) {
+          if (multipleOptions) {
+            [generatedPropertyString appendString:@", "];
+          }
+         [generatedPropertyString appendString:(NSString *)@"getter="];
+         [generatedPropertyString appendString:(NSString *)[parsedInput substringFromIndex:1]];
+         [blackListMethodNames addObject:[parsedInput substringFromIndex:1]];
+          multipleOptions = 1;
+        } else if ([parsedInput hasPrefix:@"S"]) {
+          if (multipleOptions) {
+            [generatedPropertyString appendString:@", "];
+          }
+          
+         [generatedPropertyString appendString:(NSString *)@"setter="];
+         [generatedPropertyString appendString:(NSString *)[parsedInput substringFromIndex:1]];
+         [blackListMethodNames addObject:[parsedInput substringFromIndex:1]];
+          multipleOptions = 1;
+        } else if ([parsedInput isEqualToString:@"&"]) {
+          if (multipleOptions) {
+            [generatedPropertyString appendString:@", "];
+          }
+          [generatedPropertyString appendString:@"strong"];
+          multipleOptions = 1;
+        } else if ([parsedInput hasPrefix:@"V"]) { // ivar name here, V_name
+        } else if ([parsedInput hasPrefix:@"T"]) { // Type here, T@"NSString"
+          if ( (BOOL)[[[parsedInput substringToIndex:2] substringFromIndex:1] isEqualToString: @"@"]) { // It's a NSObject
+            
+            NSString *tmpPropertyType = [parsedInput substringFromIndex:1];
+            NSArray *propertyComponents = [tmpPropertyType componentsSeparatedByString:@"\""];
+            if ([propertyComponents count] > 1) {
+              NSString *component = (NSString *)[propertyComponents objectAtIndex:1];
+              component = [component stringByReplacingOccurrencesOfString:@"><" withString:@", "];
+              if ([component hasPrefix:@"<"]) {
+                propertyType = (NSString *)[@"id" stringByAppendingString:component];
+                NSString *formatted = [[component stringByReplacingOccurrencesOfString:@"<" withString:@""] stringByReplacingOccurrencesOfString:@">" withString:@""];
+                for (NSString *f in [formatted componentsSeparatedByString:@", "]) {
+                  [exportedProtocolsSet addObject:f];
+                }
+              } else {
+                [exportedClassesSet addObject:component];
+                propertyType = (NSString *)[component stringByAppendingString:@"*"];
+              }
+            } else {
+
+              propertyType = @"id";
+            }
+          } else {
+            propertyType = argumentBlock([parsedInput substringFromIndex:1]);
+          }
+        }
+      }
+      [generatedPropertyString appendString:(NSString *)[(NSString *)[(NSString *)[(NSString *)[@") " stringByAppendingString:propertyType] stringByAppendingString:@" "] stringByAppendingString:name] stringByAppendingString:@";\n"]];
+
+      [generatedProperties appendString:generatedPropertyString];
+      [blackListMethodNames addObject:name];
+    }
+    NSMutableArray *tmpSetArray = [NSMutableArray array];
+    for (NSString *propertyName in [blackListMethodNames allObjects]) {
+      NSString *setter = (NSString *)[@"set" stringByAppendingString:(NSString *)[(NSString *)[(NSString *)[[propertyName substringToIndex:1] uppercaseString] stringByAppendingString:[propertyName substringFromIndex:1]] stringByAppendingString:@":"]];
+      [tmpSetArray addObject:setter];
+    }
+   
+    [blackListMethodNames addObjectsFromArray:tmpSetArray];
+    NSString *(^generateMethodsForClass)(Class) = ^(Class cls) {
+      
+      NSMutableString* generatedMethods = [NSMutableString stringWithString:@""];
+      unsigned int classCount = 0;
+      Method *methods = (Method *)class_copyMethodList(cls, &classCount);
+      NSString *classOrInstanceStart = (BOOL)class_isMetaClass(cls) ? @"+" : @"-";
+      
+      for (int i = 0; i < classCount; i++) {
+        Method m = methods[i];
+        NSString *methodName = NSStringFromSelector((SEL)method_getName(m));
+        if ([blackListMethodNames containsObject:methodName]) {
+          continue;
+        }
+        NSMutableString *generatedMethodString = [NSMutableString stringWithString:classOrInstanceStart];
+        char *retType = (char *)method_copyReturnType(m);
+        NSString *retTypeString = [NSString stringWithUTF8String:retType];
+        free(retType);
+        unsigned int arguments = (unsigned int)method_getNumberOfArguments(m);
+        
+        [generatedMethodString appendString:(NSString *)[(NSString *)[@"(" stringByAppendingString:argumentBlock(retTypeString)] stringByAppendingString:@")"]];
+        NSArray *methodComponents = [methodName componentsSeparatedByString:@":"];
+        
+        NSMutableString *realizedMethod = [NSMutableString stringWithString:@""];
+        for (int j = 2; j < arguments; j++) { // id, sel, always
+          int index = j - 2;
+          [realizedMethod appendString:(NSString *)[methodComponents[index] stringByAppendingString:@":"]];
+          char *argumentType = (char *)method_copyArgumentType(m, j);
+          NSString *argumentTypeString = [NSString stringWithUTF8String:argumentType];
+          free(argumentType);
+          [realizedMethod appendString:(NSString *)[(NSString *)[@"(" stringByAppendingString:argumentBlock(argumentTypeString)] stringByAppendingString:@")"]];
+          
+          [realizedMethod appendString:@"arg"];
+          [realizedMethod appendString:[@(index) stringValue]];
+          [realizedMethod appendString:@" "];
+        }
+        [generatedMethodString appendString:realizedMethod];
+        if (arguments == 2) {
+          [generatedMethodString appendString:methodName];
+        }
+        
+        [generatedMethods appendString:(NSString *)[generatedMethodString stringByAppendingString:@";\n"]];
+        
+        
+      }
+      free(methods);
+      return generatedMethods;
+    };
+    
+    // Instance Methods
+    NSString *generatedInstanceMethods = generateMethodsForClass((Class)cls);
+    
+    // Class Methods
+    Class metaClass = (Class)objc_getMetaClass((char *)class_getName(cls));
+    NSString *generatedClassMethods = generateMethodsForClass(metaClass);
+    
+
+    NSMutableString *finalString = [NSMutableString string];
+
+
+  [finalString appendString:@"\n************************************************************\n"];
+  [finalString appendString:(NSString *)[cls description]];
+  [finalString appendString:@" : "];
+  [finalString appendString:(NSString *)[[cls superclass] description]];
+  [finalString appendString:(NSString *)[[[generatedProperties componentsSeparatedByString:@"\n"] sortedArrayUsingSelector:@selector(compare:)] componentsJoinedByString:@"\n "]];
+  [finalString appendString:(NSString *)[[[[generatedClassMethods stringByReplacingOccurrencesOfString:@" ;" withString:@";"] componentsSeparatedByString:@"\n"] sortedArrayUsingSelector:@selector(compare:)] componentsJoinedByString:@"\n "]];
+  [finalString appendString:(NSString *)[[[[generatedInstanceMethods stringByReplacingOccurrencesOfString:@" ;" withString:@";"] componentsSeparatedByString:@"\n"] sortedArrayUsingSelector:@selector(compare:)] componentsJoinedByString:@"\n "]];
+
+  [returnDict setObject:(id _Nonnull)finalString forKey:(id _Nonnull)[cls description]];
+  // Free stuff
+  free(properties);
+  } 
+
+  NSArray *sortedKeys = [[returnDict allKeys] sortedArrayUsingSelector: @selector(compare:)];
+  NSMutableArray *sortedValues = [NSMutableArray array];
+  for (NSString *key in sortedKeys) {
+    [returnString appendString:(NSString *)[returnDict objectForKey:key]];
+  }
+  returnString; 
+'''
+    return script
+
+
 
 def generate_option_parser():
     usage = "usage: %prog [options] /optional/path/to/executable/or/bundle"
@@ -543,6 +776,12 @@ def generate_option_parser():
                       default=False,
                       dest="generate_protocol",
                       help="Generate a protocol that you can cast to any object")
+
+    parser.add_option("-o", "--output_dir",
+                      action="store_true",
+                      default=False,
+                      dest="output_dir",
+                      help="Specify output dir for dumping objective-c code")
 
     parser.add_option("-c", "--conforms_to_protocol",
                       action="store",

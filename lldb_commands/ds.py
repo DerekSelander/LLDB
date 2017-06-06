@@ -21,6 +21,7 @@
 # SOFTWARE.
 
 import lldb
+import os
 import re
 import subprocess
 
@@ -89,6 +90,12 @@ def getSection(module=None, name=None):
                 continue
         index += 1
     return None
+
+def create_or_touch_filepath(filepath, contents):
+    file = open(filepath, "w")
+    file.write(contents)
+    file.flush()
+    file.close()
 
 def copy(debugger, command, result, internal_dict):
     res = lldb.SBCommandReturnObject()
