@@ -25,6 +25,7 @@ import ds
 import os
 import shlex
 import optparse
+import datetime
 import lldb.utils.symbolication
 
 
@@ -80,6 +81,43 @@ Examples:
     res = lldb.SBCommandReturnObject()
     interpreter = debugger.GetCommandInterpreter()
     target = debugger.GetSelectedTarget()
+    if options.output_dir:
+        directory = '/tmp/{}_{}/'.format(ds.getTarget().executable.basename, datetime.datetime.now().time())
+        os.makedirs(directory)
+
+        modules = ds.getTarget().modules
+        if len(args) > 0 and args[0] == '__all':
+            os.makedirs(directory + 'PrivateFrameworks')
+            os.makedirs(directory + 'Frameworks')
+            modules = [i for i in ds.getTarget().modules if '/usr/lib/' not in i.file.fullpath and '__lldb_' not in i.file.fullpath]
+            outputMsg = "Dumping all private Objective-C frameworks"
+        elif len(args) > 0 and args[0]:
+            module = ds.getTarget().module[args[0]]
+            if module is None:
+                result.SetError( "Unable to open module name '{}', to see list of images use 'image list -b'".format(args[0]))
+                return
+            modules = [module]
+            outputMsg = "Dumping all private Objective-C frameworks"
+        else:
+            modules = [ds.getTarget().module[ds.getTarget().executable.fullpath]]
+
+        for module in modules:
+            command_script = generate_module_header_script(options, module.file.fullpath.replace('//', '/'))
+
+            interpreter.HandleCommand('expression -lobjc -O -- ' + command_script, res)
+            # debugger.HandleCommand('expression -lobjc -O -- ' + command_script)
+            if '/System/Library/PrivateFrameworks/' in module.file.fullpath:
+                subdir = 'PrivateFrameworks/'
+            elif '/System/Library/Frameworks/' in module.file.fullpath:
+                subdir = 'Frameworks/'
+            else:
+                subdir = ''
+
+            ds.create_or_touch_filepath(directory + subdir + module.file.basename + '.txt', res.GetOutput())
+        print('Written output to: ' + directory + '... opening file')
+        os.system('open -R ' + directory)
+        return
+
     if options.module is not None:
         module = target.FindModule(lldb.SBFileSpec(options.module))
         if not module.IsValid():
@@ -87,10 +125,6 @@ Examples:
                 "Unable to open module name '{}', to see list of images use 'image list -b'".format(options.module))
             return
 
-    if options.output_dir:
-        command_script = generate_module_header_script(options, None)
-        debugger.HandleCommand('expression -lobjc -O -- ' + command_script)
-        return
 
 
     if options.conforms_to_protocol is not None:
@@ -503,7 +537,7 @@ def generate_header_script(options, class_to_generate_header):
 '''
     return script
 
-def generate_module_header_script(options, moduleName):
+def generate_module_header_script(options, modulePath):
     script = r'''@import @ObjectiveC;
   //Dang it. LLDB JIT Doesn't like NSString stringWithFormat on device. Need to use stringByAppendingString instead
 
@@ -514,13 +548,14 @@ def generate_module_header_script(options, moduleName):
   typedef struct objc_property *objc_property_t;
 
   NSMutableString *returnString = [NSMutableString string];
+
+  [returnString appendString:@"''' + modulePath + r'''\n************************************************************\n"];
   // Properties
   NSMutableSet *exportedClassesSet = [NSMutableSet set];
   NSMutableSet *exportedProtocolsSet = [NSMutableSet set];
   
   unsigned int count = 0;
-  const char *path = (char *)[[[NSBundle mainBundle] executablePath] UTF8String];
-  const char **allClasses = (const char **)objc_copyClassNamesForImage(path, &count);
+  const char **allClasses = (const char **)objc_copyClassNamesForImage("''' + modulePath + r'''", &count);
   NSMutableDictionary *returnDict = [NSMutableDictionary dictionaryWithCapacity:count];
 
   for (int i = 0; i < count; i++) {
@@ -713,13 +748,13 @@ def generate_module_header_script(options, moduleName):
     NSMutableString *finalString = [NSMutableString string];
 
 
-  [finalString appendString:@"\n************************************************************\n"];
   [finalString appendString:(NSString *)[cls description]];
   [finalString appendString:@" : "];
   [finalString appendString:(NSString *)[[cls superclass] description]];
   [finalString appendString:(NSString *)[[[generatedProperties componentsSeparatedByString:@"\n"] sortedArrayUsingSelector:@selector(compare:)] componentsJoinedByString:@"\n "]];
   [finalString appendString:(NSString *)[[[[generatedClassMethods stringByReplacingOccurrencesOfString:@" ;" withString:@";"] componentsSeparatedByString:@"\n"] sortedArrayUsingSelector:@selector(compare:)] componentsJoinedByString:@"\n "]];
   [finalString appendString:(NSString *)[[[[generatedInstanceMethods stringByReplacingOccurrencesOfString:@" ;" withString:@";"] componentsSeparatedByString:@"\n"] sortedArrayUsingSelector:@selector(compare:)] componentsJoinedByString:@"\n "]];
+  [finalString appendString:@"\n************************************************************\n"];
 
   [returnDict setObject:(id _Nonnull)finalString forKey:(id _Nonnull)[cls description]];
   // Free stuff
