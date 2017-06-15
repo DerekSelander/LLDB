@@ -108,6 +108,33 @@ def copy(debugger, command, result, internal_dict):
     result.AppendMessage('Content copied to clipboard...')
 
 
+def attrStr(msg, color='black'):
+    # if not sys.stderr.isatty():
+    #     return msg
+
+    clr = {
+    'cyan' : '\033[36m',
+    'grey' : '\033[2m',
+    'blink' : '\033[5m',
+    'redd' : '\033[41m',
+    'greend' : '\033[42m',
+    'yellowd' : '\033[43m',
+    'pinkd' : '\033[45m',
+    'cyand' : '\033[46m',
+    'greyd' : '\033[100m',
+    'blued' : '\033[44m',
+    'whiteb' : '\033[7m',
+    'blue' : '\033[95m',
+    'pink' : '\033[94m',
+    'green' : '\033[92m',
+    'yellow' : '\033[93m',
+    'red' : '\033[91m',
+    'bold' : '\033[1m',
+    'underline' : '\033[4m'
+    }[color]
+    return clr + msg + '\033[0m'
+
+
 def sys(debugger, command, result, internal_dict):
     search = re.search('(?<=\$\().*(?=\))', command)
     if search:

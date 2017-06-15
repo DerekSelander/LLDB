@@ -261,7 +261,7 @@ def generate_return_string(debugger, module_dict, options):
     return return_string
 
 
-def generate_main_executable_class_address_script(bundlePath = None):
+def generate_main_executable_class_address_script(bundlePath = None, options=None):
     command_script = r'''
   @import ObjectiveC;
   @import Foundation;
