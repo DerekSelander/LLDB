@@ -91,6 +91,10 @@ Dumps all the NSObject inherited classes in the process. If you give it a module
       # Generate a protocol that you can cast an object to. Ideal when working with private classes at dev time
       (lldb) dclass -p UIView
 
+### dd
+Alternative to LLDB's `disassemble` command. Uses colors. Terminal only
+![yoink example](https://github.com/DerekSelander/LLDB/raw/master/Media/dd.png)
+
 ### lookup
 Perform a regular expression search for stuff in an executable
 
