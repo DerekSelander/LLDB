@@ -12,7 +12,7 @@ def __lldb_init_module(debugger, internal_dict):
 
 def handle_command(debugger, command, result, internal_dict):
     '''
-    Disassemble 
+    Disassemble with colors! Terminal only
     '''
 
     command_args = shlex.split(command, posix=False)
@@ -25,15 +25,17 @@ def handle_command(debugger, command, result, internal_dict):
         return
 
     if len(args) == 0:
-        sym = ds.getFrame().symbol
+        sym = ds.getFrame().GetSymbol()
     else:
-        sym = ds.getTarget().ResolveLoadAddress(long(args[0], 16)).symbol
+        sym = ds.getTarget().ResolveLoadAddress(long(args[0], 16)).GetSymbol()
 
-
-    instructions = sym.instructions
+    instructions = sym.GetInstructions(target)
     output = ds.attrStr(sym.addr.module.file.basename + ', ' + sym.name, 'cyan') + '\n'
     counter = 0
-    startAddress = instructions[0].addr.GetLoadAddress(target)
+
+    if len(instructions) == 0:
+        return
+    startAddress = instructions.GetInstructionAtIndex(0).GetAddress().GetLoadAddress(target)
     for inst in instructions:
         line = ds.attrStr(str(counter).ljust(4), 'grey')
         counter += 1
