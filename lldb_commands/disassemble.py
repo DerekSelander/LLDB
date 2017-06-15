@@ -36,10 +36,15 @@ def handle_command(debugger, command, result, internal_dict):
     if len(instructions) == 0:
         return
     startAddress = instructions.GetInstructionAtIndex(0).GetAddress().GetLoadAddress(target)
+
+    frame = ds.getFrame()
     for inst in instructions:
         line = ds.attrStr(str(counter).ljust(4), 'grey')
         counter += 1
         offset = str(inst.addr.GetLoadAddress(target) - startAddress)
+        branch = (ds.attrStr('*', 'yellow') if inst.is_branch else ' ')
+        pc = ds.attrStr('-> ', 'grey') if frame.addr == inst.addr else '   '
+
         loadaddr = ds.attrStr(hex(inst.addr.GetLoadAddress(target)) + (' <+' + offset + '>:').ljust(8), 'grey')
         mnemonic = ds.attrStr(inst.mnemonic.ljust(5), 'red')
         operands = ds.attrStr(inst.operands, 'bold')
@@ -50,7 +55,7 @@ def handle_command(debugger, command, result, internal_dict):
         else:
             mem = ''
 
-        output += '{} {} {} {} {} {}\n'.format(line, loadaddr, mem, mnemonic, operands, comments)
+        output += '{}{}{} {} {} {} {} {}\n'.format(pc, branch, line, loadaddr, mem, mnemonic, operands, comments)
 
     result.AppendMessage(output)
 
