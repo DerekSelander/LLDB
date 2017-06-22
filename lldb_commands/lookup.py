@@ -219,9 +219,9 @@ def generate_return_string(debugger, module_dict, options):
             return_string += str(count) + ' hits in: ' + key + '\n'
             continue
 
-        return_string += '****************************************************\n'
-        return_string += str(count) + ' hits in: ' + key + '\n'
-        return_string += '****************************************************\n'
+        return_string += ds.attrStr('****************************************************', 'cyan') + '\n'
+        return_string += str(count) + ' hits in: ' + ds.attrStr(key, 'red') + '\n'
+        return_string += ds.attrStr('****************************************************', 'cyan') + '\n'
 
         for symbol_context in module_dict[key]:
             if options.global_var or options.global_var_noeval:
@@ -251,7 +251,7 @@ def generate_return_string(debugger, module_dict, options):
             if options.load_address:
                 str_addr = str(hex(symbol_context.GetSymbol().GetStartAddress().GetLoadAddress(debugger.GetSelectedTarget())))
                 end_addr = str(hex(symbol_context.GetSymbol().GetEndAddress().GetLoadAddress(debugger.GetSelectedTarget())))
-                return_string += '[' + str_addr + '-' + end_addr + '] ' + name
+                return_string += ds.attrStr('[' + str_addr + '-' + end_addr + '] ', 'yellow') + name
             else:  
                 return_string += name
 

@@ -23,6 +23,7 @@
 import lldb
 import os
 import shlex
+import ds
 import optparse
 
 def __lldb_init_module(debugger, internal_dict):
@@ -73,16 +74,16 @@ def processStackTraceStringFromAddresses(frameAddresses, target):
         # New content start 2
         if symbol.synthetic: # 1
             children = methodsVal.sbvalue.GetNumChildren() # 4
-            name = symbol.name + r' ... unresolved womp womp' # 2
+            name = ds.attrStr(symbol.name + r' ... unresolved womp womp', 'redd') # 2
 
             loadAddr = symbol.addr.GetLoadAddress(target) # 3
             for i in range(children):
                 key = long(methodsVal[i].key.sbvalue.description) # 5
                 if key == loadAddr:
-                    name = methodsVal[i].value.sbvalue.description # 6
+                    name = ds.attrStr(methodsVal[i].value.sbvalue.description, 'bold') # 6
                     break
         else:
-            name = symbol.name # 7
+            name = ds.attrStr(symbol.name, 'yellow') # 7
         # New content end 2
 
         offset_str = ''
@@ -90,7 +91,7 @@ def processStackTraceStringFromAddresses(frameAddresses, target):
         if offset > 0:
             offset_str = '+ {}'.format(offset)
 
-        frame_string += 'frame #{:<2}: {} {}`{} {}\n'.format(index, hex(addr.GetLoadAddress(target)), addr.module.file.basename, name, offset_str)
+        frame_string += 'frame #{:<2}: {} {}`{} {}\n'.format(index, ds.attrStr(hex(addr.GetLoadAddress(target)), 'grey'), ds.attrStr(addr.module.file.basename, 'cyan'), name, ds.attrStr(offset_str, 'grey'))
 
     return frame_string
 

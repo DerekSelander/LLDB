@@ -28,6 +28,8 @@ import subprocess
 def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand('command script add -f ds.copy copy')
     debugger.HandleCommand('command script add -f ds.sys sys')
+    if not isXcode():
+        debugger.HandleCommand('settings set frame-format "frame #${frame.index}: ${frame.pc}{ \x1b\x5b36m${module.file.basename}\x1b\x5b39m{` \x1b\x5b33m${function.name-with-args} \x1b\x5b39m${function.pc-offset}}}{ at ${line.file.basename}:${line.number}}\n"')
 
 def genExpressionOptions(useSwift=False, ignoreBreakpoints=False, useID=True):
     options = lldb.SBExpressionOptions()
@@ -109,9 +111,9 @@ def copy(debugger, command, result, internal_dict):
 
 
 def attrStr(msg, color='black'):
-    # if not sys.stderr.isatty():
-    #     return msg
-
+    if isXcode():
+        return msg
+        
     clr = {
     'cyan' : '\033[36m',
     'grey' : '\033[2m',
@@ -124,16 +126,21 @@ def attrStr(msg, color='black'):
     'greyd' : '\033[100m',
     'blued' : '\033[44m',
     'whiteb' : '\033[7m',
-    'blue' : '\033[95m',
-    'pink' : '\033[94m',
+    'pink' : '\033[95m',
+    'blue' : '\033[94m',
     'green' : '\033[92m',
-    'yellow' : '\033[93m',
+    'yellow' : '\x1b\x5b33m',
     'red' : '\033[91m',
     'bold' : '\033[1m',
     'underline' : '\033[4m'
     }[color]
-    return clr + msg + '\033[0m'
+    return clr + msg + ('\x1b\x5b39m' if clr == 'yellow' else '\033[0m')
 
+def isXcode():
+    if "unknown" == os.environ.get("TERM", "unknown"):
+        return True
+    else: 
+        return False
 
 def sys(debugger, command, result, internal_dict):
     search = re.search('(?<=\$\().*(?=\))', command)
