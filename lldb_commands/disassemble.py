@@ -31,7 +31,7 @@ def handle_command(debugger, command, result, internal_dict):
         query = options.search_functions
         symbol_context_list = target.FindGlobalFunctions(query, 0, lldb.eMatchTypeRegex)    
         for symContext in symbol_context_list:
-            output += generateAssemblyFromSymbol(symContext.symbol, options) + '\n'
+            output += generateAssemblyFromSymbol(symContext.symbol, options)
     elif len(args) == 0:
         sym = ds.getFrame().GetSymbol()
         output += generateAssemblyFromSymbol(sym, options)
@@ -136,7 +136,7 @@ def generateAssemblyFromSymbol(sym, options):
         else:
             return ''
 
-    return output
+    return output + '\n'
 
 
 
