@@ -25,11 +25,24 @@ def handle_command(debugger, command, result, internal_dict):
         result.SetError(parser.usage)
         return
 
-    if len(args) == 0:
+    output = ''
+
+    if options.search_functions:
+        query = options.search_functions
+        symbol_context_list = target.FindGlobalFunctions(query, 0, lldb.eMatchTypeRegex)    
+        for symContext in symbol_context_list:
+            output += generateAssemblyFromSymbol(symContext.symbol, options) + '\n'
+    elif len(args) == 0:
         sym = ds.getFrame().GetSymbol()
+        output += generateAssemblyFromSymbol(sym, options)
     else:
         sym = ds.getTarget().ResolveLoadAddress(long(args[0], 16)).GetSymbol()
+        output += generateAssemblyFromSymbol(sym, options)
 
+    result.AppendMessage(output)
+
+def generateAssemblyFromSymbol(sym, options):
+    target = ds.getTarget()
     instructions = sym.GetInstructions(target)
     output = ds.attrStr(str(sym.addr.module.file.basename) + ', ', 'cyan') + ds.attrStr(str(sym.name), 'yellow') + '\n'
     counter = 0
@@ -42,6 +55,7 @@ def handle_command(debugger, command, result, internal_dict):
 
     branches = []
     offsetSizeDict = {}
+    grepSearch = False 
     for inst in instructions:
         line = ds.attrStr(str(counter).ljust(4), 'grey')
         offset = str(inst.addr.GetLoadAddress(target) - startAddress)
@@ -53,22 +67,46 @@ def handle_command(debugger, command, result, internal_dict):
         operands = ds.attrStr(inst.operands, 'bold')
         comments = ds.attrStr(inst.comment, 'cyan')
 
+        if options.grep_functions:
+            if re.search(options.grep_functions, comments):
+                grepSearch = True
+
         # TODO x64 only, need arm64
         if 'rip' in inst.operands:
             nextInst = instructions[counter + 1]
             m = re.search(r"(?<=\[).*(?=\])", inst.operands)
             pcComment = ''
-            if m:
+            if m and nextInst:
                 nextPCAddr = hex(nextInst.addr.GetLoadAddress(target))
                 commentLoadAddr = eval(m.group(0).replace('rip', nextPCAddr))
-                pcComment += ds.attrStr(hex(commentLoadAddr), 'green')
-                if options.verbose:
-                    pcComment += ' ' + ds.attrStr(str(ds.getTarget().ResolveLoadAddress(commentLoadAddr).section), 'green')
+                pcComment += ds.attrStr('; ' + hex(commentLoadAddr), 'green')
+
+                section = ds.getTarget().ResolveLoadAddress(commentLoadAddr).section
+                modName = section.addr.module.file.basename
+                name = ''
+                while section:
+                    name = '.' + section.name + name
+                    section = section.GetParent()
+
+                modName += name
+
+
+                pcComment += ' ' + ds.attrStr(modName, 'green')
+                # interpreter.HandleCommand('image lookup -a ' + nextPCAddr, res)
+
+                # # m = re.search('(?<=\().*(?=\s)', res.GetOutput())
+                # # if m:
+                # #     pcComment += ds.attrStr(' ' + m.group(0), 'green')
+
+                # m = re.search('(?<=Summary\:\s).*$', res.GetOutput())
+                # if m:
+                #     pcComment += ds.attrStr(' sum:' + res.GetOutput(), 'blue')
+
+                # res.Clear()
+
+
         else:
             pcComment = ''
-
-
-
 
         match = re.search('(?<=\<\+)[0-9]+(?=\>)', inst.comment)
         offsetSizeDict[offset] = counter
@@ -92,7 +130,16 @@ def handle_command(debugger, command, result, internal_dict):
             output += line.format(branchLines[i]) + '\n'
 
 
-    result.AppendMessage(output)
+    if options.grep_functions:
+        if grepSearch:
+            return output
+        else:
+            return ''
+
+    return output
+
+
+
 
 def generateBranchLines(branches, count, offsetSizeDict):
     lines = ['' for i in range(count)]
@@ -126,10 +173,16 @@ def generate_option_parser():
                       dest="show_branch",
                       help="Show the branches within the function")
 
-    parser.add_option("-v", "--verbose",
-                  action="store_true",
-                  default=False,
-                  dest="verbose",
-                  help="Verbose commentary")
+    parser.add_option("-s", "--search_functions",
+                  action="store",
+                  default=None,
+                  dest="search_functions",
+                  help="Do a regex search for functions")
+
+    parser.add_option("-g", "--grep_functions",
+                  action="store",
+                  default=None,
+                  dest="grep_functions",
+                  help="grep for comments in assembly, ideal w/ search_functions options")
     return parser
     
