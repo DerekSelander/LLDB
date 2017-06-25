@@ -99,7 +99,7 @@ def lookup(debugger, command, result, internal_dict):
         # return 
 
         expr_value = frame.EvaluateExpression (command_script, expr_options)
-        output_description = expr_value.GetObjectDescription()
+        output_description = str(expr_value.GetObjectDescription())
             
         # result.AppendMessage(output_description)
         # print(output_description.split())

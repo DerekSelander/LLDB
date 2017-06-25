@@ -49,7 +49,6 @@ def handle_command(debugger, command, result, internal_dict):
                       in thread.frames]
 
     frameString = processStackTraceStringFromAddresses(frameAddresses, target)
-
     result.AppendMessage(frameString)
 
 
@@ -62,7 +61,7 @@ def processStackTraceStringFromAddresses(frameAddresses, target):
 
     # New content start 1
     methods = target.EvaluateExpression(script, generateOptions())
-    methodsVal = lldb.value(methods.deref)
+    methodsVal = lldb.value(methods)
     # New content end 1
 
 
@@ -77,11 +76,9 @@ def processStackTraceStringFromAddresses(frameAddresses, target):
             name = ds.attrStr(symbol.name + r' ... unresolved womp womp', 'redd') # 2
 
             loadAddr = symbol.addr.GetLoadAddress(target) # 3
-            for i in range(children):
-                key = long(methodsVal[i].key.sbvalue.description) # 5
-                if key == loadAddr:
-                    name = ds.attrStr(methodsVal[i].value.sbvalue.description, 'bold') # 6
-                    break
+            k = str(methodsVal[index]).split('"') # 5
+            if len(k) >= 2:
+                name = ds.attrStr(k[1], 'bold') # 6
         else:
             name = ds.attrStr(symbol.name, 'yellow') # 7
         # New content end 2
@@ -105,6 +102,11 @@ def generateOptions():
 
 
 def generateExecutableMethodsScript(frame_addresses):
+    xcode9bug = 'char *frames[' + str(len(frame_addresses)) + r'''];
+  for (int i = 0; i < ''' + str(len(frame_addresses)) + r'''; i++) {
+        frames[i] = NULL;
+    }
+    '''
     frame_addr_str = 'NSArray *ar = @['
     for f in frame_addresses:
         frame_addr_str += '@"' + str(f) + '",'
@@ -148,19 +150,20 @@ def generateExecutableMethodsScript(frame_addresses):
   }
   free(allClasses);
   '''
+    command_script += xcode9bug
     command_script += frame_addr_str
     command_script += r'''
+    
 
-  NSMutableDictionary *stackDict = [NSMutableDictionary dictionary];
-  [retdict keysOfEntriesPassingTest:^BOOL(id key, id obj, BOOL *stop) {
-    
-    if ([ar containsObject:key]) {
-      [stackDict setObject:obj forKey:key];
-      return YES;
+  for (NSString *key in ar) {
+    if ([retdict containsKey:key]) {
+      NSInteger i = [ar indexOfObject:key];
+
+
+      frames[i] = (char *)[[retdict objectForKey:key] UTF8String];
     }
-    
-    return NO;
-  }];
-  stackDict;
+  }
+
+  frames;
   '''
     return command_script
