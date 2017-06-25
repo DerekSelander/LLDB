@@ -92,12 +92,15 @@ def lookup(debugger, command, result, internal_dict):
                 result.SetError('Couldn\'t find the module, "', module_name + '"')
                 return
 
-            command_script = generate_main_executable_class_address_script(module.file.dirname)
+            command_script = generate_main_executable_class_address_script(module.file.dirname, options)
         else:
-            command_script = generate_main_executable_class_address_script()
+            command_script = generate_main_executable_class_address_script(None, options)
         # debugger.HandleCommand('expression -g -lobjc -O -- ' + command_script)
+        # return 
+
         expr_value = frame.EvaluateExpression (command_script, expr_options)
         output_description = expr_value.GetObjectDescription()
+            
         # result.AppendMessage(output_description)
         # print(output_description.split())
         output = '\n\n'.join([line for line in output_description.split('\n') if re.search(clean_command, line)])
@@ -268,7 +271,7 @@ def generate_main_executable_class_address_script(bundlePath = None, options=Non
   NSMutableString *retstr = [NSMutableString string];
   unsigned int count = 0;
 
-  NSBundle *bundle = [NSBundle '''
+  NSBundle *dsbundle = [NSBundle '''
 
     if bundlePath is not None:
         command_script += 'bundleWithPath:@"' + bundlePath + '"];'
@@ -277,7 +280,7 @@ def generate_main_executable_class_address_script(bundlePath = None, options=Non
 
 
     command_script += r'''
-  const char *path = [[bundle executablePath] UTF8String];
+  const char *path = [[dsbundle executablePath] UTF8String];
   const char **allClasses = objc_copyClassNamesForImage(path, &count);
   for (int i = 0; i < count; i++) {
     Class cls = objc_getClass(allClasses[i]);
@@ -288,7 +291,17 @@ def generate_main_executable_class_address_script(bundlePath = None, options=Non
     Method *methods = class_copyMethodList(cls, &methCount);
     for (int j = 0; j < methCount; j++) {
       Method meth = methods[j];
+      '''
+    if options.load_address:
+        command_script += r'''
+      NSString *w = (NSString *)[NSString stringWithFormat:@" %p ", method_getImplementation(meth)];
+      NSString *methodName = [[[[[w stringByAppendingString:@"-["] stringByAppendingString:NSStringFromClass(cls)] stringByAppendingString:@" "] stringByAppendingString:NSStringFromSelector(method_getName(meth))] stringByAppendingString:@"]\n"]
+      '''
+    else:
+        command_script += r'''
       NSString *methodName = [[[[@"-[" stringByAppendingString:NSStringFromClass(cls)] stringByAppendingString:@" "] stringByAppendingString:NSStringFromSelector(method_getName(meth))] stringByAppendingString:@"]\n"];
+      '''
+    command_script += r'''
       [retstr appendString:methodName];
     }
 
@@ -296,7 +309,18 @@ def generate_main_executable_class_address_script(bundlePath = None, options=Non
     Method *classMethods = class_copyMethodList(objc_getMetaClass(class_getName(cls)), &classMethCount);
     for (int j = 0; j < classMethCount; j++) {
       Method meth = classMethods[j];
+      '''
+    if options.load_address:
+        command_script += r'''
+      NSString *w = (NSString *)[NSString stringWithFormat:@" %p ", method_getImplementation(meth)];
+      NSString *methodName = [[[[[w stringByAppendingString:@"+["] stringByAppendingString:NSStringFromClass(cls)] stringByAppendingString:@" "] stringByAppendingString:NSStringFromSelector(method_getName(meth))] stringByAppendingString:@"]\n"];
+      '''
+    else:
+        command_script += r'''
       NSString *methodName = [[[[@"+[" stringByAppendingString:NSStringFromClass(cls)] stringByAppendingString:@" "] stringByAppendingString:NSStringFromSelector(method_getName(meth))] stringByAppendingString:@"]\n"];
+      [retstr appendString:methodName];
+      '''
+    command_script += r'''
       [retstr appendString:methodName];
     }
 
