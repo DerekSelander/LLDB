@@ -60,7 +60,7 @@ def generateAssemblyFromSymbol(sym, options):
         line = ds.attrStr(str(counter).ljust(4), 'grey')
         offset = str(inst.addr.GetLoadAddress(target) - startAddress)
         branch = (ds.attrStr('*', 'yellow') if inst.is_branch else ' ')
-        pc = ds.attrStr('-> ', 'grey') if frame.addr == inst.addr else '   '
+        pc = ds.attrStr('-> ', 'red') if frame.addr == inst.addr else '   '
 
         loadaddr = ds.attrStr(hex(inst.addr.GetLoadAddress(target)) + (' <+' + offset + '>:').ljust(8), 'grey')
         mnemonic = ds.attrStr(inst.mnemonic.ljust(5), 'red')

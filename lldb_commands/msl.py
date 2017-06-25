@@ -2,6 +2,7 @@
 
 import lldb
 import os
+import ds
 import shlex
 import optparse
 import sbt
@@ -63,7 +64,8 @@ def processStackTraceStringFromAddresses(frameAddresses, target):
         if offset > 0:
             offset_str = '+ {}'.format(offset)
 
-        frame_string += 'frame #{:<2}: {} {}`{} {}\n'.format(index, hex(addr.GetLoadAddress(target)), addr.module.file.basename, name, offset_str)
+        i = ds.attrStr('frame #{:<2}: {} '.format(index, hex(addr.GetLoadAddress(target))), 'grey')
+        frame_string += '{} {}`{} {}\n'.format(i, ds.attrStr(str(addr.module.file.basename), 'cyan'), ds.attrStr(str(name), 'yellow') if not symbol.IsSynthetic() else ds.attrStr(str(name), 'yellowd') , offset_str)
 
     return frame_string
 

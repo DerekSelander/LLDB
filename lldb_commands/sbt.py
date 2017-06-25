@@ -91,7 +91,8 @@ def processStackTraceStringFromAddresses(frameAddresses, target):
         if offset > 0:
             offset_str = '+ {}'.format(offset)
 
-        frame_string += 'frame #{:<2}: {} {}`{} {}\n'.format(index, ds.attrStr(hex(addr.GetLoadAddress(target)), 'grey'), ds.attrStr(addr.module.file.basename, 'cyan'), name, ds.attrStr(offset_str, 'grey'))
+        i = ds.attrStr('frame #{:<2}:'.format(index), 'grey')
+        frame_string += '{} {} {}`{} {}\n'.format(i, ds.attrStr(hex(addr.GetLoadAddress(target)), 'grey'), ds.attrStr(addr.module.file.basename, 'cyan'), name, ds.attrStr(offset_str, 'grey'))
 
     return frame_string
 
