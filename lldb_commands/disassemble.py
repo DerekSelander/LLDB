@@ -81,16 +81,8 @@ def generateAssemblyFromSymbol(sym, options):
                 commentLoadAddr = eval(m.group(0).replace('rip', nextPCAddr))
                 pcComment += ds.attrStr('; ' + hex(commentLoadAddr), 'green')
 
-                section = ds.getTarget().ResolveLoadAddress(commentLoadAddr).section
-                modName = section.addr.module.file.basename
-                name = ''
-                while section:
-                    name = '.' + section.name + name
-                    section = section.GetParent()
-
-                modName += name
-
-
+                addr = ds.getTarget().ResolveLoadAddress(commentLoadAddr)
+                modName = generateDescriptionByAddress(addr)
                 pcComment += ' ' + ds.attrStr(modName, 'green')
                 # interpreter.HandleCommand('image lookup -a ' + nextPCAddr, res)
 
@@ -139,6 +131,17 @@ def generateAssemblyFromSymbol(sym, options):
     return output + '\n'
 
 
+def generateDescriptionByAddress(addr):
+    section = addr.section
+    section.addr.module.file.basename
+    retDescription = ''
+    name = ''
+    while section:
+        name = '.' + section.name + name
+        section = section.GetParent()
+
+    retDescription += name
+    return retDescription
 
 
 def generateBranchLines(branches, count, offsetSizeDict):
@@ -148,7 +151,6 @@ def generateBranchLines(branches, count, offsetSizeDict):
         inc = -1 if branch[0] > branch[1] else 1
         ceiling = offsetSizeDict[str(branch[1])]
         for i in range(branch[0], ceiling, inc):
-            print (str(branch) + " " + str(i) + ' ' + str(len(lines)))
             if i == branch[1]:
                 lines[i] += '>' + '-' * multiplier
             elif i == branch[0]:
