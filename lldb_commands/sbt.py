@@ -37,6 +37,15 @@ def handle_command(debugger, command, result, internal_dict):
     code. Currently doesn't work on aarch64 stripped executables
     but works great on x64 :]
     '''
+    command_args = shlex.split(command, posix=False)
+    parser = generate_option_parser()
+    try:
+        (options, args) = parser.parse_args(command_args)
+    except:
+        result.SetError(parser.usage)
+        return
+
+
     target = debugger.GetSelectedTarget()
     process = target.GetProcess()
     thread = process.GetSelectedThread()
@@ -44,19 +53,20 @@ def handle_command(debugger, command, result, internal_dict):
         result.SetError('LLDB must be paused to execute this command')
         return
 
-    frameAddresses = [f.addr.GetLoadAddress(target) 
-                      for f 
-                      in thread.frames]
+    if options.address:
+        frameAddresses = [int(options.address, 16)]
+    else:
+        frameAddresses = [f.addr.GetLoadAddress(target) 
+                          for f 
+                          in thread.frames]
 
-    frameString = processStackTraceStringFromAddresses(frameAddresses, target)
+    frameString = processStackTraceStringFromAddresses(frameAddresses, target, options)
     result.AppendMessage(frameString)
 
 
-def processStackTraceStringFromAddresses(frameAddresses, target):
+def processStackTraceStringFromAddresses(frameAddresses, target, options):
     frame_string = ''
-    startAddresses = [target.ResolveLoadAddress(f).symbol.addr.GetLoadAddress(target) 
-                     for f 
-                     in frameAddresses]
+    startAddresses = [target.ResolveLoadAddress(f).symbol.addr.GetLoadAddress(target) for f in frameAddresses]
     script = generateExecutableMethodsScript(startAddresses)
 
     # New content start 1
@@ -89,7 +99,11 @@ def processStackTraceStringFromAddresses(frameAddresses, target):
             offset_str = '+ {}'.format(offset)
 
         i = ds.attrStr('frame #{:<2}:'.format(index), 'grey')
-        frame_string += '{} {} {}`{} {}\n'.format(i, ds.attrStr(hex(addr.GetLoadAddress(target)), 'grey'), ds.attrStr(addr.module.file.basename, 'cyan'), name, ds.attrStr(offset_str, 'grey'))
+        if options.address:
+            frame_string += '{} {}`{} {}\n'.format(ds.attrStr(hex(addr.GetLoadAddress(target)), 'grey'), ds.attrStr(addr.module.file.basename, 'cyan'), ds.attrStr(name, 'yellow'), ds.attrStr(offset_str, 'grey'))
+        else:
+            frame_string += '{} {} {}`{} {}\n'.format(i, ds.attrStr(hex(addr.GetLoadAddress(target)), 'grey'), ds.attrStr(addr.module.file.basename, 'cyan'), name, ds.attrStr(offset_str, 'grey'))
+
 
     return frame_string
 
@@ -167,3 +181,16 @@ def generateExecutableMethodsScript(frame_addresses):
   frames;
   '''
     return command_script
+
+def generate_option_parser():
+    usage = "usage: %prog [options] path/to/item"
+    parser = optparse.OptionParser(usage=usage, prog="lookup")
+
+    parser.add_option("-a", "--address",
+                      action="store",
+                      default=None,
+                      dest="address",
+                      help="Only try to resymbolicate this address")
+
+    
+    return parser
