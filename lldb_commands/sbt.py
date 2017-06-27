@@ -64,7 +64,7 @@ def handle_command(debugger, command, result, internal_dict):
     result.AppendMessage(frameString)
 
 
-def processStackTraceStringFromAddresses(frameAddresses, target, options):
+def processStackTraceStringFromAddresses(frameAddresses, target, options=None):
     frame_string = ''
     startAddresses = [target.ResolveLoadAddress(f).symbol.addr.GetLoadAddress(target) for f in frameAddresses]
     script = generateExecutableMethodsScript(startAddresses)
@@ -90,7 +90,7 @@ def processStackTraceStringFromAddresses(frameAddresses, target, options):
             if len(k) >= 2:
                 name = ds.attrStr(k[1], 'bold') # 6
         else:
-            name = ds.attrStr(symbol.name, 'yellow') # 7
+            name = ds.attrStr(str(symbol.name), 'yellow') # 7
         # New content end 2
 
         offset_str = ''
@@ -99,10 +99,10 @@ def processStackTraceStringFromAddresses(frameAddresses, target, options):
             offset_str = '+ {}'.format(offset)
 
         i = ds.attrStr('frame #{:<2}:'.format(index), 'grey')
-        if options.address:
+        if options and options.address:
             frame_string += '{} {}`{} {}\n'.format(ds.attrStr(hex(addr.GetLoadAddress(target)), 'grey'), ds.attrStr(addr.module.file.basename, 'cyan'), ds.attrStr(name, 'yellow'), ds.attrStr(offset_str, 'grey'))
         else:
-            frame_string += '{} {} {}`{} {}\n'.format(i, ds.attrStr(hex(addr.GetLoadAddress(target)), 'grey'), ds.attrStr(addr.module.file.basename, 'cyan'), name, ds.attrStr(offset_str, 'grey'))
+            frame_string += '{} {} {}`{} {}\n'.format(i, ds.attrStr(str(hex(addr.GetLoadAddress(target))), 'grey'), ds.attrStr(str(addr.module.file.basename), 'cyan'), name, ds.attrStr(str(offset_str), 'grey'))
 
 
     return frame_string
