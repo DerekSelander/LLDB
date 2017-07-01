@@ -150,8 +150,10 @@ dtrace:::BEGIN
         else:
             dtrace_script += query_template.format('objc', '')
 
-        if options.all_modules_output:
+        if options.all_modules_output and not options.non_objectivec:
              dtrace_script += '{\nprintf("0x%012p %c[%s %s]\\n", uregs[R_RDI], probefunc[0], probemod, (string)&probefunc[1]);\n}'
+        elif options.all_modules_output and options.non_objectivec:
+             dtrace_script += '{\nprintf("0x%012p %s, %s\\n", uregs[R_RDI], probemod, probefunc);\n}'
         else:
             dtrace_script += '{\nprogram_counter = uregs[R_PC];\nthis->method_counter = \"Unknown\";' # TODO 64 only change to universal arch
             dtrace_template = "this->method_counter = {} <= program_counter && program_counter <= {} ? \"{}\" : this->method_counter;\n"
