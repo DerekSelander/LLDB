@@ -14,6 +14,8 @@ command regex ivars -h "Dumps all ivars for an instance of a particular class wh
 
 command regex methods -h "Dumps all methods implemented by the NSObject subclass (iOS, NSObject subclass only)" -s "methods UIView" -- 's/(.+)/expression -lobjc -O -- [%1 _shortMethodDescription]/'
 
+command alias gg process int
+
 command alias cpo expression -l objc++ -O --
 
 command alias cp expression -l objc++  --
