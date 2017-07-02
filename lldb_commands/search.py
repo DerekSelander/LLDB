@@ -35,6 +35,7 @@
 import lldb
 import os
 import shlex
+import ds
 import optparse
 import lldb.utils.symbolication
 
@@ -65,6 +66,10 @@ Examples:
     find UIView -c "[obj tag] == 5"
     '''
 
+    if not ds.isProcStopped():
+        result.SetError(ds.attrStr('You must have the process suspended in order to execute this command', 'red'))
+        return
+
     command_args = shlex.split(command)
     parser = generate_option_parser()
     try:
@@ -93,7 +98,7 @@ Examples:
         options.module = generate_module_search_sections_string(module, target)
 
 
-    interpreter.HandleCommand('po (Class)NSClassFromString(@\"{}\")'.format(clean_command), res)
+    interpreter.HandleCommand('expression -lobjc -O -- (Class)NSClassFromString(@\"{}\")'.format(clean_command), res)
     if 'nil' in res.GetOutput():
         result.SetError('Can\'t find class named "{}". Womp womp...'.format(clean_command))
         return
@@ -106,6 +111,7 @@ Examples:
     expr_options.SetFetchDynamicValue(lldb.eNoDynamicValues);
     expr_options.SetTimeoutInMicroSeconds (30*1000*1000) # 30 second timeout
     expr_options.SetTryAllThreads (True)
+    expr_options.SetTrapExceptions(False)
     expr_options.SetUnwindOnError(True)
     expr_options.SetGenerateDebugInfo(True)
     expr_options.SetLanguage (lldb.eLanguageTypeObjC_plus_plus)
@@ -136,7 +142,7 @@ Examples:
     if options.barebones:
         for i in range(count):
             v = val.values[i].sbvalue
-            val_description = str(v.GetTypeName()) + ' [' + str(v.GetValue())  + ']'
+            val_description = ds.attrStr(str(v.GetTypeName()), 'cyan') + ' [' + ds.attrStr(str(v.GetValue()), 'yellow')  + ']'
             result.AppendMessage(val_description)
     else:
         for i in range(count):
@@ -281,7 +287,7 @@ for (unsigned i = 0; i < count; i++) {
     if options.exact_match:
         command_script  += 'if ((int)[potentialClass isMemberOfClass:query]'
     else: 
-        command_script += 'if ((int)[potentialClass isSubclassOfClass:query]'
+        command_script += 'if ((int)[[potentialClass class] isSubclassOfClass:query]'
 
     if options.condition:
         cmd = options.condition
