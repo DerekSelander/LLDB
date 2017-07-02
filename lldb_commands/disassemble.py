@@ -64,7 +64,11 @@ def generateAssemblyFromSymbol(sym, options):
 
         loadaddr = ds.attrStr(hex(inst.addr.GetLoadAddress(target)) + (' <+' + offset + '>:').ljust(8), 'grey')
         mnemonic = ds.attrStr(inst.mnemonic.ljust(5), 'red')
-        operands = ds.attrStr(inst.operands, 'bold')
+        if len(inst.operands.split(',')) > 1:
+            ops = inst.operands.split(',')
+            operands = ds.attrStr(ops[0], 'bold') + ', ' + ds.attrStr(ops[1], 'yellow')
+        else: 
+            operands = ds.attrStr(inst.operands, 'bold')
         comments = ds.attrStr(inst.comment, 'cyan')
 
         if options.grep_functions:

@@ -57,6 +57,10 @@ def lookup(debugger, command, result, internal_dict):
     # Dump all the global bss code referenced by DWARF. Ideal for accessing `static` variables when not in scope
     (lldb) lookup . -g HonoluluArt -l
     '''
+    if not ds.isProcStopped():
+        result.SetError(ds.attrStr('You must have the process suspended in order to execute this command', 'red'))
+        return
+
     command_args = shlex.split(command, posix=False)
     parser = generate_option_parser()
     try:

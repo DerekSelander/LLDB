@@ -32,7 +32,7 @@ def __lldb_init_module(debugger, internal_dict):
         debugger.HandleCommand('settings set frame-format "\033[2mframe #${frame.index}: ${frame.pc}\033[0m{ \x1b\x5b36m${module.file.basename}\x1b\x5b39m{` \x1b\x5b33m${function.name-with-args} \x1b\x5b39m${function.pc-offset}}}\033[2m{ at ${line.file.basename}:${line.number}}\033[0m\n"')
         debugger.HandleCommand(r'''settings set thread-format "\033[2mthread #${thread.index}: tid = ${thread.id%tid}{, ${frame.pc}}\033[0m{ \033[36m'${module.file.basename}{\033[0m`\x1b\x5b33m${function.name-with-args}\x1b\x5b39m{${frame.no-debug}${function.pc-offset}}}}{ at ${line.file.basename}:${line.number}}{, name = '${thread.name}'}{, queue = '${thread.queue}'}{, activity = '${thread.info.activity.name}'}{, ${thread.info.trace_messages} messages}{, stop reason = ${thread.stop-reason}}{\nReturn value: ${thread.return-value}}{\nCompleted expression: ${thread.completed-expression}}\033[0m\n"''')
         debugger.HandleCommand(r'''settings set thread-stop-format "thread #${thread.index}{, name = '${thread.name}'}{, queue = '\033[2m${thread.queue}\033[0m'}{, activity = '${thread.info.activity.name}'}{, ${thread.info.trace_messages} messages}{, stop reason = ${thread.stop-reason}}{\nReturn value: ${thread.return-value}}{\nCompleted expression: ${thread.completed-expression}}\n"''')
-        
+
         k = r'''"{${function.initial-function}{\033[36m${module.file.basename}\033[0m`}{\x1b\x5b33m${function.name-without-args}}\x1b\x5b39m:}{${function.changed}{${module.file.basename}\'}{${function.name-without-args}}:}{${current-pc-arrow} }\033[2m${addr-file-or-load}{ <${function.concrete-only-addr-offset-no-padding}>}:\033[0m "'''
         debugger.HandleCommand('settings set disassembly-format ' + k)
 
@@ -40,6 +40,7 @@ def __lldb_init_module(debugger, internal_dict):
 def genExpressionOptions(useSwift=False, ignoreBreakpoints=False, useID=True):
     options = lldb.SBExpressionOptions()
     options.SetIgnoreBreakpoints(ignoreBreakpoints);
+    options.SetTrapExceptions(False);
     options.SetFetchDynamicValue(lldb.eDynamicCanRunTarget);
     options.SetTimeoutInMicroSeconds (30*1000*1000) # 30 second timeout
     options.SetTryAllThreads (True)
@@ -55,6 +56,17 @@ def genExpressionOptions(useSwift=False, ignoreBreakpoints=False, useID=True):
 def getTarget(error=None):
     target = lldb.debugger.GetSelectedTarget()
     return target
+
+def isProcStopped():
+    target = getTarget()
+    process = target.GetProcess()
+    if not process:
+        return False
+
+    state = process.GetState()
+    if state == lldb.eStateStopped:
+        return True 
+    return False
 
 def getFrame(error=None):
     frame = lldb.debugger.GetSelectedTarget().GetProcess().GetSelectedThread().GetSelectedFrame()
