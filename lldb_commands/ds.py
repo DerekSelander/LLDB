@@ -75,6 +75,14 @@ def getFrame(error=None):
     return frame
 
 
+def getSectionName(section):
+        name = section.name
+        parent = section.GetParent()
+        while parent:
+            name = parent.name + '.' + name
+            parent = parent.GetParent()
+        return name
+
 def getSection(module=None, name=None):
     if module is None:
         path = getTarget().executable.fullpath
@@ -127,6 +135,111 @@ def copy(debugger, command, result, internal_dict):
     os.system("echo '%s' |  pbcopy" % res.GetOutput())
     result.AppendMessage('Content copied to clipboard...')
 
+def getSectionData(section, outputCount=0):
+    name = getSectionName(section)
+    loadAddr = section.addr.GetLoadAddress(getTarget())
+    addr = section.addr
+    size = section.size
+    data = section.data
+    endAddr = loadAddr + size
+    addr = section.addr
+
+    output = ([], [])
+    if name == '__PAGEZERO':
+        return ([0], [str(section)])
+    elif name == '__TEXT':
+        return ([0], [str(section)])
+    elif name == '__TEXT.__objc_methname':
+        return getStringsFromData(data, outputCount)
+    elif name == '__TEXT.__cstring':
+        return getStringsFromData(data, outputCount)
+    elif  name == '__TEXT.__objc_classname':
+        return getStringsFromData(data, outputCount)
+    elif name == '__TEXT.__objc_methtype':
+        return getStringsFromData(data, outputCount)
+    elif name == '__TEXT.__const':
+        pass
+    elif name == '__TEXT.__swift3_typeref':
+        return getStringsFromData(data, outputCount)
+    elif name == '__TEXT.__swift3_fieldmd':
+        pass
+    elif name == '__TEXT.__swift3_assocty':
+        pass
+    elif name == '__TEXT.__swift2_types':
+        pass
+    elif name == '__TEXT.__entitlements':
+        return getStringsFromData(data, outputCount)
+    elif name == '__TEXT.__unwind_info':
+        pass
+    elif name == '__TEXT.__eh_frame':
+        pass
+    elif name == '__DATA':
+        return ([0], [str(section)])
+    elif name == '__DATA.__got':
+        pass
+    elif name == '__DATA.__nl_symbol_ptr':
+        pass
+    elif name == '__DATA.__la_symbol_ptr':
+        pass
+    elif name == '__DATA.__objc_classlist':
+        pass
+    elif name == '__DATA.__objc_protolist':
+        pass
+    elif name == '__DATA.__objc_imageinfo':
+        pass
+    elif name == '__DATA.__objc_const':
+        pass
+    elif name == '__DATA.__objc_selrefs':
+        pass
+    elif name == '__DATA.__objc_classrefs':
+        pass
+    elif name == '__DATA.__objc_superrefs':
+        pass
+    elif name == '__DATA.__objc_ivar':
+        pass
+    elif name == '__DATA.__objc_data':
+        pass
+    elif name == '__DATA.__data':
+        pass
+    elif name == '__DATA.__bss':
+        pass
+    elif name == '__DATA.__common':
+        pass
+    elif name == '__LINKEDIT':
+        return ([0], [str(section)])
+
+    return output
+
+
+def getStringsFromData(data, outputCount=0):
+    dataArray = data.sint8
+    indeces = []
+    stringList = []
+    marker = 0
+
+    # return (0, ''.join([chr(i) for i in data.sint8]))
+    if outputCount is 0:
+        for index, x in enumerate(dataArray):
+            if x == 0:
+                indeces.append(marker)
+                stringList.append(''.join([chr(i) for i in dataArray[marker:index]]))
+                marker = index + 1
+        # if len(stringList) == 0:
+        #     stringList.append(''.join([chr(i) for i in data.sint8]))
+        #     indeces.append(0)
+        return (indeces, stringList)
+
+    for index, x in enumerate(dataArray):
+        if len(stringList) > outputCount:
+            break
+        if x == 0:
+            indeces.append(marker)
+            stringList.append(''.join([chr(i) for i in dataArray[marker:index]]))
+            marker = index + 1
+    return (indeces, stringList)
+
+
+
 
 def attrStr(msg, color='black'):
     if isXcode():
@@ -171,7 +284,6 @@ def sys(debugger, command, result, internal_dict):
             result.SetError(res.GetError())
             return
         # command.replace('`' + cleanCommand + '`', res.GetOutput(), 1)
-    print(command)
     command = re.search('\s*(?<=sys).*', command).group(0)
     output = subprocess.Popen(command, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE, shell=True).communicate()[0]
     result.AppendMessage(output)

@@ -83,11 +83,10 @@ def generateAssemblyFromSymbol(sym, options):
             if m and nextInst:
                 nextPCAddr = hex(nextInst.addr.GetLoadAddress(target))
                 commentLoadAddr = eval(m.group(0).replace('rip', nextPCAddr))
-                pcComment += ds.attrStr('; ' + hex(commentLoadAddr), 'green')
 
                 addr = ds.getTarget().ResolveLoadAddress(commentLoadAddr)
                 modName = generateDescriptionByAddress(addr)
-                pcComment += ' ' + ds.attrStr(modName, 'green')
+                pcComment += ds.attrStr('; ' + modName, 'green')
                 # interpreter.HandleCommand('image lookup -a ' + nextPCAddr, res)
 
                 # # m = re.search('(?<=\().*(?=\s)', res.GetOutput())
@@ -136,16 +135,24 @@ def generateAssemblyFromSymbol(sym, options):
 
 
 def generateDescriptionByAddress(addr):
+    target = ds.getTarget()
     section = addr.section
-    section.addr.module.file.basename
-    retDescription = ''
     name = ''
+    retDescription = ''
+    loadAddr = hex(addr.GetLoadAddress(target))
     while section:
         name = '.' + section.name + name
         section = section.GetParent()
 
+    # return name +'lkjlkj'
+    if '__DATA.__objc_selrefs' in name:
+        string = str(target.EvaluateExpression('*(char **)' + loadAddr))
+        if len(string.split('"')) > 1:
+            return '"' + string.split('"')[1] + '"'
+
+
     retDescription += name
-    return retDescription
+    return loadAddr + ' ' + str(addr.module.file.basename) + retDescription
 
 
 def generateBranchLines(branches, count, offsetSizeDict):
