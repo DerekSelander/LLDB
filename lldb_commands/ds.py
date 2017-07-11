@@ -44,7 +44,7 @@ def genExpressionOptions(useSwift=False, ignoreBreakpoints=False, useID=True):
     options.SetFetchDynamicValue(lldb.eDynamicCanRunTarget);
     options.SetTimeoutInMicroSeconds (30*1000*1000) # 30 second timeout
     options.SetTryAllThreads (True)
-    options.SetUnwindOnError(False)
+    options.SetUnwindOnError(True)
     options.SetGenerateDebugInfo(True)
     if useSwift:
         options.SetLanguage (lldb.eLanguageTypeSwift)
@@ -224,9 +224,9 @@ def getStringsFromData(data, outputCount=0):
                 indeces.append(marker)
                 stringList.append(''.join([chr(i) for i in dataArray[marker:index]]))
                 marker = index + 1
-        # if len(stringList) == 0:
-        #     stringList.append(''.join([chr(i) for i in data.sint8]))
-        #     indeces.append(0)
+        if len(stringList) == 0:
+            stringList.append(''.join([chr(i) for i in data.sint8]))
+            indeces.append(0)
         return (indeces, stringList)
 
     for index, x in enumerate(dataArray):
@@ -236,6 +236,10 @@ def getStringsFromData(data, outputCount=0):
             indeces.append(marker)
             stringList.append(''.join([chr(i) for i in dataArray[marker:index]]))
             marker = index + 1
+        if len(stringList) == 0:
+            stringList.append(''.join([chr(i) for i in data.sint8]))
+            indeces.append(0)
+
     return (indeces, stringList)
 
 
@@ -274,7 +278,7 @@ def isXcode():
         return False
 
 def sys(debugger, command, result, internal_dict):
-    search = re.search('(?<=\$\().*(?=\))', command)
+    search =  re.search('(?<=\$\().*(?=\))', command)
     if search:
         cleanCommand = search.group(0)
         res = lldb.SBCommandReturnObject()
@@ -283,8 +287,9 @@ def sys(debugger, command, result, internal_dict):
         if not res.Succeeded():
             result.SetError(res.GetError())
             return
-        # command.replace('`' + cleanCommand + '`', res.GetOutput(), 1)
-    command = re.search('\s*(?<=sys).*', command).group(0)
+        command = command.replace('$(' + cleanCommand + ')', res.GetOutput())
+        # print(command)
+    # command = re.search('\s*(?<=sys).*', command).group(0)
     output = subprocess.Popen(command, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE, shell=True).communicate()[0]
     result.AppendMessage(output)
 

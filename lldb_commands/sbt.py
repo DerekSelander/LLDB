@@ -70,12 +70,14 @@ def processStackTraceStringFromAddresses(frameAddresses, target, options=None):
     script = generateExecutableMethodsScript(startAddresses)
 
     # New content start 1
-    methods = target.EvaluateExpression(script, generateOptions())
+    methods = target.EvaluateExpression(script, ds.genExpressionOptions())
+    charPointerType = target.FindFirstType("char").GetPointerType().GetArrayType(len(frameAddresses))
+    methods = methods.Cast(charPointerType)
     methodsVal = lldb.value(methods)
     # New content end 1
 
-
     # Enumerate each of the SBFrames in address list
+    pointerType = target.FindFirstType("char").GetPointerType()
     for index, frameAddr in enumerate(frameAddresses):
         addr = target.ResolveLoadAddress(frameAddr)
         symbol = addr.symbol
@@ -100,7 +102,7 @@ def processStackTraceStringFromAddresses(frameAddresses, target, options=None):
 
         i = ds.attrStr('frame #{:<2}:'.format(index), 'grey')
         if options and options.address:
-            frame_string += '{} {}`{} {}\n'.format(ds.attrStr(hex(addr.GetLoadAddress(target)), 'grey'), ds.attrStr(addr.module.file.basename, 'cyan'), ds.attrStr(name, 'yellow'), ds.attrStr(offset_str, 'grey'))
+            frame_string += '{} {}`{} {}\n'.format(ds.attrStr(hex(addr.GetLoadAddress(target)), 'grey'), ds.attrStr(str(addr.module.file.basename), 'cyan'), ds.attrStr(str(name), 'yellow'), ds.attrStr(offset_str, 'grey'))
         else:
             frame_string += '{} {} {}`{} {}\n'.format(i, ds.attrStr(str(hex(addr.GetLoadAddress(target))), 'grey'), ds.attrStr(str(addr.module.file.basename), 'cyan'), name, ds.attrStr(str(offset_str), 'grey'))
 
@@ -170,7 +172,7 @@ def generateExecutableMethodsScript(frame_addresses):
     
 
   for (NSString *key in ar) {
-    if ([retdict containsKey:key]) {
+    if ((BOOL)[retdict containsKey:key]) {
       NSInteger i = [ar indexOfObject:key];
 
 

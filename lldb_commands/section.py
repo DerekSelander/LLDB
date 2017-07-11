@@ -43,8 +43,7 @@ def handle_command(debugger, command, result, internal_dict):
             if module:
                 sections = ds.getSection(module=args[0], name=None)
             else:
-                sections = ds.getSection(module=None, name=args[0])
-                sections = [i for i in sections] if sections else [None]
+                sections = [i for i in ds.getSection(module=None, name=args[0])]
     elif len(args) == 2:
         if '.' in args[1]:
             sections = [ds.getSection(args[0], args[1])]
@@ -52,9 +51,7 @@ def handle_command(debugger, command, result, internal_dict):
             options.summary = True
             sections = [i for i in ds.getSection(args[0], args[1])]
 
-    if not sections[0]:
-        result.SetError(ds.attrStr('bad input for section, segment or module name', 'red'))
-        return
+
 
     output = parseSection(sections, options)
     result.AppendMessage(output)
@@ -63,6 +60,7 @@ def handle_command(debugger, command, result, internal_dict):
 def parseSection(sections, options):
     output = ''
     for section in sections:
+        # if section 
 
         name = ds.getSectionName(section)
         loadAddr = section.addr.GetLoadAddress(ds.getTarget())
@@ -73,7 +71,7 @@ def parseSection(sections, options):
         addr = section.addr
         if options.summary:
             moduleName  = addr.module.file.basename
-            # TODO figure why pagezero is wonky 
+            # bug TODO figure why pagezero is wonky 
             if name == '__PAGEZERO':
                 loadAddr = 0
                 endAddr = size
