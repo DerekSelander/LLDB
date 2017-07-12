@@ -104,7 +104,7 @@ Examples:
         for module in modules:
             command_script = generate_module_header_script(options, module.file.fullpath.replace('//', '/'))
 
-            interpreter.HandleCommand('expression -lobjc -O -- ' + command_script, res)
+            interpreter.HandleCommand('expression -lobjc -O -u0 -- ' + command_script, res)
             # debugger.HandleCommand('expression -lobjc -O -- ' + command_script)
             if '/System/Library/PrivateFrameworks/' in module.file.fullpath:
                 subdir = 'PrivateFrameworks/'
@@ -161,25 +161,14 @@ Examples:
         print('Written output to: ' + filepath + '... opening file')
         os.system('open -R ' + filepath)
     else: 
-        if options.filter and clean_command:
-            result.AppendMessage('Dumping classes for: ' + clean_command + ', with filter: ' + options.filter)
-        elif clean_command:
-            result.AppendMessage('Dumping classes for: ' + clean_command)
-        elif options.module and options.filter:
-            result.AppendMessage('Dumping all classes in ' + options.module + ', with filter: ' + options.filter)
-        elif options.module:
-            result.AppendMessage('Dumping all classes in ' + options.module)
-        elif options.conforms_to_protocol:
-            result.AppendMessage('Dumping all classes which conform to ' + options.conforms_to_protocol)
-        else:
-            result.AppendMessage('Dumping all classes')
+        result.AppendMessage(ds.attrStr('Dumping classes', 'cyan'))
 
         interpreter.HandleCommand('expression -lobjc -O -- ' + command_script, res)
         # debugger.HandleCommand('expression -lobjc -O -g -- ' + command_script)
         if res.GetError():
-            result .SetError(res.GetError())
+            result.SetError(ds.attrStr(res.GetError(), 'red'))
             return
-        result.AppendMessage('************************************************************')
+        result.AppendMessage(ds.attrStr('************************************************************', 'cyan'))
         if res.Succeeded(): 
             result.AppendMessage(res.GetOutput())
 
@@ -235,7 +224,7 @@ def generate_class_dump(debugger, options, clean_command=None):
           [classesString appendString:@"\n"];
   }'''
     else:
-        command_script += '\n    if (class_getSuperclass(cls) && (BOOL)[cls isSubclassOfClass:(Class)NSClassFromString(@"' + str(options.filter) + '")]) {\n'    
+        command_script += '\n    if ((BOOL)[cls respondsToSelector:@selector(isSubclassOfClass:)] && (BOOL)[cls isSubclassOfClass:(Class)NSClassFromString(@"' + str(options.filter) + '")]) {\n'    
         if options.verbose: 
             command_script += r'''
         NSString *imageString = [[[[NSString alloc] initWithUTF8String:class_getImageName(cls)] lastPathComponent] stringByDeletingPathExtension];
