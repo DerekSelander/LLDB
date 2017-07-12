@@ -132,7 +132,7 @@ def copy(debugger, command, result, internal_dict):
     if not res.Succeeded():
         result.SetError(res.GetError())
         return 
-    os.system("echo '%s' |  pbcopy" % res.GetOutput())
+    os.system("echo '%s' | tr -d '\n'  | pbcopy" % res.GetOutput().rstrip())
     result.AppendMessage('Content copied to clipboard...')
 
 def getSectionData(section, outputCount=0):
