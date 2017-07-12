@@ -1,5 +1,8 @@
 # LLDB
-A collection of LLDB aliases/regexes and Python scripts to aid in your debugging sessions
+
+<a href="https://amzn.to/2rApgj9" target="_blank"><img align="right" src="Media/dbgbook.png"></a>
+A collection of LLDB aliases/regexes and Python scripts to aid in my debugging sessions. These scripts are built only for my  own amusement, but some of them might be helpful in your own work. If you want to gain a better understanding of how to build these LLDB scripts, or gain a better understanding of LLDB in general, check out <a href="https://amzn.to/2rApgj9" target="_blank">**Advanced Apple Debugging and Reverse Engineering**</a>
+
 
 ## Installation 
 
