@@ -287,8 +287,7 @@ def sys(debugger, command, result, internal_dict):
         if not res.Succeeded():
             result.SetError(res.GetError())
             return
-        command = command.replace('$(' + cleanCommand + ')', res.GetOutput())
-        # print(command)
+        command = command.replace('$(' + cleanCommand + ')', res.GetOutput().rstrip())
     # command = re.search('\s*(?<=sys).*', command).group(0)
     output = subprocess.Popen(command, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE, shell=True).communicate()[0]
     result.AppendMessage(output)
