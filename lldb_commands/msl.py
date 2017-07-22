@@ -65,7 +65,7 @@ def processStackTraceStringFromAddresses(frameAddresses, target):
             offset_str = '+ {}'.format(offset)
 
         i = ds.attrStr('frame #{:<2}: {} '.format(index, hex(addr.GetLoadAddress(target))), 'grey')
-        frame_string += '{} {}`{} {}\n'.format(i, ds.attrStr(str(addr.module.file.basename), 'cyan'), ds.attrStr(str(name), 'yellow') if not symbol.IsSynthetic() else ds.attrStr(str(name), 'yellowd') , offset_str)
+        frame_string += '{} {}`{} {}\n'.format(i, ds.attrStr(str(addr.module.file.basename), 'cyan'), ds.attrStr(str(name), 'yellow') if not symbol.IsSynthetic() else ds.attrStr(str(name), 'red') , offset_str)
 
     return frame_string
 
