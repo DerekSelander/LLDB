@@ -10,11 +10,11 @@ import optparse
 
 def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(
-    'command script add -f find.handle_command find')
+    'command script add -f xref.handle_command xref')
 
 def handle_command(debugger, command, result, internal_dict):
     '''
-    Documentation for how to use find goes here 
+    Documentation for how to use xref goes here 
     '''
 
     command_args = shlex.split(command, posix=False)
@@ -40,13 +40,14 @@ def handle_command(debugger, command, result, internal_dict):
     command = '/usr/bin/otool -tv ' + executablePath
     output = subprocess.Popen(command, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE, shell=True).communicate()[0]
     matches = re.findall(".*rip.*\n\w+", output)
-    regex = re.compile('(?P<initial>\w+)?\t\w+\w.*(?P<offset>\-?0x\w+).*\n(?P<addr>\w+)')
+    regex = re.compile('(?P<initial>\w+)?\t\w+\w.*[^\*](?P<offset>\-?0x\w+).*\n(?P<addr>\w+)')
 
-    outputStr = ''
+    resolvedAddresses = []
     for i, m in enumerate(matches):
         res = regex.match(m)
-        if not res:
+        if not res or not res.group('addr') or not res.group('offset'):
             continue
+        # result.AppendMessage(m)
         address = int(res.group('addr'), 16)
         offset = int(res.group('offset'), 16)
 
@@ -54,28 +55,44 @@ def handle_command(debugger, command, result, internal_dict):
         if searchAddr == potential:
 
             if res.group('initial'):
-                resolved = int(result.group('initial'), 16) + loadOffset 
+                resolved = int(res.group('initial'), 16) + loadOffset 
             else: 
                 resolved = int(regex.match(matches[i - 1]).group('addr'), 16) + loadOffset
 
-            outputStr += 'one hit at {}\n'.format(resolved)
+
+            a = target.ResolveLoadAddress(resolved)
+            resolvedAddresses.append(a)
+                
             # print("match at {}".format(hex(resolved)))
 
-
+    outputStr = generateAddressInfo(resolvedAddresses, options)
     result.AppendMessage(outputStr)
+
+def generateAddressInfo(addresses, options):
+    target = ds.getTarget()
+    outputStr = ''
+    for a in addresses:
+        symbol = a.symbol
+        if symbol:
+            symbolOffset = a.GetLoadAddress(target) - symbol.addr.GetLoadAddress(target)
+            symbolAddress = hex(symbol.addr.GetLoadAddress(target))
+            outputStr += '[{}] {} + {}\n\n'.format(ds.attrStr(symbolAddress, 'yellow'), ds.attrStr(symbol.name, 'cyan'), symbolOffset)
+        else:
+            outputStr +'da fuck'
+    return outputStr
 
 def generate_option_parser():
     usage = "usage: %prog [options] TODO Description Here :]"
     parser = optparse.OptionParser(usage=usage, prog="find")
-    parser.add_option("-m", "--module",
-                      action="store",
-                      default=None,
-                      dest="module",
-                      help="This is a placeholder option to show you how to use options with strings")
-    parser.add_option("-c", "--check_if_true",
-                      action="store_true",
-                      default=False,
-                      dest="store_true",
-                      help="This is a placeholder option to show you how to use options with bools")
+    # parser.add_option("-m", "--module",
+    #                   action="store",
+    #                   default=None,
+    #                   dest="module",
+    #                   help="This is a placeholder option to show you how to use options with strings")
+    # parser.add_option("-c", "--check_if_true",
+    #                   action="store_true",
+    #                   default=False,
+    #                   dest="store_true",
+    #                   help="This is a placeholder option to show you how to use options with bools")
     return parser
     
