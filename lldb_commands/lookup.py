@@ -108,6 +108,10 @@ def lookup(debugger, command, result, internal_dict):
         # result.AppendMessage(output_description)
         # print(output_description.split())
         output = '\n\n'.join([line for line in output_description.split('\n') if re.search(clean_command, line)])
+
+        if not ds.isXcode():
+            output = re.sub('0x[a-fA-F0-9]+', '\x1b\x5b33m\g<0>\x1b\x5b39m', output)
+            output = re.sub('[\-|\+].*', '\033[36m\g<0>\033[0m', output)
         result.AppendMessage(output)
         return
 
@@ -298,7 +302,7 @@ def generate_main_executable_class_address_script(bundlePath = None, options=Non
       '''
     if options.load_address:
         command_script += r'''
-      NSString *w = (NSString *)[NSString stringWithFormat:@" %p ", method_getImplementation(meth)];
+      NSString *w = (NSString *)[NSString stringWithFormat:@" [%p] ", method_getImplementation(meth)];
       NSString *methodName = [[[[[w stringByAppendingString:@"-["] stringByAppendingString:NSStringFromClass(cls)] stringByAppendingString:@" "] stringByAppendingString:NSStringFromSelector(method_getName(meth))] stringByAppendingString:@"]\n"]
       '''
     else:
@@ -316,7 +320,7 @@ def generate_main_executable_class_address_script(bundlePath = None, options=Non
       '''
     if options.load_address:
         command_script += r'''
-      NSString *w = (NSString *)[NSString stringWithFormat:@" %p ", method_getImplementation(meth)];
+      NSString *w = (NSString *)[NSString stringWithFormat:@" [%p] ", method_getImplementation(meth)];
       NSString *methodName = [[[[[w stringByAppendingString:@"+["] stringByAppendingString:NSStringFromClass(cls)] stringByAppendingString:@" "] stringByAppendingString:NSStringFromSelector(method_getName(meth))] stringByAppendingString:@"]\n"];
       '''
     else:
