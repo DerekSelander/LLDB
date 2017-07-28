@@ -179,6 +179,10 @@ def getSectionData(section, outputCount=0):
         pass
     elif name == '__DATA.__nl_symbol_ptr':
         pass
+    elif name == '__DATA.__cfstring':
+        return getCFStringsFromData(data, outputCount)
+    elif name == '__DATA.__const':
+        pass
     elif name == '__DATA.__la_symbol_ptr':
         pass
     elif name == '__DATA.__objc_classlist':
@@ -210,6 +214,41 @@ def getSectionData(section, outputCount=0):
 
     return output
 
+def getCFStringsFromData(data, outputCount):
+    dataArray = data.uint64
+    indeces = []
+    stringList = []
+    marker = 0
+    charType = getTarget().GetBasicType(lldb.eBasicTypeChar)
+    intType = getTarget().GetBasicType(lldb.eBasicTypeLong)
+    target = getTarget()
+
+    for i, x in enumerate(dataArray):
+        # return ([1], [str(x)])
+        if i % 4 != 2:
+            # 0x109b8e210: init func 0x0000000116a139e0 res/flags  0x00000000000007c8
+            # 0x109b8e220: char *ptr 0x0000000109a95a42 length     0x0000000000000019
+            continue
+
+        stringVal = hex(x)
+        addr = target.ResolveLoadAddress(x)
+        sizeAddr = target.ResolveLoadAddress(dataArray[i + 1])
+        intSBValue = target.CreateValueFromAddress('', sizeAddr, intType)
+        size = intSBValue.unsigned
+
+        # sbvalue = target.CreateValueFromAddress('woot', addr, charType.GetArrayType(size))
+        print(addr)
+        global z 
+        z = sbvalue
+        # stringVal = str(sbvalue.description) + ' ' + hex(addr) + ' ' + str(size)
+        stringList.append(sbvalue.description)
+
+    return (indeces, stringList)
+
+
+
+
+
 
 def getStringsFromData(data, outputCount=0):
     dataArray = data.sint8
@@ -217,28 +256,16 @@ def getStringsFromData(data, outputCount=0):
     stringList = []
     marker = 0
 
-    # return (0, ''.join([chr(i) for i in data.sint8]))
-    if outputCount is 0:
-        for index, x in enumerate(dataArray):
-            if x == 0:
-                indeces.append(marker)
-                stringList.append(''.join([chr(i) for i in dataArray[marker:index]]))
-                marker = index + 1
-        if len(stringList) == 0:
-            stringList.append(''.join([chr(i) for i in data.sint8]))
-            indeces.append(0)
-        return (indeces, stringList)
-
     for index, x in enumerate(dataArray):
-        if len(stringList) > outputCount:
+        if outputCount != 0 and len(stringList) > outputCount:
             break
         if x == 0:
             indeces.append(marker)
             stringList.append(''.join([chr(i) for i in dataArray[marker:index]]))
             marker = index + 1
-        if len(stringList) == 0:
-            stringList.append(''.join([chr(i) for i in data.sint8]))
-            indeces.append(0)
+    if len(stringList) == 0:
+        stringList.append(''.join([chr(i) for i in data.sint8]))
+        indeces.append(0)
 
     return (indeces, stringList)
 
