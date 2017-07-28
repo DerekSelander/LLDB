@@ -27,6 +27,8 @@ def handle_command(debugger, command, result, internal_dict):
 
     output = ''
 
+
+        
     if options.search_functions:
         query = options.search_functions
         symbol_context_list = target.FindGlobalFunctions(query, 0, lldb.eMatchTypeRegex)    
@@ -35,9 +37,20 @@ def handle_command(debugger, command, result, internal_dict):
     elif len(args) == 0:
         sym = ds.getFrame().GetSymbol()
         output += generateAssemblyFromSymbol(sym, options)
-    else:
+    elif args[0].startswith('0x'):
         sym = ds.getTarget().ResolveLoadAddress(long(args[0], 16)).GetSymbol()
         output += generateAssemblyFromSymbol(sym, options)
+    elif args[0].isdigit():
+        sym = ds.getTarget().ResolveLoadAddress(long(args[0])).GetSymbol()
+        output += generateAssemblyFromSymbol(sym, options)
+    else:
+        cleanCommand = ' '.join(args)
+        symList = target.FindGlobalFunctions(cleanCommand, 0, lldb.eMatchTypeNormal)    
+        if symList.GetSize() == 0:
+            result.SetError(ds.attrStr("Couldn't find any matches for \"{}\"".format(cleanCommand), 'red'))
+            return
+        sym = symList
+        output += generateAssemblyFromSymbol(symList.GetContextAtIndex(0).symbol, options)
 
     result.AppendMessage(output)
 
