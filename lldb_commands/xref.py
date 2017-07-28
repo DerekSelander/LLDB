@@ -31,7 +31,16 @@ def handle_command(debugger, command, result, internal_dict):
         addr = int(command)
 
     target = ds.getTarget()
-    module = target.ResolveLoadAddress(addr).module
+    sbaddress = target.ResolveLoadAddress(addr)
+    module = sbaddress.module
+    section = sbaddress.section
+
+    resolvedAddresses = []
+    outputStr = ''
+
+    if section.name == '__cstring':
+        outputStr += getCFAddress(sbaddress)
+
     executablePath = module.file.fullpath
     pagesize = ds.getSection(name="__PAGEZERO").size
     loadOffset = ds.getSection(module=executablePath, name="__TEXT").addr.GetLoadAddress(target) - pagesize
@@ -42,14 +51,18 @@ def handle_command(debugger, command, result, internal_dict):
     matches = re.findall(".*rip.*\n\w+", output)
     regex = re.compile('(?P<initial>\w+)?\t\w+\w.*[^\*](?P<offset>\-?0x\w+).*\n(?P<addr>\w+)')
 
-    resolvedAddresses = []
     for i, m in enumerate(matches):
         res = regex.match(m)
         if not res or not res.group('addr') or not res.group('offset'):
             continue
         # result.AppendMessage(m)
-        address = int(res.group('addr'), 16)
-        offset = int(res.group('offset'), 16)
+        # result.AppendMessage(res.group('addr') + '\n')
+        try:
+            address = int(res.group('addr'), 16)
+            offset = int(res.group('offset'), 16)
+        except:
+            outputStr += 'error: at {} {}'.format(res.group('addr'), res.group('offset'))
+            continue
 
         potential = address + offset
         if searchAddr == potential:
@@ -62,11 +75,36 @@ def handle_command(debugger, command, result, internal_dict):
 
             a = target.ResolveLoadAddress(resolved)
             resolvedAddresses.append(a)
-                
-            # print("match at {}".format(hex(resolved)))
+            
+        # print("match at {}".format(hex(resolved)))
 
-    outputStr = generateAddressInfo(resolvedAddresses, options)
+    outputStr += generateAddressInfo(resolvedAddresses, options)
     result.AppendMessage(outputStr)
+
+def getCFAddress(addr):
+    outputStr = ''
+    section = addr.section
+    target = ds.getTarget()
+    fileAddr = addr.file_addr
+    executablePath = addr.module.file.fullpath
+    dataSection = ds.getSection(module=executablePath, name='__DATA.__cfstring')
+    size = dataSection.size
+    charPointerType = target.GetBasicType(lldb.eBasicTypeChar).GetPointerType()
+    dataArray = dataSection.data.uint64s # TODO implement 32 bit
+    for i, x in enumerate(dataArray):
+        if i % 4 != 2:
+            continue
+
+        if x == fileAddr:
+            offset = (i - 2) * 8 # TODO implement 32 bit
+            # size = dataArray[i + 1]
+            # lldb.SBData
+            loadAddress = dataSection.addr.GetLoadAddress(target) + offset
+            startAddr = target.ResolveLoadAddress(loadAddress)
+            straddr = target.ResolveLoadAddress(dataSection.addr.GetLoadAddress(target) + (i * 8))
+            summary = target.CreateValueFromAddress('somename', straddr, charPointerType).summary
+            outputStr += '[{}] {}\n'.format(hex(startAddr.GetLoadAddress(target)), summary)
+    return outputStr
 
 def generateAddressInfo(addresses, options):
     target = ds.getTarget()
@@ -78,7 +116,7 @@ def generateAddressInfo(addresses, options):
             symbolAddress = hex(symbol.addr.GetLoadAddress(target))
             outputStr += '[{}] {} + {}\n\n'.format(ds.attrStr(symbolAddress, 'yellow'), ds.attrStr(symbol.name, 'cyan'), symbolOffset)
         else:
-            outputStr +'da fuck'
+            outputStr +'error: '
     return outputStr
 
 def generate_option_parser():
