@@ -206,13 +206,13 @@ def generate_cstring_dict(debugger, command, options):
         if options.module_summary:
             return_string += '{} hits in: {}\n'.format(str(len(returnDict)), m.file.basename)
         else:
-            moduleString = '\n****************************************************\n{} hits in: {}\n****************************************************\n'.format(str(len(returnDict)), m.file.basename)
+            moduleString = '\n' + ds.attrStr('****************************************************', 'cyan') + '\n{} hits in: {}'.format(str(len(returnDict)), ds.attrStr(m.file.basename, 'red')) + '\n' + ds.attrStr('****************************************************', 'cyan') + '\n'
 
             
             for k, v in returnDict.iteritems():
                 if options.load_address:
-                    moduleString += k + ', '
-                moduleString += v + '\n'
+                    moduleString +=  ds.attrStr('[' + k + ']', 'yellow') + ' '
+                moduleString += ds.attrStr(v, 'cyan') + '\n'
 
         return_string += moduleString
 
