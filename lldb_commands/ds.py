@@ -219,29 +219,24 @@ def getCFStringsFromData(data, outputCount):
     indeces = []
     stringList = []
     marker = 0
-    charType = getTarget().GetBasicType(lldb.eBasicTypeChar)
-    intType = getTarget().GetBasicType(lldb.eBasicTypeLong)
     target = getTarget()
+    intType = getType('int*')
 
     for i, x in enumerate(dataArray):
-        # return ([1], [str(x)])
         if i % 4 != 2:
             # 0x109b8e210: init func 0x0000000116a139e0 res/flags  0x00000000000007c8
             # 0x109b8e220: char *ptr 0x0000000109a95a42 length     0x0000000000000019
             continue
+        if outputCount != 0 and len(stringList) > outputCount:
+            break
 
-        stringVal = hex(x)
-        addr = target.ResolveLoadAddress(x)
-        sizeAddr = target.ResolveLoadAddress(dataArray[i + 1])
-        intSBValue = target.CreateValueFromAddress('', sizeAddr, intType)
-        size = intSBValue.unsigned
+        size = dataArray[i + 1]
 
-        # sbvalue = target.CreateValueFromAddress('woot', addr, charType.GetArrayType(size))
-        print(addr)
-        global z 
-        z = sbvalue
-        # stringVal = str(sbvalue.description) + ' ' + hex(addr) + ' ' + str(size)
-        stringList.append(sbvalue.description)
+        addr = target.ResolveFileAddress(x)
+        charPointerType = getType('char', size)
+        strValue = target.CreateValueFromAddress('somename', addr, charPointerType)
+        stringList.append(strValue.summary)
+        indeces.append(i - 2)
 
     return (indeces, stringList)
 
@@ -303,6 +298,38 @@ def isXcode():
         return True
     else: 
         return False
+
+def getAddress(address):
+    target = getTarget()
+    return target.ResolveLoadAddress(address)
+
+def getType(typeStr, count=None):
+    target = getTarget()
+
+    if typeStr.startswith('char'):
+        varType = lldb.eBasicTypeChar
+    elif typeStr.startswith('int'):
+        varType = lldb.eBasicTypeInt
+    elif typeStr.startswith('bool'):
+        varType = lldb.eBasicTypeBool
+    elif typeStr.startswith('double'):
+        varType = lldb.eBasicTypeDouble
+    elif typeStr.startswith('id'):
+        varType = lldb.eBasicTypeObjCID
+    elif typeStr.startswith('class'):
+        varType = lldb.eBasicTypeObjCClass
+    elif typeStr.startswith('void'):
+        varType = lldb.eBasicTypeVoid
+
+    t = target.GetBasicType(varType)
+    if '*' in typeStr:
+        t = t.GetPointerType()
+
+    if count:
+        t = t.GetArrayType(count)
+
+    return t
+
 
 def sys(debugger, command, result, internal_dict):
     search =  re.search('(?<=\$\().*(?=\))', command)
