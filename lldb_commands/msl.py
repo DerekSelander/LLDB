@@ -78,7 +78,7 @@ def generateOptions():
     return expr_options
 
 def generateScript(addr, options):
-  script = '  mach_vm_address_t addr = (mach_vm_address_t)' + str(addr) + ';\n'
+  script = '@import ObjectiveC;  mach_vm_address_t addr = (mach_vm_address_t)' + str(addr) + ';\n'
   script += r'''
 typedef struct $LLDBStackAddress {
     mach_vm_address_t *addresses;
