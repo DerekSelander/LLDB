@@ -76,22 +76,22 @@ def generateAssemblyFromSymbol(sym, options):
         pc = ds.attrStr('-> ', 'red') if frame.addr == inst.addr else '   '
 
         loadaddr = ds.attrStr(hex(inst.addr.GetLoadAddress(target)) + (' <+' + offset + '>:').ljust(8), 'grey')
-        mnemonic = ds.attrStr(inst.mnemonic.ljust(5), 'red')
-        if len(inst.operands.split(',')) > 1:
-            ops = inst.operands.split(',')
+        mnemonic = ds.attrStr(inst.GetMnemonic(target).ljust(5), 'red')
+        if len(inst.GetOperands(target).split(',')) > 1:
+            ops = inst.GetOperands(target).split(',')
             operands = ds.attrStr(ops[0], 'bold') + ', ' + ds.attrStr(ops[1], 'yellow')
         else: 
-            operands = ds.attrStr(inst.operands, 'bold')
-        comments = ds.attrStr(inst.comment, 'cyan')
+            operands = ds.attrStr(inst.GetOperands(target), 'bold')
+        comments = ds.attrStr(inst.GetComment(target), 'cyan')
 
         if options.grep_functions:
             if re.search(options.grep_functions, comments):
                 grepSearch = True
 
         # TODO x64 only, need arm64
-        if 'rip' in inst.operands:
+        if 'rip' in inst.GetOperands(target):
             nextInst = instructions[counter + 1]
-            m = re.search(r"(?<=\[).*(?=\])", inst.operands)
+            m = re.search(r"(?<=\[).*(?=\])", inst.GetOperands(target))
             pcComment = ''
             if m and nextInst:
                 nextPCAddr = hex(nextInst.addr.GetLoadAddress(target))
@@ -116,7 +116,7 @@ def generateAssemblyFromSymbol(sym, options):
         else:
             pcComment = ''
 
-        match = re.search('(?<=\<\+)[0-9]+(?=\>)', inst.comment)
+        match = re.search('(?<=\<\+)[0-9]+(?=\>)', inst.GetComment(target))
         offsetSizeDict[offset] = counter
         if options.show_branch and inst.is_branch and match:
             branches.append((counter, int(match.group(0))))
