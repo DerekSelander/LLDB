@@ -81,7 +81,7 @@ Examples:
     res = lldb.SBCommandReturnObject()
     interpreter = debugger.GetCommandInterpreter()
     target = debugger.GetSelectedTarget()
-    if options.output_dir:
+    if options.dump_code_output:
         directory = '/tmp/{}_{}/'.format(ds.getTarget().executable.basename, datetime.datetime.now().time())
         os.makedirs(directory)
 
@@ -122,7 +122,7 @@ Examples:
         module = target.FindModule(lldb.SBFileSpec(options.module))
         if not module.IsValid():
             result.SetError(
-                "Unable to open module name '{}', to see list of images use 'image list -b'".format(options.module))
+                "Unable to open module name '{}', to see list of images use 'image list -b'".format(str(options.module)))
             return
 
 
@@ -801,11 +801,11 @@ def generate_option_parser():
                       dest="generate_protocol",
                       help="Generate a protocol that you can cast to any object")
 
-    parser.add_option("-o", "--output_dir",
+    parser.add_option("-o", "--dump_code_output",
                       action="store_true",
                       default=False,
-                      dest="output_dir",
-                      help="Specify output dir for dumping objective-c code")
+                      dest="dump_code_output",
+                      help="Dump code pre module, use \"__all\" to dump all ObjC code known to proc")
 
     parser.add_option("-c", "--conforms_to_protocol",
                       action="store",
