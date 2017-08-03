@@ -91,8 +91,22 @@ Examples:
         return
     contents = generate_swizzle_block(clean_command) + res.GetOutput()
 
+    if options.copy_compile:
+        if 'x86_64h-apple-ios' in target.GetTriple():
+            archType = '-sdk iphonesimulator'
+        elif 'arm64' in target.GetTriple():
+            archType = '-sdk iphoneos'
+        else:
+            archType = ''
+
+
+        compileString = 'clang {} -dynamiclib -Wl, -isysroot `xcrun --show-sdk-path {}` -framework Foundation -framework UIKit -o /tmp/a.dylib && codesign --force --sign - /tmp/a.dylib'.format(filepath, archType)
+        os.system('echo "{}" | pbcopy'.format(compileString))
+        result.AppendMessage('Copying build command to clipboard')
+        contents = '/*\n{}\n*/\n\n'.format(compileString) + contents
+
     create_or_touch_filepath(filepath, contents)
-    print('Written output to: ' + filepath + '... opening file')
+    result.AppendMessage('Written output to: ' + filepath + '... opening file')
     os.system('open -R ' + filepath)
 
 
@@ -207,6 +221,14 @@ def generate_header_script(options, class_to_generate_header):
       '''
     if options.method:
         script += r'if (!(BOOL)[methodName isEqualToString:@"' + options.method + '"]) { continue; }'
+
+    if options.regex_method:
+        script += 'NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:@"{}" options:0 error:nil];'.format(options.regex_method)
+        script += r'''
+    NSUInteger matches = (NSUInteger)[regex numberOfMatchesInString:methodName options:0 range:NSMakeRange(0, [methodName length])];
+    if (matches == 0) {
+      continue;
+    }'''
 
     script += r''' 
       if([blackListMethodNames containsObject:methodName]) {
@@ -383,4 +405,16 @@ def generate_option_parser():
                       default=None,
                       dest="method",
                       help="Instead of dumping all the functions only specify a module, expects Selector style input")
+
+    parser.add_option("-c", "--copy_compile",
+                      action="store_true",
+                      default=False,
+                      dest="copy_compile",
+                      help="Copy the compile command to compile the category to the clipboard")
+
+    parser.add_option("-r", "--regex_method",
+                      action="store",
+                      default=None,
+                      dest="regex_method",
+                      help="Only generate methods to swizzle based upon a regex expression")
     return parser
