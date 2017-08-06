@@ -77,6 +77,7 @@ def generateAssemblyFromSymbol(sym, options):
 
         loadaddr = ds.attrStr(hex(inst.addr.GetLoadAddress(target)) + (' <+' + offset + '>:').ljust(8), 'grey')
         mnemonic = ds.attrStr(inst.GetMnemonic(target).ljust(5), 'red')
+        mnemonicStr = inst.GetMnemonic(target).ljust(5)
         if len(inst.GetOperands(target).split(',')) > 1:
             ops = inst.GetOperands(target).split(',')
             operands = ds.attrStr(ops[0], 'bold') + ', ' + ds.attrStr(ops[1], 'yellow')
@@ -93,12 +94,20 @@ def generateAssemblyFromSymbol(sym, options):
             nextInst = instructions[counter + 1]
             m = re.search(r"(?<=\[).*(?=\])", inst.GetOperands(target))
             pcComment = ''
+
+
+
             if m and nextInst:
                 nextPCAddr = hex(nextInst.addr.GetLoadAddress(target))
                 commentLoadAddr = eval(m.group(0).replace('rip', nextPCAddr))
 
                 addr = ds.getTarget().ResolveLoadAddress(commentLoadAddr)
-                modName = generateDescriptionByAddress(addr)
+                showComments, modName = generateDescriptionByAddress(addr)
+                if not showComments:
+                    comments = ''
+
+                if modName in comments:
+                    comments = ''
                 pcComment += ds.attrStr('; ' + modName, 'green')
                 # interpreter.HandleCommand('image lookup -a ' + nextPCAddr, res)
 
@@ -115,6 +124,17 @@ def generateAssemblyFromSymbol(sym, options):
 
         else:
             pcComment = ''
+        if 'call' in mnemonicStr and inst.GetOperands(target).startswith('0x') and len(inst.GetOperands(target).split(',')) == 1:
+            num = int(inst.GetOperands(target), 16)
+            a = target.ResolveLoadAddress(num)
+            pcComment = '; '
+            if '__stubs' in a.section.name:
+                pcComment += '(__TEXT.__stubs) '
+
+            pcComment += a.symbol.name
+            pcComment = ds.attrStr(pcComment, 'green')
+            comments = ''
+
 
         match = re.search('(?<=\<\+)[0-9]+(?=\>)', inst.GetComment(target))
         offsetSizeDict[offset] = counter
@@ -161,11 +181,20 @@ def generateDescriptionByAddress(addr):
     if '__DATA.__objc_selrefs' in name:
         string = str(target.EvaluateExpression('*(char **)' + loadAddr))
         if len(string.split('"')) > 1:
-            return '"' + string.split('"')[1] + '"'
+            return (False, '"' + string.split('"')[1] + '"')
+    elif '__DATA.__objc_classrefs' in name:
+        idType = ds.getType('id')
+        sbval = target.CreateValueFromAddress('hi', addr, idType)
+        return (False, '(__DATA.__objc_classrefs) {}'.format(sbval.description))
+    elif '__DATA.__cfstring' in name:
+        charType = ds.getType('char*')
+        newAddr = target.ResolveLoadAddress(addr.GetLoadAddress(target) + 0x10) # TODO, do 32 bit
+        sbval = target.CreateValueFromAddress('hi', newAddr, charType)
+        return (False, '(__DATA.__cfstring) {}'.format(sbval.summary))
 
 
     retDescription += name
-    return loadAddr + ' ' + str(addr.module.file.basename) + retDescription
+    return (True, loadAddr + ' ' + str(addr.module.file.basename) + retDescription)
 
 
 def generateBranchLines(branches, count, offsetSizeDict):
