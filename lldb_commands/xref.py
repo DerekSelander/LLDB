@@ -40,6 +40,8 @@ def handle_command(debugger, command, result, internal_dict):
 
     if section.name == '__cstring':
         outputStr += getCFAddress(sbaddress)
+    if section.name == '__objc_methname':
+        outputStr += getObjcMethNameAddress(sbaddress)
 
     executablePath = module.file.fullpath
     pagesize = ds.getSection(name="__PAGEZERO").size
@@ -80,6 +82,30 @@ def handle_command(debugger, command, result, internal_dict):
 
     outputStr += generateAddressInfo(resolvedAddresses, options)
     result.AppendMessage(outputStr)
+
+def getObjcMethNameAddress(addr):
+    outputStr = ''
+    section = addr.section
+    target = ds.getTarget()
+    fileAddr = addr.file_addr
+    executablePath = addr.module.file.fullpath
+    dataSection = ds.getSection(module=executablePath, name='__DATA.__objc_selrefs')
+    charPointerType = target.GetBasicType(lldb.eBasicTypeChar).GetPointerType()
+
+    dataArray = dataSection.data.uint64s # TODO implement 32 bit
+    for i, x in enumerate(dataArray):
+            if x != fileAddr:
+                continue
+            offset = i  * 8 # TODO implement 32 bit
+            loadAddress = dataSection.addr.GetLoadAddress(target) + offset
+            startAddr = target.ResolveLoadAddress(loadAddress)
+            straddr = target.ResolveLoadAddress(dataSection.addr.GetLoadAddress(target) + (i * 8))
+            summary = target.CreateValueFromAddress('somename', straddr, charPointerType).summary
+            outputStr += '[{}] {}\n'.format(hex(startAddr.GetLoadAddress(target)), summary)
+    return outputStr
+
+
+
 
 def getCFAddress(addr):
     outputStr = ''
