@@ -343,7 +343,11 @@ def sys(debugger, command, result, internal_dict):
             return
         command = command.replace('$(' + cleanCommand + ')', res.GetOutput().rstrip())
     # command = re.search('\s*(?<=sys).*', command).group(0)
-    output = subprocess.Popen(command, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE, shell=True).communicate()[0]
-    result.AppendMessage(output)
+    output = subprocess.Popen(command, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE, shell=True).communicate()
+    retOutput = ''
+    if output[1]:
+        retOutput += output[1]
+    retOutput += output[0] 
+    result.AppendMessage(retOutput)
 
 
