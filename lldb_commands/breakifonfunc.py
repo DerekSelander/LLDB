@@ -17,16 +17,16 @@ class GlobalOptions(object):
         
 
 def __lldb_init_module(debugger, internal_dict):
+    debugger.HandleCommand(
+        'command script add -f breakifonfunc.breakifonfunc biof')
+
+def breakifonfunc(debugger, command, result, internal_dict):
     '''
     usage: biof [ModuleName] regex1 ||| [ModuleName2] regex2
     Regex breakpoint that stops only if the second regex breakpoint is in the stack trace
     For example, to only stop if code in the Test module resulted the setTintColor: being called
     biof setTintColor: ||| . Test 
     '''
-    debugger.HandleCommand(
-        'command script add -f breakifonfunc.breakAfterRegex biof')
-
-def breakAfterRegex(debugger, command, result, internal_dict):
     command_args = shlex.split(command.replace('\\', '\\\\'), posix=False)
     parser = generateOptionParser()
     try:
@@ -83,6 +83,6 @@ def breakpointHandler(frame, bp_loc, dict):
 
 
 def generateOptionParser():
-    usage = __lldb_init_module.__doc__
+    usage = breakifonfunc.__doc__
     parser = optparse.OptionParser(usage=usage, prog="biof")
     return parser
