@@ -109,6 +109,13 @@ def lookup(debugger, command, result, internal_dict):
         # print(output_description.split())
         output = '\n\n'.join([line for line in output_description.split('\n') if re.search(clean_command, line)])
 
+        if options.create_breakpoint:
+            m = re.findall('0x[a-fA-F0-9]+', output)
+            result.AppendMessage(ds.attrStr("Creating breakpoints on all returned functions", 'red'))
+            for k in m:
+                hexAddr = int(k, 16)
+                target.BreakpointCreateByAddress(hexAddr)
+
         if not ds.isXcode():
             output = re.sub('0x[a-fA-F0-9]+', '\x1b\x5b33m\g<0>\x1b\x5b39m', output)
             output = re.sub('[\-|\+].*', '\033[36m\g<0>\033[0m', output)
@@ -300,7 +307,7 @@ def generate_main_executable_class_address_script(bundlePath = None, options=Non
     for (int j = 0; j < methCount; j++) {
       Method meth = methods[j];
       '''
-    if options.load_address:
+    if options.load_address or options.create_breakpoint:
         command_script += r'''
       NSString *w = (NSString *)[NSString stringWithFormat:@" [%p] ", method_getImplementation(meth)];
       NSString *methodName = [[[[[w stringByAppendingString:@"-["] stringByAppendingString:NSStringFromClass(cls)] stringByAppendingString:@" "] stringByAppendingString:NSStringFromSelector(method_getName(meth))] stringByAppendingString:@"]\n"]
@@ -318,7 +325,7 @@ def generate_main_executable_class_address_script(bundlePath = None, options=Non
     for (int j = 0; j < classMethCount; j++) {
       Method meth = classMethods[j];
       '''
-    if options.load_address:
+    if options.load_address or options.create_breakpoint:
         command_script += r'''
       NSString *w = (NSString *)[NSString stringWithFormat:@" [%p] ", method_getImplementation(meth)];
       NSString *methodName = [[[[[w stringByAppendingString:@"+["] stringByAppendingString:NSStringFromClass(cls)] stringByAppendingString:@" "] stringByAppendingString:NSStringFromSelector(method_getName(meth))] stringByAppendingString:@"]\n"];
@@ -398,4 +405,10 @@ def generate_option_parser():
                       default=False,
                       dest="stripped_executable_main",
                       help="Searches the main, stripped executable for the regex. This searches the executables Objective-C classes by using the Objective-C runtime")
+
+    parser.add_option("-B", "--create_breakpoint",
+                      action="store_true",
+                      default=False,
+                      dest="create_breakpoint",
+                      help="Creates a breakpoint on the found functions. Only works with the -X or -x option. Use rb otherwise")
     return parser
