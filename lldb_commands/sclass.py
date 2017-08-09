@@ -100,7 +100,7 @@ Examples:
             archType = ''
 
 
-        compileString = 'clang {} -dynamiclib -Wl, -isysroot `xcrun --show-sdk-path {}` -framework Foundation -framework UIKit -o /tmp/a.dylib && codesign --force --sign - /tmp/a.dylib'.format(filepath, archType)
+        compileString = 'clang {} -dynamiclib -Wl, -isysroot `xcrun --show-sdk-path {}` -framework Foundation -framework UIKit -framework QuartzCore -o /tmp/a.dylib && codesign --force --sign - /tmp/a.dylib'.format(filepath, archType)
         os.system('echo "{}" | pbcopy'.format(compileString))
         result.AppendMessage('Copying build command to clipboard')
         contents = '/*\n{}\n*/\n\n'.format(compileString) + contents
