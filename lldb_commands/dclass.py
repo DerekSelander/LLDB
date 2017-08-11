@@ -208,7 +208,14 @@ def generate_class_dump(debugger, options, clean_command=None):
       continue;
     }
         '''
-   
+    if options.superclass is not None:
+
+        command_script += 'NSString *parentClassName = @"' + options.superclass + '";'
+        command_script += r'''
+        if (!(BOOL)[NSStringFromClass((id)[cls superclass]) isEqualToString:parentClassName]) { 
+          continue; 
+        }
+          '''
 
     if options.filter is None:
         if options.verbose: 
@@ -795,7 +802,7 @@ def generate_option_parser():
                       dest="generate_header",
                       help="Generate a header for the specified class. -h UIView")
 
-    parser.add_option("-p", "--generate_protocol",
+    parser.add_option("-P", "--generate_protocol",
                       action="store_true",
                       default=False,
                       dest="generate_protocol",
@@ -807,9 +814,15 @@ def generate_option_parser():
                       dest="dump_code_output",
                       help="Dump code pre module, use \"__all\" to dump all ObjC code known to proc")
 
-    parser.add_option("-c", "--conforms_to_protocol",
+    parser.add_option("-p", "--conforms_to_protocol",
                       action="store",
                       default=None,
                       dest="conforms_to_protocol",
                       help="Only returns the classes that conforms to a particular protocol")
+
+    parser.add_option("-s", "--superclass",
+                      action="store",
+                      default=None,
+                      dest="superclass",
+                      help="Returns only if the parent class is of type")
     return parser
