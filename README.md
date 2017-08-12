@@ -67,9 +67,9 @@ Dumps all ivars for an instance of a particular class which inherits from NSObje
 command regex ivars 's/(.+)/expression -lobjc -O -- [%1 _ivarDescription]/'
 ```
 
-## LLDB Scripts
+# LLDB Scripts
 ### dclass
-Dumps all the NSObject inherited classes in the process. If you give it a module that exists on disk, it will dump only the classes within that module. You can also filter out classes to only a certain type and can also generate a header file for a specific class.
+Dumps all the NSObject inherited classes in the process. If you give it a module, it will dump only the classes within that module. You can also filter out classes to only a certain type and can also generate a header file for a specific class.
   
   Example: 
   
@@ -92,7 +92,13 @@ Dumps all the NSObject inherited classes in the process. If you give it a module
       (lldb) dclass -g UIView
       
       # Generate a protocol that you can cast an object to. Ideal when working with private classes at dev time
-      (lldb) dclass -p UIView
+      (lldb) dclass -P UIView
+
+      # Dump all classes and methods for a particular module, ideal for viewing changes in frameworks over time
+      (lldb) dclass -o UIKit
+
+      # Only dump classes whose superclass is of type NSObjecr and in the UIKit module. Ideal for going after specific classes like a datasource where it will likely inherit from NSObject
+      (lldb) dclass -s NSObject -m UIKit
 
 ### dd
 Alternative to LLDB's `disassemble` command. Uses colors. Terminal only
