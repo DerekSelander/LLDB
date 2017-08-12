@@ -24,6 +24,8 @@ command alias cp expression -l objc++  --
 
 command alias spo expression -l swift -O --
 
+command alias bpo expression -i0 -O --
+
 command alias sp expression -l swift  --
 
 command alias iheap command script import lldb.macosx.heap
