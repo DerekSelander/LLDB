@@ -128,6 +128,15 @@ Dumps all the NSObject inherited classes in the process. If you give it a module
 Alternative to LLDB's `disassemble` command. Uses colors. Terminal only
 ![yoink example](https://github.com/DerekSelander/LLDB/raw/master/Media/dd.png)
 
+### sbt
+      Symbolicate backtrace. Will symbolicate a stripped backtrace from an executable if the backtrace is using Objective-C 
+      code. Currently doesn't work on aarch64 stripped executables but works great on x64 :]
+      
+      You learn how to make this command in the book :]
+      
+
+![sbt example](https://github.com/DerekSelander/LLDB/raw/master/Media/sbt_gif.gif)
+
 ### lookup
 Perform a regular expression search for stuff in an executable
 
