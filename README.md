@@ -154,7 +154,15 @@ Perform a regular expression search for stuff in an executable
       # Dump all the global bss code referenced by DWARF. Ideal for accessing `static` variables when not in scope
       (lldb) lookup . -g HonoluluArt -l
       
-      
+### biof
+    Break if on func. Syntax: biof [ModuleName] regex1 ||| [ModuleName2] regex2
+    Regex breakpoint that takes two regex inputs. The first regex creates a breakpoint on all matched functions.
+    The second regex will make a breakpoint condition to stop only if the second regex breakpoint is in the stack trace
+    
+    For example, to only stop if code in the "TestApp" module resulted in executing the setTintColor: method being called
+    biof setTintColor: ||| . Test 
+    
+    As a tip, it would be wise to have a limited regex1 that matches a small amount of functions, while keeping regex2 at any size
 
 ### yoink
 
