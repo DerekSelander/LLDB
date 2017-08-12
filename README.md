@@ -68,6 +68,28 @@ command regex ivars 's/(.+)/expression -lobjc -O -- [%1 _ivarDescription]/'
 ```
 
 # LLDB Scripts
+
+TLDR: `search`, `lookup`, and `dclass` are good GOTOs irregardless if you're a dev or exploring without source. 
+
+If you like ObjC swizzling, check out `sclass`. If you like DTrace, check out `pmodule` and `snoopie`.
+
+### search
+  Searchs the heap for all alive instances of a certain class. This class must by dynamic (aka inherit from a NSObject class). Currently doesn't work with NSString or NSNumber (tagged pointer objects). 
+  
+  Example: 
+  
+      # Find all instances and subclasses of UIView
+      (lldb)  search UIView
+      
+      # Find all instances of UIView that are UIViews. Ignore subclasses.
+      (lldb) search UIView -e
+      
+      #Find all instances of UIView whose tag is equal to 5. Objective-C syntax only. Can reference object by 'obj'
+      (lldb) search UIView -c "(int)[obj tag]==5"
+      
+      # Find all instances of a UIView subclass whose class is implemented in the SpringBoardUI module
+      (lldb) search UIView -m SpringBoardUI
+
 ### dclass
 Dumps all the NSObject inherited classes in the process. If you give it a module, it will dump only the classes within that module. You can also filter out classes to only a certain type and can also generate a header file for a specific class.
   
@@ -131,24 +153,6 @@ Perform a regular expression search for stuff in an executable
       (lldb) lookup . -g HonoluluArt -l
       
       
-      
-
-### search
-  Searchs the heap for all alive instances of a certain class. This class must by dynamic (aka inherit from a NSObject class). Currently doesn't work with NSString or NSNumber (tagged pointer objects). 
-  
-  Example: 
-  
-      # Find all instances and subclasses of UIView
-      (lldb)  search UIView
-      
-      # Find all instances of UIView that are UIViews. Ignore subclasses.
-      (lldb) search UIView -e
-      
-      #Find all instances of UIView whose tag is equal to 5. Objective-C syntax only. Can reference object by 'obj'
-      (lldb) search UIView -c "(int)[obj tag]==5"
-      
-      # Find all instances of a UIView subclass whose class is implemented in the SpringBoardUI module
-      (lldb) search UIView -m SpringBoardUI
 
 ### yoink
 
