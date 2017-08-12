@@ -186,3 +186,10 @@ Perform a regular expression search for stuff in an executable
       (lldb) pmodule -a
       
 ![pmodule example](https://github.com/DerekSelander/LLDB/raw/master/Media/pmodule_gif.gif)
+
+### snoopie
+    Generates a DTrace sciprt that will only profile classes implemented
+    in the main executable irregardless if binary is stripped or not. This is done via 
+    profiling objc_msgSend. The creation of this command is discussed in the book.
+
+  WARNING: YOU MUST DISABLE ROOTLESS TO USE DTRACE
