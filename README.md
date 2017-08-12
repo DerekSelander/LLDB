@@ -69,6 +69,8 @@ command regex ivars 's/(.+)/expression -lobjc -O -- [%1 _ivarDescription]/'
 
 # LLDB Scripts
 
+For all commands below, you can view the documentation via `help {command}`. If you want to see what options a command has, type `{command} -h`.
+
 TLDR: `search`, `lookup`, and `dclass` are good GOTOs irregardless if you're a dev or exploring without source. 
 
 If you like ObjC swizzling, check out `sclass`. If you like DTrace, check out `pmodule` and `snoopie`.
