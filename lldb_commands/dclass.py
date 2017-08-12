@@ -36,28 +36,38 @@ def __lldb_init_module(debugger, internal_dict):
 
 def dclass(debugger, command, result, internal_dict):
     '''
-    Dumps all the NSObject inherited classes in the process. If you give it a 
-    module that exists on disk, it will dump only the classes within that module. 
-    You can also filter out classes to only a certain type and can also generate 
-    a header file for a specific class.
+    Dumps all the NSObject inherited classes in the process. If you give it a module, 
+    it will dump only the classes within that module. You can also filter out classes 
+    to only a certain type and can also generate a header file for a specific class.
+  
+  Example: 
+  
+      # Dump ALL the NSObject classes within the process
+      (lldb) dclass 
 
-Examples:
+      # Dump all the classes that are a UIViewController within the process
+      (lldb) dclass -f UIViewController
+      
+      # Dump all the classes with the regex case insensitive search "viewcontroller" in the class name
+      (lldb) dclass -r (?i)viewCoNtrolLer
+      
+      # Dump all the classes within the UIKit module
+      (lldb) dclass -m UIKit
 
-    # Dump ALL the NSObject classes within the process
-    dclass 
+      # Dump all classes in CKConfettiEffect NSBundle that are UIView subclasses
+      (lldb) dclass /System/Library/Messages/iMessageEffects/CKConfettiEffect.bundle/CKConfettiEffect -f UIView
+      
+      # Generate a header file for the class specified:
+      (lldb) dclass -g UIView
+      
+      # Generate a protocol that you can cast an object to. Ideal when working with private classes at dev time
+      (lldb) dclass -P UIView
 
-    # Dump all the classes that are a UIViewController within the process
-    dclass -f UIViewController
+      # Dump all classes and methods for a particular module, ideal for viewing changes in frameworks over time
+      (lldb) dclass -o UIKit
 
-    # Dump all classes in CKConfettiEffect NSBundle that are UIView subclasses
-    dclass /System/Library/Messages/iMessageEffects/CKConfettiEffect.bundle/CKConfettiEffect -f UIView
-
-    # Generate a header file for the class specified:
-    dclass -g UIView
-
-    # Generate a protocol that you can cast an object to. Ideal when working with private classes at dev time
-    dclass -p UIView
-
+      # Only dump classes whose superclass is of type class and in UIKit module. Ideal for going after specific classes
+      (lldb) dclass -s NSObject -m UIKit
     '''
 
     command_args = shlex.split(command, posix=False)
@@ -812,7 +822,7 @@ def generate_option_parser():
                       action="store_true",
                       default=False,
                       dest="dump_code_output",
-                      help="Dump code pre module, use \"__all\" to dump all ObjC code known to proc")
+                      help="Dump all classes and code per module, use \"__all\" to dump all ObjC modules known to proc")
 
     parser.add_option("-p", "--conforms_to_protocol",
                       action="store",
