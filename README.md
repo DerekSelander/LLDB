@@ -137,6 +137,19 @@ Alternative to LLDB's `disassemble` command. Uses colors. Terminal only
 
 ![sbt example](https://github.com/DerekSelander/LLDB/raw/master/Media/sbt_gif.gif)
 
+### msl
+
+      msl 0xadd7e55
+      msl or malloc stack logging will take an address and try and obtain the stack trace to 
+      when it was created. 
+
+      You will need to set the env var to MallocStackLogging, or `execute turn_on_stack_logging(1)`
+      while the process is active
+      
+      You learn how to make this command in the book :]
+      
+![msl example](https://github.com/DerekSelander/LLDB/raw/master/Media/msl_gif.gif) 
+
 ### lookup
 Perform a regular expression search for stuff in an executable
 
