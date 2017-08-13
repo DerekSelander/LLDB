@@ -13,7 +13,13 @@ def __lldb_init_module(debugger, internal_dict):
 
 def handle_command(debugger, command, result, internal_dict):
     '''
-    Documentation for how to use msl goes here 
+    msl 0xadd7E55
+
+    msl or malloc stack logging will take an address and try and obtain the stack trace to 
+    when it was created. 
+
+    You will need to set the env var to MallocStackLogging, or execute turn_on_stack_logging(1)
+    while the process is active
     '''
 
     command_args = shlex.split(command)
