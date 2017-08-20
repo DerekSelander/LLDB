@@ -171,7 +171,8 @@ def dclass(debugger, command, result, internal_dict):
         print('Written output to: ' + filepath + '... opening file')
         os.system('open -R ' + filepath)
     else: 
-        result.AppendMessage(ds.attrStr('Dumping classes', 'cyan'))
+        msg = "Dumping protocols" if options.search_protocols else "Dumping classes"
+        result.AppendMessage(ds.attrStr(msg, 'cyan'))
 
         interpreter.HandleCommand('expression -lobjc -O -- ' + command_script, res)
         # debugger.HandleCommand('expression -lobjc -O -g -- ' + command_script)
@@ -190,7 +191,9 @@ def generate_class_dump(debugger, options, clean_command=None):
   unsigned int count = 0;
 
   '''
-    if clean_command:
+    if options.search_protocols:
+        command_script += 'Protocol **allProtocols = objc_copyProtocolList(&count);\n'
+    elif clean_command:
         command_script += '  const char **allClasses = objc_copyClassNamesForImage("' + clean_command + '", &count);'
     else:
         command_script += 'Class *allClasses = objc_copyClassList(&count);\n'
@@ -198,19 +201,28 @@ def generate_class_dump(debugger, options, clean_command=None):
     if options.regular_expression is not None: 
         command_script += '  NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:@"' + options.regular_expression + '" options:0 error:nil];\n'
 
-    command_script += '''  NSMutableString *classesString = [NSMutableString string];
+    if options.search_protocols:
+        command_script += '''  NSMutableString *classesString = [NSMutableString string];
   for (int i = 0; i < count; i++) {
-    Class cls =  '''
+    Protocol *ptl =  allProtocols[i];
+        '''
+    else: 
+        command_script += '''  NSMutableString *classesString = [NSMutableString string];
+      for (int i = 0; i < count; i++) {
+        Class cls =  '''
+        command_script += 'objc_getClass(allClasses[i]);' if clean_command else 'allClasses[i];'
 
-    command_script += 'objc_getClass(allClasses[i]);' if clean_command else 'allClasses[i];'
     if options.module is not None: 
-        command_script += generate_module_search_sections_string(options.module, debugger)
+        command_script += generate_module_search_sections_string(options.module, debugger, options.search_protocols)
 
-    if options.conforms_to_protocol is not None:
+    if not options.search_protocols and options.conforms_to_protocol is not None:
       command_script +=  'if (!class_conformsToProtocol(cls, NSProtocolFromString(@"'+ options.conforms_to_protocol + '"))) { continue; }'
   
 
-    command_script += '  NSString *clsString = (NSString *)NSStringFromClass(cls);\n'
+    if options.search_protocols:
+        command_script += '  NSString *clsString = (NSString *)NSStringFromProtocol(ptl);\n'
+    else:
+        command_script += '  NSString *clsString = (NSString *)NSStringFromClass(cls);\n'
     if options.regular_expression is not None:
         command_script += r'''
     NSUInteger matches = (NSUInteger)[regex numberOfMatchesInString:clsString options:0 range:NSMakeRange(0, [clsString length])];
@@ -218,7 +230,7 @@ def generate_class_dump(debugger, options, clean_command=None):
       continue;
     }
         '''
-    if options.superclass is not None:
+    if not options.search_protocols and options.superclass is not None:
 
         command_script += 'NSString *parentClassName = @"' + options.superclass + '";'
         command_script += r'''
@@ -227,7 +239,7 @@ def generate_class_dump(debugger, options, clean_command=None):
         }
           '''
 
-    if options.filter is None:
+    if not options.search_protocols and options.filter is None:
         if options.verbose: 
             command_script += r'''
         NSString *imageString = [[[[NSString alloc] initWithUTF8String:class_getImageName(cls)] lastPathComponent] stringByDeletingPathExtension];
@@ -239,8 +251,11 @@ def generate_class_dump(debugger, options, clean_command=None):
         command_script += r'''
           [classesString appendString:(NSString *)clsString];
           [classesString appendString:@"\n"];
-  }'''
-    else:
+        }
+
+        '''
+        command_script += '\n  free(allClasses);\n  [classesString description];'
+    elif not options.search_protocols:
         command_script += '\n    if ((BOOL)[cls respondsToSelector:@selector(isSubclassOfClass:)] && (BOOL)[cls isSubclassOfClass:(Class)NSClassFromString(@"' + str(options.filter) + '")]) {\n'    
         if options.verbose: 
             command_script += r'''
@@ -254,11 +269,19 @@ def generate_class_dump(debugger, options, clean_command=None):
       }
     }'''
 
-    command_script += '\n  free(allClasses);\n  [classesString description];'
+        command_script += '\n  free(allClasses);\n  [classesString description];'
 
+
+    else:
+        command_script += r'''
+        [classesString appendString:(NSString *)clsString];
+        [classesString appendString:@"\n"];
+
+          }'''
+        command_script += '\n  free(allProtocols);\n  [classesString description];'
     return command_script
 
-def generate_module_search_sections_string(module_name, debugger):
+def generate_module_search_sections_string(module_name, debugger, useProtocol=False):
     target = debugger.GetSelectedTarget()
 
     module = target.FindModule(lldb.SBFileSpec(module_name))
@@ -267,9 +290,14 @@ def generate_module_search_sections_string(module_name, debugger):
             "Unable to open module name '{}', to see list of images use 'image list -b'".format(module_name))
         return
 
-    returnString = r'''
-    uintptr_t addr = (uintptr_t)cls;
-    if (!('''
+    if useProtocol:
+        returnString = r'''
+        uintptr_t addr = (uintptr_t)ptl;
+        if (!('''
+    else:
+        returnString = r'''
+        uintptr_t addr = (uintptr_t)cls;
+        if (!('''
     section = module.FindSection("__DATA")
     for idx, subsec in enumerate(section):
         lower_bounds = subsec.GetLoadAddress(target)
@@ -823,6 +851,12 @@ def generate_option_parser():
                       default=False,
                       dest="dump_code_output",
                       help="Dump all classes and code per module, use \"__all\" to dump all ObjC modules known to proc")
+
+    parser.add_option("-l", "--search_protocols",
+                      action="store_true",
+                      default=False,
+                      dest="search_protocols",
+                      help="Search for protocols instead of ObjC classes")
 
     parser.add_option("-p", "--conforms_to_protocol",
                       action="store",
