@@ -325,7 +325,7 @@ def generate_header_script(options, class_to_generate_header):
   // Runtime declarations in case we're running on a stripped executable
   typedef struct objc_method *Method;
   typedef struct objc_ivar *Ivar;
-  typedef struct objc_category *Category;
+  // typedef struct objc_category *Category;
   typedef struct objc_property *objc_property_t;
 
   NSMutableString *returnString = [NSMutableString string];
@@ -578,7 +578,7 @@ def generate_module_header_script(options, modulePath):
   // Runtime declarations in case we're running on a stripped executable
   typedef struct objc_method *Method;
   typedef struct objc_ivar *Ivar;
-  typedef struct objc_category *Category;
+  // typedef struct objc_category *Category;
   typedef struct objc_property *objc_property_t;
 
   NSMutableString *returnString = [NSMutableString string];

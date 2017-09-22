@@ -26,13 +26,16 @@ def handle_command(debugger, command, result, internal_dict):
         return
 
     try:
-        addr = int(command, 16)
+        addr = int(args[0], 16)
     except:
-        addr = int(command)
+        addr = int(args[0])
 
     target = ds.getTarget()
     sbaddress = target.ResolveLoadAddress(addr)
-    module = sbaddress.module
+    if len(args) == 2:
+        module = target.module[args[1]]
+    else:
+        module = sbaddress.module
     section = sbaddress.section
 
     resolvedAddresses = []

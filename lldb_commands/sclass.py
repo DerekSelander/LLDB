@@ -167,7 +167,7 @@ def generate_header_script(options, class_to_generate_header):
 
   typedef struct objc_method *Method;
   typedef struct objc_ivar *Ivar;
-  typedef struct objc_category *Category;
+  // typedef struct objc_category *Category;
   typedef struct objc_property *objc_property_t;
   
   NSString *randString = @"''' + class_to_generate_header + r'''";
