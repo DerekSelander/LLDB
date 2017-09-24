@@ -16,7 +16,7 @@ command regex methods -h "Dumps all methods implemented by the NSObject subclass
 
 command alias gg process int
 
-command alias pexecutable exp -lobjc -O -- @import Foundation; [[NSBundle mainBundle] executablePath]
+command alias pexecutable exp -lobjc -O --  char a[1024]; uint32_t s = 1024; _NSGetExecutablePath(a, &s); (char *)a
 
 command alias cpo expression -l objc++ -O --
 
