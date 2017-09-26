@@ -185,7 +185,7 @@ def getSectionData(section, outputCount=0):
     elif name == '__DATA.__const':
         pass
     elif name == '__DATA.__la_symbol_ptr':
-        return getLazyPointersFromData(data, outputCount)
+        return getLazyPointersFromData(data, addr, outputCount)
     elif name == '__DATA.__objc_classlist':
         pass
     elif name == '__DATA.__objc_protolist':
@@ -250,7 +250,6 @@ def getCFStringsFromData(data, outputCount):
             break
 
         size = dataArray[i + 1]
-
         addr = target.ResolveFileAddress(x)
         charPointerType = getType('char', size)
         strValue = target.CreateValueFromAddress('somename', addr, charPointerType)
@@ -267,7 +266,8 @@ def generateLazyPointerScriptWithOptions():
 #define INDIRECT_SYMBOL_LOCAL   0x80000000
 #define INDIRECT_SYMBOL_ABS 0x40000000
 
-char retstring[2048];
+char retstring[4096];
+memset(&retstring[0], 0, sizeof(retstring));
 
 struct section_64 { /* for 64-bit architectures */
   char    sectname[16];  /* name of this section */
@@ -330,8 +330,8 @@ struct mach_header_64 {
     uint32_t strtab_offset = symtab[symtab_index].n_un.n_strx;
     char *symbol_name = strtab + strtab_offset;
 
-    char dsbuffer[50];
-     snprintf (dsbuffer, 100, "%p|||%s...", &la_ptr_section[i],  &symbol_name[1]);
+    char dsbuffer[200];
+     snprintf (dsbuffer, 200, "%p|||%s...", &la_ptr_section[i],  &symbol_name[1]);
      strcat(retstring, dsbuffer);
   }
 
@@ -340,7 +340,7 @@ struct mach_header_64 {
     return script
 
 
-def getLazyPointersFromData(data, outputCount=0):
+def getLazyPointersFromData(data, addr, outputCount=0):
     script = generateLazyPointerScriptWithOptions()
 
     debugger = lldb.debugger
@@ -356,7 +356,7 @@ def getLazyPointersFromData(data, outputCount=0):
     output = res.GetOutput()
 
     err = lldb.SBError()
-    baseAddress = data.GetAddress(err,0)
+    baseAddress = addr.GetLoadAddress(getTarget())
 
     # print output
     lines = list(filter(lambda x: len(x) > 1, output.replace('"', '').replace('\n', '').split("...")))
