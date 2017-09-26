@@ -38,7 +38,7 @@ def handle_command(debugger, command, result, internal_dict):
             else:
                 sections = [ds.getSection(module=None, name=args[0])]
         else:
-            module = args[0] if ds.getTarget().module[args[0]] else None
+            # module = args[0] if ds.getTarget().module[args[0]] else None
             options.summary = True
             if module:
                 sections = ds.getSection(module=args[0], name=None)
@@ -50,7 +50,6 @@ def handle_command(debugger, command, result, internal_dict):
         else:
             options.summary = True
             sections = [i for i in ds.getSection(args[0], args[1])]
-
 
 
     output = parseSection(sections, options)
@@ -81,15 +80,21 @@ def parseSection(sections, options):
             output += ds.attrStr(name, 'cyan') + '\n'
             continue
 
-        (indeces, sectionData) = ds.getSectionData(section, options.count)
-        for index, x in enumerate(sectionData):
-            if options.count != 0 and index  >= options.count:
-                break
+        returnType = ds.getSectionData(section, options.count)
 
-            if options.load_address:
-                output += ds.attrStr(hex(loadAddr + indeces[index]), 'yellow') + ' '
+        # Ok, I really need to rewrite this, but whatever
+        if isinstance(returnType, tuple):
+            (indeces, sectionData) = returnType
+            for index, x in enumerate(sectionData):
+                if options.count != 0 and index  >= options.count:
+                    break
 
-            output += ds.attrStr(str(x), 'cyan') + '\n'
+                if options.load_address:
+                    output += ds.attrStr(hex(loadAddr + indeces[index]), 'yellow') + ' '
+
+                output += ds.attrStr(str(x), 'cyan') + '\n'
+        elif isinstance(returnType, str):
+            output += returnType
 
 
     return output

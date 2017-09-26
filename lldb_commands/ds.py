@@ -127,6 +127,7 @@ def create_or_touch_filepath(filepath, contents):
 
 def copy(debugger, command, result, internal_dict):
     res = lldb.SBCommandReturnObject()
+    debugger = lldb.debugger
     interpreter = debugger.GetCommandInterpreter()
     interpreter.HandleCommand(command, res)
     if not res.Succeeded():
@@ -178,13 +179,13 @@ def getSectionData(section, outputCount=0):
     elif name == '__DATA.__got':
         pass
     elif name == '__DATA.__nl_symbol_ptr':
-        pass
+        return getFunctionsFromData(data, outputCount)
     elif name == '__DATA.__cfstring':
         return getCFStringsFromData(data, outputCount)
     elif name == '__DATA.__const':
         pass
     elif name == '__DATA.__la_symbol_ptr':
-        pass
+        return getLazyPointersFromData(data, outputCount)
     elif name == '__DATA.__objc_classlist':
         pass
     elif name == '__DATA.__objc_protolist':
@@ -214,6 +215,24 @@ def getSectionData(section, outputCount=0):
 
     return output
 
+def getFunctionsFromData(data, outputCount):
+    target = getTarget()
+    dataArray = data.uint64
+    functionList = []
+    indeces = []
+    print data.sint64[0]
+    for i, n in enumerate(dataArray):
+        if outputCount != 0 and len(functionList) > outputCount:
+            break
+
+        addr = target.ResolveLoadAddress(n)
+        print i
+        functionList.append(addr.symbol.name)
+        indeces.append(i)
+
+	return (indeces, functionList)
+
+
 def getCFStringsFromData(data, outputCount):
     dataArray = data.uint64
     indeces = []
@@ -240,6 +259,122 @@ def getCFStringsFromData(data, outputCount):
 
     return (indeces, stringList)
 
+
+
+def generateLazyPointerScriptWithOptions():
+    script = '''
+
+#define INDIRECT_SYMBOL_LOCAL   0x80000000
+#define INDIRECT_SYMBOL_ABS 0x40000000
+
+char retstring[2048];
+
+struct section_64 { /* for 64-bit architectures */
+  char    sectname[16];  /* name of this section */
+  char    segname[16];  /* segment this section goes in */
+  uint64_t  addr;    /* memory address of this section */
+  uint64_t  size;    /* size in bytes of this section */
+  uint32_t  offset;    /* file offset of this section */
+  uint32_t  align;    /* section alignment (power of 2) */
+  uint32_t  reloff;    /* file offset of relocation entries */
+  uint32_t  nreloc;    /* number of relocation entries */
+  uint32_t  flags;    /* flags (section type and attributes)*/
+  uint32_t  reserved1;  /* reserved (for offset or index) */
+  uint32_t  reserved2;  /* reserved (for count or sizeof) */
+  uint32_t  reserved3;  /* reserved */
+};
+
+struct mach_header_64 {
+  uint32_t  magic;    /* mach magic number identifier */
+  cpu_type_t  cputype;  /* cpu specifier */
+  cpu_subtype_t  cpusubtype;  /* machine specifier */
+  uint32_t  filetype;  /* type of file */
+  uint32_t  ncmds;    /* number of load commands */
+  uint32_t  sizeofcmds;  /* the size of all the load commands */
+  uint32_t  flags;    /* flags */
+  uint32_t  reserved;  /* reserved */
+};
+
+  const struct segment_command_64 *dsheader = (const struct segment_command_64 *)getsegbyname("__TEXT");
+  struct symtab_command *symtab_cmd = NULL;
+  struct dysymtab_command *dysymtab_cmd = NULL;
+  char *strtab = NULL;
+  
+  struct segment_command_64 *cur_seg;
+  uint64_t baseAddress = dsheader->vmaddr;
+  struct nlist_64 *symtab = NULL;
+  
+  uintptr_t cur = baseAddress + sizeof(struct mach_header_64);
+  for (int i = 0; i < dsheader->cmdsize; i++, cur += cur_seg->cmdsize) {
+    cur_seg = (struct segment_command_64 *)cur;
+    if (cur_seg->cmd == LC_SYMTAB) {
+      symtab_cmd = (struct symtab_command *)cur_seg;
+      strtab = (char *)(symtab_cmd->stroff + baseAddress);
+      symtab = (struct nlist_64 *)(symtab_cmd->symoff + baseAddress);
+      
+    } else if (cur_seg->cmd == LC_DYSYMTAB) {
+      dysymtab_cmd = (struct dysymtab_command *)cur_seg;
+    }
+  }
+  
+  const struct section_64 *la_section =  (const struct section_64 *)getsectbyname("__DATA", "__la_symbol_ptr");
+  uint32_t *indirect_symbol_indices = (uint32_t *)(dysymtab_cmd->indirectsymoff + baseAddress) + la_section->reserved1;
+    void **la_ptr_section = (void **)(la_section->addr);
+    
+  for (uint i = 0; i < la_section->size / sizeof(void *); i++) {
+    uint32_t symtab_index = indirect_symbol_indices[i];
+    if (symtab_index == INDIRECT_SYMBOL_ABS || symtab_index == INDIRECT_SYMBOL_LOCAL ||
+        symtab_index == (INDIRECT_SYMBOL_LOCAL   | INDIRECT_SYMBOL_ABS)) {
+      continue;
+    }
+    uint32_t strtab_offset = symtab[symtab_index].n_un.n_strx;
+    char *symbol_name = strtab + strtab_offset;
+
+    char dsbuffer[50];
+     snprintf (dsbuffer, 100, "%p|||%s...", &la_ptr_section[i],  &symbol_name[1]);
+     strcat(retstring, dsbuffer);
+  }
+
+  retstring;
+    '''
+    return script
+
+
+def getLazyPointersFromData(data, outputCount=0):
+    script = generateLazyPointerScriptWithOptions()
+
+    debugger = lldb.debugger
+    res = lldb.SBCommandReturnObject()
+    interpreter = debugger.GetCommandInterpreter()
+    interpreter.HandleCommand('exp -l objc++ -O -- ' + script, res) 
+    # exp = target.EvaluateExpression(script)
+    # print script
+    # print res.GetError()
+    if res.GetError():
+        return res.GetError()
+
+    output = res.GetOutput()
+
+    err = lldb.SBError()
+    baseAddress = data.GetAddress(err,0)
+
+    # print output
+    lines = list(filter(lambda x: len(x) > 1, output.replace('"', '').replace('\n', '').split("...")))
+
+    indeces = []
+    stringList = []
+    for line in lines:
+
+        values = line.split('|||')
+        if len(values) != 2:
+            continue
+        # print values
+        indeces.append(int(values[0], 16) - baseAddress)
+        stringList.append(values[1])
+
+    return (indeces, stringList)
+
+    # return res.GetOutput()
 
 
 
