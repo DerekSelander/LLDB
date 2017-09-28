@@ -185,7 +185,7 @@ def getSectionData(section, outputCount=0):
     elif name == '__DATA.__const':
         pass
     elif name == '__DATA.__la_symbol_ptr':
-        return getLazyPointersFromData(data, addr, outputCount)
+        return getLazyPointersFromData(data, section, outputCount)
     elif name == '__DATA.__objc_classlist':
         pass
     elif name == '__DATA.__objc_protolist':
@@ -260,64 +260,141 @@ def getCFStringsFromData(data, outputCount):
 
 
 
-def generateLazyPointerScriptWithOptions():
-    script = '''
+def generateLazyPointerScriptWithOptions(section):
+    size = section.size / 4 # TODO make 32 bit compatible
+    baseAddress = section.addr.module.FindSection("__TEXT").addr.GetLoadAddress(getTarget())
+    la_symbol_addr = section.addr.module.FindSection("__DATA").FindSubSection("__la_symbol_ptr").addr.GetLoadAddress(getTarget())
+    script = 'char retstring[' + str(size * 256) + '];\n'
+    script += 'uint64_t baseAddress = ' + str(baseAddress) + ';\n'
+    script += '''
+@import MachO;
+memset(&retstring[0], 0, sizeof(retstring));
 
 #define INDIRECT_SYMBOL_LOCAL   0x80000000
 #define INDIRECT_SYMBOL_ABS 0x40000000
 
-char retstring[4096];
-memset(&retstring[0], 0, sizeof(retstring));
+#ifdef __LP64__
 
-struct section_64 { /* for 64-bit architectures */
-  char    sectname[16];  /* name of this section */
-  char    segname[16];  /* segment this section goes in */
-  uint64_t  addr;    /* memory address of this section */
-  uint64_t  size;    /* size in bytes of this section */
-  uint32_t  offset;    /* file offset of this section */
-  uint32_t  align;    /* section alignment (power of 2) */
-  uint32_t  reloff;    /* file offset of relocation entries */
-  uint32_t  nreloc;    /* number of relocation entries */
-  uint32_t  flags;    /* flags (section type and attributes)*/
-  uint32_t  reserved1;  /* reserved (for offset or index) */
-  uint32_t  reserved2;  /* reserved (for count or sizeof) */
-  uint32_t  reserved3;  /* reserved */
-};
+typedef struct mach_header_64 {
+    uint32_t    magic;      /* mach magic number identifier */
+    cpu_type_t  cputype;    /* cpu specifier */
+    cpu_subtype_t   cpusubtype; /* machine specifier */
+    uint32_t    filetype;   /* type of file */
+    uint32_t    ncmds;      /* number of load commands */
+    uint32_t    sizeofcmds; /* the size of all the load commands */
+    uint32_t    flags;      /* flags */
+    uint32_t    reserved;   /* reserved */
+} ds_header;
 
-struct mach_header_64 {
-  uint32_t  magic;    /* mach magic number identifier */
-  cpu_type_t  cputype;  /* cpu specifier */
-  cpu_subtype_t  cpusubtype;  /* machine specifier */
-  uint32_t  filetype;  /* type of file */
-  uint32_t  ncmds;    /* number of load commands */
-  uint32_t  sizeofcmds;  /* the size of all the load commands */
-  uint32_t  flags;    /* flags */
-  uint32_t  reserved;  /* reserved */
-};
+typedef struct segment_command_64 { /* for 64-bit architectures */
+    uint32_t    cmd;        /* LC_SEGMENT_64 */
+    uint32_t    cmdsize;    /* includes sizeof section_64 structs */
+    char        segname[16];    /* segment name */
+    uint64_t    vmaddr;     /* memory address of this segment */
+    uint64_t    vmsize;     /* memory size of this segment */
+    uint64_t    fileoff;    /* file offset of this segment */
+    uint64_t    filesize;   /* amount to map from the file */
+    vm_prot_t   maxprot;    /* maximum VM protection */
+    vm_prot_t   initprot;   /* initial VM protection */
+    uint32_t    nsects;     /* number of sections in segment */
+    uint32_t    flags;      /* flags */
+} ds_segment;
 
-  const struct segment_command_64 *dsheader = (const struct segment_command_64 *)getsegbyname("__TEXT");
+typedef struct section_64 { /* for 64-bit architectures */
+    char        sectname[16];   /* name of this section */
+    char        segname[16];    /* segment this section goes in */
+    uint64_t    addr;       /* memory address of this section */
+    uint64_t    size;       /* size in bytes of this section */
+    uint32_t    offset;     /* file offset of this section */
+    uint32_t    align;      /* section alignment (power of 2) */
+    uint32_t    reloff;     /* file offset of relocation entries */
+    uint32_t    nreloc;     /* number of relocation entries */
+    uint32_t    flags;      /* flags (section type and attributes)*/
+    uint32_t    reserved1;  /* reserved (for offset or index) */
+    uint32_t    reserved2;  /* reserved (for count or sizeof) */
+    uint32_t    reserved3;  /* reserved */
+} ds_section;
+
+#else 
+
+typedef struct mach_header {
+    uint32_t    magic;      /* mach magic number identifier */
+    cpu_type_t  cputype;    /* cpu specifier */
+    cpu_subtype_t   cpusubtype; /* machine specifier */
+    uint32_t    filetype;   /* type of file */
+    uint32_t    ncmds;      /* number of load commands */
+    uint32_t    sizeofcmds; /* the size of all the load commands */
+    uint32_t    flags;      /* flags */
+} ds_header;
+
+typedef struct segment_command { /* for 32-bit architectures */
+    uint32_t    cmd;        /* LC_SEGMENT */
+    uint32_t    cmdsize;    /* includes sizeof section structs */
+    char        segname[16];    /* segment name */
+    uint32_t    vmaddr;     /* memory address of this segment */
+    uint32_t    vmsize;     /* memory size of this segment */
+    uint32_t    fileoff;    /* file offset of this segment */
+    uint32_t    filesize;   /* amount to map from the file */
+    vm_prot_t   maxprot;    /* maximum VM protection */
+    vm_prot_t   initprot;   /* initial VM protection */
+    uint32_t    nsects;     /* number of sections in segment */
+    uint32_t    flags;      /* flags */
+} ds_segment;
+
+typedef struct section { /* for 32-bit architectures */
+    char        sectname[16];   /* name of this section */
+    char        segname[16];    /* segment this section goes in */
+    uint32_t    addr;       /* memory address of this section */
+    uint32_t    size;       /* size in bytes of this section */
+    uint32_t    offset;     /* file offset of this section */
+    uint32_t    align;      /* section alignment (power of 2) */
+    uint32_t    reloff;     /* file offset of relocation entries */
+    uint32_t    nreloc;     /* number of relocation entries */
+    uint32_t    flags;      /* flags (section type and attributes)*/
+    uint32_t    reserved1;  /* reserved (for offset or index) */
+    uint32_t    reserved2;  /* reserved (for count or sizeof) */
+} ds_section;
+
+#endif
+
   struct symtab_command *symtab_cmd = NULL;
   struct dysymtab_command *dysymtab_cmd = NULL;
   char *strtab = NULL;
   
-  struct segment_command_64 *cur_seg;
-  uint64_t baseAddress = dsheader->vmaddr;
+  ds_header *dsheader = (ds_header *)baseAddress;
+  ds_section *la_section = NULL;
+
+  ds_segment *cur_seg;
   struct nlist_64 *symtab = NULL;
   
-  uintptr_t cur = baseAddress + sizeof(struct mach_header_64);
-  for (int i = 0; i < dsheader->cmdsize; i++, cur += cur_seg->cmdsize) {
-    cur_seg = (struct segment_command_64 *)cur;
-    if (cur_seg->cmd == LC_SYMTAB) {
+  uintptr_t cur = baseAddress + sizeof(ds_header);
+  for (int i = 0; i < dsheader->sizeofcmds; i++, cur += cur_seg->cmdsize) {
+    cur_seg = (ds_segment *)cur;
+    if (cur_seg->cmd == 0x2) { // LC_SYMTAB
       symtab_cmd = (struct symtab_command *)cur_seg;
       strtab = (char *)(symtab_cmd->stroff + baseAddress);
       symtab = (struct nlist_64 *)(symtab_cmd->symoff + baseAddress);
       
-    } else if (cur_seg->cmd == LC_DYSYMTAB) {
+    } else if (cur_seg->cmd == 0xb) { // LC_DYSYMTAB
       dysymtab_cmd = (struct dysymtab_command *)cur_seg;
+    } 
+    else if (cur_seg->cmd == 0x19 && strcmp(cur_seg->segname, "__DATA") == 0) {
+        uintptr_t curs = cur + sizeof(ds_segment);
+        for (int j = 0; j < cur_seg->nsects; j++, curs += sizeof(ds_section)) {
+            ds_section *cur_sect = (ds_section*)curs; 
+            if (strcmp(cur_sect->sectname, "__la_symbol_ptr") == 0) {
+                la_section = (ds_section *)curs;
+                break;
+            }
+        }
     }
   }
   
-  const struct section_64 *la_section =  (const struct section_64 *)getsectbyname("__DATA", "__la_symbol_ptr");
+    if (!symtab_cmd || !dysymtab_cmd || !strtab || !la_section) {
+        strcat(retstring, "0|||An error has occurred in parsing");
+        return;
+    }
+
   uint32_t *indirect_symbol_indices = (uint32_t *)(dysymtab_cmd->indirectsymoff + baseAddress) + la_section->reserved1;
     void **la_ptr_section = (void **)(la_section->addr);
     
@@ -329,36 +406,40 @@ struct mach_header_64 {
     }
     uint32_t strtab_offset = symtab[symtab_index].n_un.n_strx;
     char *symbol_name = strtab + strtab_offset;
+    if (symbol_name > strtab + symtab_cmd->strsize) {
+        printf("something might of went wong...\\n")
+        continue;
+    }
+
+    if (strlen(symbol_name) < 2) {
+        continue;
+    }
 
     char dsbuffer[200];
      snprintf (dsbuffer, 200, "%p|||%s...", &la_ptr_section[i],  &symbol_name[1]);
      strcat(retstring, dsbuffer);
   }
 
-  retstring;
+  retstring
     '''
     return script
 
 
-def getLazyPointersFromData(data, addr, outputCount=0):
-    script = generateLazyPointerScriptWithOptions()
+def getLazyPointersFromData(data, section, outputCount=0):
+    script = generateLazyPointerScriptWithOptions(section)
 
     debugger = lldb.debugger
     res = lldb.SBCommandReturnObject()
     interpreter = debugger.GetCommandInterpreter()
-    interpreter.HandleCommand('exp -l objc++ -O -- ' + script, res) 
-    # exp = target.EvaluateExpression(script)
-    # print script
-    # print res.GetError()
+    interpreter.HandleCommand('exp -l objc++ -O -g -- ' + script, res) 
     if res.GetError():
         return res.GetError()
 
     output = res.GetOutput()
 
     err = lldb.SBError()
-    baseAddress = addr.GetLoadAddress(getTarget())
+    baseAddress = section.addr.GetLoadAddress(getTarget())
 
-    # print output
     lines = list(filter(lambda x: len(x) > 1, output.replace('"', '').replace('\n', '').split("...")))
 
     indeces = []
@@ -368,7 +449,6 @@ def getLazyPointersFromData(data, addr, outputCount=0):
         values = line.split('|||')
         if len(values) != 2:
             continue
-        # print values
         indeces.append(int(values[0], 16) - baseAddress)
         stringList.append(values[1])
 
