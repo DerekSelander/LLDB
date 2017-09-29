@@ -42,6 +42,8 @@ def handle_command(debugger, command, result, internal_dict):
             options.summary = True
             if module:
                 sections = ds.getSection(module=args[0], name=None)
+            elif args[0] == '__PAGEZERO' or args[0] == '__LINKEDIT':
+                sections = ds.getSection(module=None, name=args[0])
             else:
                 sections = [i for i in ds.getSection(module=None, name=args[0])]
     elif len(args) == 2:
@@ -52,7 +54,12 @@ def handle_command(debugger, command, result, internal_dict):
             sections = [i for i in ds.getSection(args[0], args[1])]
 
 
-    output = parseSection(sections, options)
+    if isinstance(sections, lldb.SBSection) and sections.GetNumSubSections() == 0:
+        output = str(sections)
+    else:
+        output = parseSection(sections, options)
+
+    
     result.AppendMessage(output)
 
 

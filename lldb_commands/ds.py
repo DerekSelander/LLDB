@@ -315,6 +315,19 @@ typedef struct section_64 { /* for 64-bit architectures */
     uint32_t    reserved3;  /* reserved */
 } ds_section;
 
+typedef struct nlist {
+    union {
+#ifndef __LP64__
+        char *n_name;   /* for use when in-core */
+#endif
+        uint32_t n_strx;    /* index into the string table */
+    } n_un;
+    uint8_t n_type;     /* type flag, see below */
+    uint8_t n_sect;     /* section number or NO_SECT */
+    int16_t n_desc;     /* see <mach-o/stab.h> */
+    uint32_t n_value;   /* value of this symbol (or stab offset) */
+} dsnlist;
+
 #else 
 
 typedef struct mach_header {
@@ -355,10 +368,52 @@ typedef struct section { /* for 32-bit architectures */
     uint32_t    reserved2;  /* reserved (for count or sizeof) */
 } ds_section;
 
+typedef struct nlist_64 {
+    union {
+        uint32_t  n_strx; /* index into the string table */
+    } n_un;
+    uint8_t n_type;        /* type flag, see below */
+    uint8_t n_sect;        /* section number or NO_SECT */
+    uint16_t n_desc;       /* see <mach-o/stab.h> */
+    uint64_t n_value;      /* value of this symbol (or stab offset) */
+} dsnlist;
+
 #endif
 
-  struct symtab_command *symtab_cmd = NULL;
-  struct dysymtab_command *dysymtab_cmd = NULL;
+typedef struct symtab_command {
+    uint32_t    cmd;        /* LC_SYMTAB */
+    uint32_t    cmdsize;    /* sizeof(struct symtab_command) */
+    uint32_t    symoff;     /* symbol table offset */
+    uint32_t    nsyms;      /* number of symbol table entries */
+    uint32_t    stroff;     /* string table offset */
+    uint32_t    strsize;    /* string table size in bytes */
+} ds_symtab_command;
+
+typedef struct dysymtab_command {
+    uint32_t cmd;   /* LC_DYSYMTAB */
+    uint32_t cmdsize;   /* sizeof(struct dysymtab_command) */
+    uint32_t ilocalsym; /* index to local symbols */
+    uint32_t nlocalsym; /* number of local symbols */
+    uint32_t iextdefsym;/* index to externally defined symbols */
+    uint32_t nextdefsym;/* number of externally defined symbols */
+    uint32_t iundefsym; /* index to undefined symbols */
+    uint32_t nundefsym; /* number of undefined symbols */
+    uint32_t tocoff;    /* file offset to table of contents */
+    uint32_t ntoc;  /* number of entries in table of contents */
+    uint32_t modtaboff; /* file offset to module table */
+    uint32_t nmodtab;   /* number of module table entries */
+    uint32_t extrefsymoff;  /* offset to referenced symbol table */
+    uint32_t nextrefsyms;   /* number of referenced symbol table entries */
+    uint32_t indirectsymoff; /* file offset to the indirect symbol table */
+    uint32_t nindirectsyms;  /* number of indirect symbol table entries */
+    uint32_t extreloff; /* offset to external relocation entries */
+    uint32_t nextrel;   /* number of external relocation entries */
+    uint32_t locreloff; /* offset to local relocation entries */
+    uint32_t nlocrel;   /* number of local relocation entries */
+} ds_dysymtab_command;
+
+  ds_symtab_command *symtab_cmd = NULL;
+  ds_dysymtab_command *dysymtab_cmd = NULL;
   char *strtab = NULL;
   
   ds_header *dsheader = (ds_header *)baseAddress;
@@ -366,6 +421,7 @@ typedef struct section { /* for 32-bit architectures */
 
   ds_segment *cur_seg;
   struct nlist_64 *symtab = NULL;
+  uintptr_t pagezero = 0;
   
   uintptr_t cur = baseAddress + sizeof(ds_header);
   for (int i = 0; i < dsheader->sizeofcmds; i++, cur += cur_seg->cmdsize) {
@@ -378,6 +434,9 @@ typedef struct section { /* for 32-bit architectures */
     } else if (cur_seg->cmd == 0xb) { // LC_DYSYMTAB
       dysymtab_cmd = (struct dysymtab_command *)cur_seg;
     } 
+    else if (cur_seg->cmd == 0x19 && strcmp(cur_seg->segname, "__PAGEZERO") == 0) {
+        pagezero = cur_seg->vmsize;
+    }
     else if (cur_seg->cmd == 0x19 && strcmp(cur_seg->segname, "__DATA") == 0) {
         uintptr_t curs = cur + sizeof(ds_segment);
         for (int j = 0; j < cur_seg->nsects; j++, curs += sizeof(ds_section)) {
@@ -396,7 +455,7 @@ typedef struct section { /* for 32-bit architectures */
     }
 
   uint32_t *indirect_symbol_indices = (uint32_t *)(dysymtab_cmd->indirectsymoff + baseAddress) + la_section->reserved1;
-    void **la_ptr_section = (void **)(la_section->addr);
+    void **la_ptr_section = (void **)(la_section->addr + baseAddress - pagezero);
     
   for (uint i = 0; i < la_section->size / sizeof(void *); i++) {
     uint32_t symtab_index = indirect_symbol_indices[i];
@@ -407,7 +466,7 @@ typedef struct section { /* for 32-bit architectures */
     uint32_t strtab_offset = symtab[symtab_index].n_un.n_strx;
     char *symbol_name = strtab + strtab_offset;
     if (symbol_name > strtab + symtab_cmd->strsize) {
-        printf("something might of went wong...\\n")
+        printf("something might of went wong...\\n");
         continue;
     }
 
@@ -431,7 +490,7 @@ def getLazyPointersFromData(data, section, outputCount=0):
     debugger = lldb.debugger
     res = lldb.SBCommandReturnObject()
     interpreter = debugger.GetCommandInterpreter()
-    interpreter.HandleCommand('exp -l objc++ -O -g -- ' + script, res) 
+    interpreter.HandleCommand('exp -l objc++ -O -- ' + script, res) 
     if res.GetError():
         return res.GetError()
 
