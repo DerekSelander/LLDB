@@ -93,7 +93,7 @@ typedef struct $LLDBStackAddress {
 
   $LLDBStackAddress stackaddress;
   mach_vm_address_t address = (mach_vm_address_t)addr;
-  unsigned int task = mach_task_self_;
+  void *task = (void *)mach_task_self_;
   stackaddress.addresses = (mach_vm_address_t *)calloc(100, sizeof(mach_vm_address_t));
   __mach_stack_logging_get_frames(task, address, stackaddress.addresses, 100, &stackaddress.count);
   stackaddress
