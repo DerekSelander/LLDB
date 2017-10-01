@@ -15,8 +15,17 @@ def handle_command(debugger, command, result, internal_dict):
     Generates a DTrace sciprt that will only profile classes implemented
     in the main executable irregardless if binary is stripped or not.
     '''
+    # command_args = shlex.split(command)
+    command_args = shlex.split(command, posix=False)
+    parser = generate_option_parser()
+    try:
+        (options, args) = parser.parse_args(command_args)
+    except:
+        result.SetError(parser.usage)
+        return
 
-    script = generateDTraceScript(debugger)
+
+    script = generateDTraceScript(debugger, options)
     pid = debugger.GetSelectedTarget().process.id
     filename = '/tmp/lldb_dtrace_profile_snoopie.d'
     
@@ -36,17 +45,22 @@ def createOrTouchFilePath(filepath, dtrace_script):
     file.close()
 
 
-def generateDTraceScript(debugger):
+def generateDTraceScript(debugger, options):
     target = debugger.GetSelectedTarget()
     path = target.executable.fullpath
     section = target.module[path].section['__DATA']
     start_address = section.GetLoadAddress(target)
     end_address = start_address + section.size
 
+
+      
     dataSectionFilter = '''{} <= *((uintptr_t *)copyin(arg0, sizeof(uintptr_t))) && 
                                 *((uintptr_t *)copyin(arg0, sizeof(uintptr_t))) <= {}'''
                                 
-    dataSectionFilter = dataSectionFilter.format(start_address, end_address)
+    if options.all:
+        dataSectionFilter = '1'
+    else:
+        dataSectionFilter = dataSectionFilter.format(start_address, end_address)
 
     predicate = '''/ arg0 > 0x100000000 &&
                       {} &&
@@ -103,4 +117,16 @@ pid$target::objc_msgSend:entry ''' + predicate + r'''
                                        this->selector);
 }'''
     return script
+
+
+
+def generate_option_parser():
+    usage = "usage: %prog [options] snoopie"
+    parser = optparse.OptionParser(usage=usage, prog="snoopie")
+    parser.add_option("-a", "--all",
+                      action="store_true",
+                      default=False,
+                      dest="all",
+                      help="DTrace all Objective-C code instead of just the main executable")
+    return parser
 
