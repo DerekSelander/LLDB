@@ -47,12 +47,13 @@ def handle_command(debugger, command, result, internal_dict):
         outputStr += getObjcMethNameAddress(sbaddress)
 
     executablePath = module.file.fullpath
-    pagesize = ds.getSection(name="__PAGEZERO").size
+    pagesizesection = ds.getSection(module.file.basename, name="__PAGEZERO")
+    pagesize = pagesizesection.size if pagesizesection else 0
     loadOffset = ds.getSection(module=executablePath, name="__TEXT").addr.GetLoadAddress(target) - pagesize
     searchAddr = addr - loadOffset 
 
-    command = '/usr/bin/otool -tv ' + executablePath
-    output = subprocess.Popen(command, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE, shell=True).communicate()[0]
+    otoolCommand = '/usr/bin/otool -tv "{}"'.format(executablePath)
+    output = subprocess.Popen(otoolCommand, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE, shell=True).communicate()[0]
     matches = re.findall(".*rip.*\n\w+", output)
     regex = re.compile('(?P<initial>\w+)?\t\w+\w.*[^\*](?P<offset>\-?0x\w+).*\n(?P<addr>\w+)')
 
