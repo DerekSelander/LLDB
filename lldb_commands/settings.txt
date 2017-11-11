@@ -5,3 +5,5 @@ settings set target.x86-disassembly-flavor intel
 settings set stop-disassembly-count 8
 
 settings set target.max-string-summary-length 16384
+
+settings set target.process.thread.step-in-avoid-nodebug false
