@@ -73,6 +73,11 @@ def pmodule(debugger, command, result, internal_dict):
         return
 
     dtrace_script = generate_dtrace_script(debugger, options, args)
+    if options.debug:
+        source = '\n'.join(['# '+ format(idx + 1, '2') +': ' + line for idx, line in enumerate(dtrace_script.split('\n'))]) 
+
+        result.AppendMessage(source)
+        return
 
     filename = '/tmp/lldb_dtrace_pmodule'
     create_or_touch_filepath(filename, dtrace_script)
@@ -88,9 +93,17 @@ def pmodule(debugger, command, result, internal_dict):
     
     result.SetStatus(lldb.eReturnStatusSuccessFinishNoResult)
 
-def generate_conditional_for_module_name(module_name, debugger):
+def generate_conditional_for_module_name(module_name, debugger, options):
     pair = get_module_pair(module_name, debugger)
-    template = '/ {} <= uregs[R_PC] && uregs[R_PC] <= {} /\n'
+    if not options.non_objectivec and options.root_function:
+        template = '/ ({0} > *(uintptr_t *)copyin(uregs[R_SP], sizeof(uintptr_t)) || *(uintptr_t *)copyin(uregs[R_SP], sizeof(uintptr_t)) > {1}) && {0} <= uregs[R_PC] && uregs[R_PC] <= {1} /\n'
+    elif options.non_objectivec and not options.root_function:
+        template = '\n'
+    elif not options.non_objectivec and not options.root_function:
+        template = '/ {0} <= uregs[R_PC] && uregs[R_PC] <= {1} /\n'
+    elif options.non_objectivec and options.root_function:
+        template = '/ ({0} > *(uintptr_t *)copyin(uregs[R_SP], sizeof(uintptr_t)) || *(uintptr_t *)copyin(uregs[R_SP], sizeof(uintptr_t)) > {1}) /\n'
+
     return template.format(pair[0], pair[1])
 
 
@@ -136,7 +149,9 @@ dtrace:::BEGIN
 {{
     printf("Starting... Hit Ctrl-C to end. Observing {} functions in {}\\n");
 }}
-'''.format('non-Objective-C' if is_cplusplus else 'Objective-C', (', ').join(args))
+'''.format('straight up, normal' if is_cplusplus else 'Objective-C', (', ').join(args))
+
+    dtrace_template = ''
 
 
     pid = target.process.id
@@ -156,7 +171,7 @@ dtrace:::BEGIN
              dtrace_script += '{\nprintf("0x%012p %s, %s\\n", uregs[R_RDI], probemod, probefunc);\n}'
         else:
             dtrace_script += '{\nprogram_counter = uregs[R_PC];\nthis->method_counter = \"Unknown\";' # TODO 64 only change to universal arch
-            dtrace_template = "this->method_counter = {} <= program_counter && program_counter <= {} ? \"{}\" : this->method_counter;\n"
+            dtrace_template += "this->method_counter = {} <= program_counter && program_counter <= {} ? \"{}\" : this->method_counter;\n"
             dtrace_template = textwrap.dedent(dtrace_template)
 
             for module in target.modules:
@@ -172,14 +187,16 @@ dtrace:::BEGIN
     else:
         for module_name in args:
 
+            # uregs[R_RDI]
             # Objective-C logic:        objc$target:::entry / {} <= uregs[R_PC] && uregs[R_PC] <= {} / { }
             if not is_cplusplus:
                 dtrace_script += query_template.format('objc', '')
-                dtrace_script += generate_conditional_for_module_name(module_name, debugger)
+                dtrace_script += generate_conditional_for_module_name(module_name, debugger, options)
 
             # Non-Objective-C logic:    pid$target:Module::entry { }
             if is_cplusplus:
                 dtrace_script += query_template.format('pid', module_name)
+                dtrace_script += generate_conditional_for_module_name(module_name, debugger, options)
                 dtrace_script += '{\n    printf("[%s] %s\\n", probemod, probefunc);\n'
             else:
                 dtrace_script += '{\n    printf("0x%012p %c[%s %s]\\n", uregs[R_RDI], probefunc[0], probemod, (string)&probefunc[1]);\n'
@@ -189,6 +206,7 @@ dtrace:::BEGIN
                 dtrace_script += '    @numWrites{}[probefunc] = count();\n'.format(os.path.splitext(module_name)[0])
 
             dtrace_script += '}\n'
+
 
     return dtrace_script
 
@@ -235,9 +253,21 @@ def generate_option_parser():
                       dest="all_modules_output",
                       help="Dumps EVERYTHING. Only execute single commands with this one in lldb")
 
+    parser.add_option("-r", "--root_function",
+                      action="store_true",
+                      default=False,
+                      dest="root_function",
+                      help="Only prints the root functions if it's called from another module")
+
     parser.add_option("-f", "--flow_indent",
                       action="store_true",
                       default=False,
                       dest="flow_indent",
                       help="Adds the flow indent flag")
+
+    parser.add_option("-g", "--debug",
+                      action="store_true",
+                      default=False,
+                      dest="debug",
+                      help="Doesn't copy the script, just prints it out to stderr")
     return parser
