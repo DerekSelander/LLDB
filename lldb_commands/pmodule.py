@@ -33,7 +33,7 @@ def __lldb_init_module(debugger, internal_dict):
         'command script add -f pmodule.pmodule pmodule')
 
 
-def pmodule(debugger, command, result, internal_dict):
+def pmodule(debugger, command, exe_ctx, result, internal_dict):
     '''Creates a custom dtrace script that profiles modules in an executable
     based upon its memory layout and ASLR. Provide no arguments w/ '-a' if 
     you want a count of all the modules firing. Provide a module if you want 

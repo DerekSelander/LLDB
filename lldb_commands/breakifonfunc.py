@@ -20,7 +20,7 @@ def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(
         'command script add -f breakifonfunc.breakifonfunc biof')
 
-def breakifonfunc(debugger, command, result, internal_dict):
+def breakifonfunc(debugger, command, exe_ctx, result, internal_dict):
     '''
     usage: biof [ModuleName] regex1 ||| [ModuleName2] regex2
     Regex breakpoint that stops only if the second regex breakpoint is in the stack trace

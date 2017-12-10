@@ -125,7 +125,7 @@ def create_or_touch_filepath(filepath, contents):
     file.flush()
     file.close()
 
-def copy(debugger, command, result, internal_dict):
+def copy(debugger, command, exe_ctx, result, internal_dict):
     res = lldb.SBCommandReturnObject()
     debugger = lldb.debugger
     interpreter = debugger.GetCommandInterpreter()
@@ -605,7 +605,7 @@ def getType(typeStr, count=None):
     return t
 
 
-def sys(debugger, command, result, internal_dict):
+def sys(debugger, command, exe_ctx, result, internal_dict):
     search =  re.search('(?<=\$\().*(?=\))', command)
     if search:
         cleanCommand = search.group(0)

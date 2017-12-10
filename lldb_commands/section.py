@@ -10,7 +10,7 @@ def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(
     'command script add -f section.handle_command section')
 
-def handle_command(debugger, command, result, internal_dict):
+def handle_command(debugger, command, exe_ctx, result, internal_dict):
     '''
     Documentation for how to use section goes here 
     '''

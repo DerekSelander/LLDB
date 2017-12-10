@@ -34,7 +34,7 @@ def __lldb_init_module(debugger, internal_dict):
         'command script add -f dclass.dclass dclass')
 
 
-def dclass(debugger, command, result, internal_dict):
+def dclass(debugger, command, exe_ctx, result, internal_dict):
     '''
     Dumps all the NSObject inherited classes in the process. If you give it a module, 
     it will dump only the classes within that module. You can also filter out classes 

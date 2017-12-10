@@ -43,7 +43,7 @@ def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand('command script add -f search.search search')
 
 
-def search(debugger, command, result, internal_dict):
+def search(debugger, command, exe_ctx, result, internal_dict):
     '''
     Finds all subclasses of a class. This class must by dynamic 
     (aka inherit from a NSObject class). Currently doesn't work 

@@ -32,7 +32,7 @@ def __lldb_init_module(debugger, internal_dict):
         'command script add -f sclass.sclass sclass')
 
 
-def sclass(debugger, command, result, internal_dict):
+def sclass(debugger, command, exe_ctx, result, internal_dict):
     '''
     Swizzle Class. Generates a NSObject category file 
     that swizzles the class that you supply. 

@@ -32,7 +32,7 @@ def __lldb_init_module(debugger, internal_dict):
         'command script add -f lookup.lookup lookup')
 
 
-def lookup(debugger, command, result, internal_dict):
+def lookup(debugger, command, exe_ctx, result, internal_dict):
     '''
     Perform a regular expression search for stuff in an executable
 

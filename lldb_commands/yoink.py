@@ -31,7 +31,7 @@ def __lldb_init_module(debugger, internal_dict):
         'command script add -f yoink.yoink yoink')
 
 
-def yoink(debugger, command, result, internal_dict):
+def yoink(debugger, command, exe_ctx, result, internal_dict):
     '''
     Takes a path on a iOS/tvOS/watchOS and writes to the /tmp/ dir on your computer.
     If it can be read by -[NSData dataWithContentsOfFile:], it can be written to disk

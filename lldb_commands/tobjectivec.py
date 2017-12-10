@@ -13,7 +13,7 @@ def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(
     'command script add -f tobjectivec.handle_command tobjectivec')
 
-def handle_command(debugger, command, result, internal_dict):
+def handle_command(debugger, command, exe_ctx, result, internal_dict):
     '''
     Creates a dtrace script and copies to your clipboard
     sudo dtrace provider:module:function:name / predicate / { action }

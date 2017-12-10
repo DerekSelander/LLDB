@@ -10,7 +10,7 @@ def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(
     'command script add -f snoopie.handle_command snoopie')
 
-def handle_command(debugger, command, result, internal_dict):
+def handle_command(debugger, command, exe_ctx, result, internal_dict):
     '''
     Generates a DTrace sciprt that will only profile classes implemented
     in the main executable irregardless if binary is stripped or not.
