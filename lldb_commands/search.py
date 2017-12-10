@@ -89,7 +89,7 @@ Examples:
     interpreter = debugger.GetCommandInterpreter()
 
     if options.module:
-        target = debugger.GetSelectedTarget()
+        target = exe_ctx.target
         module = target.FindModule(lldb.SBFileSpec(options.module))
         if not module.IsValid():
             result.SetError(
@@ -117,7 +117,7 @@ Examples:
     expr_options.SetLanguage (lldb.eLanguageTypeObjC_plus_plus)
     expr_options.SetCoerceResultToId(True)
     # expr_options.SetAutoApplyFixIts(True)
-    frame = debugger.GetSelectedTarget().GetProcess().GetSelectedThread().GetSelectedFrame()
+    frame = exe_ctx.frame
 
     if frame is None:
         result.SetError('You must have the process suspended in order to execute this command')

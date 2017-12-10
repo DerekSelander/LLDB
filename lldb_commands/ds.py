@@ -68,13 +68,6 @@ def isProcStopped():
         return True 
     return False
 
-def getFrame(error=None):
-    frame = lldb.debugger.GetSelectedTarget().GetProcess().GetSelectedThread().GetSelectedFrame()
-    # if frame is None and error is not None:
-    #     pass # TODO
-    return frame
-
-
 def getSectionName(section):
         name = section.name
         parent = section.GetParent()

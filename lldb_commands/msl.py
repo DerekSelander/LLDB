@@ -31,8 +31,8 @@ def handle_command(debugger, command, exe_ctx, result, internal_dict):
         return
 
     cleanCommand = args[0]
-    frame = debugger.GetSelectedTarget().GetProcess().GetSelectedThread().GetSelectedFrame()
-    target = debugger.GetSelectedTarget()
+    frame = exe_ctx.frame
+    target = exe_ctx.target
     script = generateScript(cleanCommand, options)
     sbval = frame.EvaluateExpression(script, generateOptions())
 

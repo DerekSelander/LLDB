@@ -75,7 +75,7 @@ Examples:
     interpreter.HandleCommand('expression -lobjc -O -- @import ObjectiveC', res)
     res.Clear()
 
-    target = debugger.GetSelectedTarget()
+    target = exe_ctx.target
     interpreter.HandleCommand('expression -lobjc -O -- (Class)NSClassFromString(@\"{}\")'.format(clean_command), res)
     if 'nil' in res.GetOutput():
         result.SetError('Can\'t find class named "{}". Womp womp...'.format(clean_command))

@@ -30,7 +30,7 @@ def handle_command(debugger, command, exe_ctx, result, internal_dict):
     except:
         addr = int(args[0])
 
-    target = ds.getTarget()
+    target = exe_ctx.target
     sbaddress = target.ResolveLoadAddress(addr)
     if len(args) == 2:
         module = target.module[args[1]]
@@ -42,9 +42,9 @@ def handle_command(debugger, command, exe_ctx, result, internal_dict):
     outputStr = ''
 
     if section.name == '__cstring':
-        outputStr += getCFAddress(sbaddress)
+        outputStr += getCFAddress(sbaddress, target)
     if section.name == '__objc_methname':
-        outputStr += getObjcMethNameAddress(sbaddress)
+        outputStr += getObjcMethNameAddress(sbaddress, target)
 
     executablePath = module.file.fullpath
     pagesizesection = ds.getSection(module.file.basename, name="__PAGEZERO")
@@ -84,13 +84,12 @@ def handle_command(debugger, command, exe_ctx, result, internal_dict):
             
         # print("match at {}".format(hex(resolved)))
 
-    outputStr += generateAddressInfo(resolvedAddresses, options)
+    outputStr += generateAddressInfo(resolvedAddresses, options, target)
     result.AppendMessage(outputStr)
 
-def getObjcMethNameAddress(addr):
+def getObjcMethNameAddress(addr, target):
     outputStr = ''
     section = addr.section
-    target = ds.getTarget()
     fileAddr = addr.file_addr
     executablePath = addr.module.file.fullpath
     dataSection = ds.getSection(module=executablePath, name='__DATA.__objc_selrefs')
@@ -111,10 +110,9 @@ def getObjcMethNameAddress(addr):
 
 
 
-def getCFAddress(addr):
+def getCFAddress(addr, target):
     outputStr = ''
     section = addr.section
-    target = ds.getTarget()
     fileAddr = addr.file_addr
     executablePath = addr.module.file.fullpath
     dataSection = ds.getSection(module=executablePath, name='__DATA.__cfstring')
@@ -138,8 +136,7 @@ def getCFAddress(addr):
             outputStr += '[{}] {}\n'.format(hex(startAddr.GetLoadAddress(target)), summary)
     return outputStr
 
-def generateAddressInfo(addresses, options):
-    target = ds.getTarget()
+def generateAddressInfo(addresses, options, target):
     outputStr = ''
     for a in addresses:
         symbol = a.symbol

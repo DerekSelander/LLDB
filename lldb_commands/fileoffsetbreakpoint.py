@@ -32,7 +32,7 @@ def handle_command(debugger, command, exe_ctx, result, internal_dict):
         result.SetError(parser.usage)
         return 
 
-    target = debugger.GetSelectedTarget()
+    target = exe_ctx.target
     module = target.module[args[0]]
     try: 
         offset = long(args[1], 16)

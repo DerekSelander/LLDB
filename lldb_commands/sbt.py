@@ -46,9 +46,8 @@ def handle_command(debugger, command, exe_ctx, result, internal_dict):
         return
 
 
-    target = debugger.GetSelectedTarget()
-    process = target.GetProcess()
-    thread = process.GetSelectedThread()
+    target = exe_ctx.target
+    thread = exe_ctx.thread
     if thread is None:
         result.SetError('LLDB must be paused to execute this command')
         return

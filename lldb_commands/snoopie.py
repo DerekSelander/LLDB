@@ -25,8 +25,8 @@ def handle_command(debugger, command, exe_ctx, result, internal_dict):
         return
 
 
-    script = generateDTraceScript(debugger, options)
-    pid = debugger.GetSelectedTarget().process.id
+    script = generateDTraceScript(exe_ctx.target, options)
+    pid = exe_ctx.process.id
     filename = '/tmp/lldb_dtrace_profile_snoopie.d'
     
     createOrTouchFilePath(filename, script)
@@ -45,8 +45,7 @@ def createOrTouchFilePath(filepath, dtrace_script):
     file.close()
 
 
-def generateDTraceScript(debugger, options):
-    target = debugger.GetSelectedTarget()
+def generateDTraceScript(target, options):
     path = target.executable.fullpath
     section = target.module[path].section['__DATA']
     start_address = section.GetLoadAddress(target)

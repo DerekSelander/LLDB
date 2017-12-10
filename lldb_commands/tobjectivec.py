@@ -27,10 +27,10 @@ def handle_command(debugger, command, exe_ctx, result, internal_dict):
         result.SetError(parser.usage)
         return
 
-    script = generateDTraceScript(debugger, options)
+    script = generateDTraceScript(options)
 
 
-    pid = debugger.GetSelectedTarget().process.id
+    pid = exe_ctx.process.id
     filename = '/tmp/lldb_dtrace_profile_objc.d'
 
     
@@ -54,7 +54,7 @@ def handle_command(debugger, command, exe_ctx, result, internal_dict):
         result.AppendMessage("Copied script to clipboard... paste in Terminal")
 
 
-def generateDTraceScript(debugger, options):  
+def generateDTraceScript(options):  
     headers = '#!/usr/sbin/dtrace -{}s'.format('e' if options.debug_with_clipboard else 'l' if options.listprobes else '')
     script = headers + '\n\n'
     if not options.not_quiet:

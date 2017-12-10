@@ -26,11 +26,12 @@ def handle_command(debugger, command, exe_ctx, result, internal_dict):
     # Uncomment if you are expecting at least one argument
     # clean_command = shlex.split(args[0])[0]
 
+    target = exe_ctx.target
     if len(args) == 0:
         options.summary = True
         sections = [i for i in ds.getSection()]
     elif len(args) == 1:
-        module = args[0] if ds.getTarget().module[args[0]] else None
+        module = args[0] if target.module[args[0]] else None
         segment = args[0] if not module else None
         if segment and '.' in segment:
             if module:
@@ -38,7 +39,7 @@ def handle_command(debugger, command, exe_ctx, result, internal_dict):
             else:
                 sections = [ds.getSection(module=None, name=args[0])]
         else:
-            # module = args[0] if ds.getTarget().module[args[0]] else None
+            # module = args[0] if target.module[args[0]] else None
             options.summary = True
             if module:
                 sections = ds.getSection(module=args[0], name=None)
@@ -57,19 +58,19 @@ def handle_command(debugger, command, exe_ctx, result, internal_dict):
     if isinstance(sections, lldb.SBSection) and sections.GetNumSubSections() == 0:
         output = str(sections)
     else:
-        output = parseSection(sections, options)
+        output = parseSection(sections, options, target)
 
     
     result.AppendMessage(output)
 
 
-def parseSection(sections, options):
+def parseSection(sections, options, target):
     output = ''
     for section in sections:
         # if section 
 
         name = ds.getSectionName(section)
-        loadAddr = section.addr.GetLoadAddress(ds.getTarget())
+        loadAddr = section.addr.GetLoadAddress(target)
         addr = section.addr
         size = section.size
         data = section.data

@@ -39,7 +39,7 @@ def breakifonfunc(debugger, command, exe_ctx, result, internal_dict):
     #     result.SetError(parser.usage)
     #     return 
 
-    target = debugger.GetSelectedTarget()
+    target = exe_ctx.target
     # if len(command.split('|||')) != 2:
     #     result.SetError(parser.usage)
 
@@ -50,7 +50,6 @@ def breakifonfunc(debugger, command, exe_ctx, result, internal_dict):
     else:
         breakpoint = target.BreakpointCreateByRegex(clean_command[0], None)
 
-    target = ds.getTarget()
     moduleName = t[1].strip().split()[1]
     module = target.module[moduleName] 
     if not module:

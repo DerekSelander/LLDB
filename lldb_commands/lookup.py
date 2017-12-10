@@ -70,7 +70,8 @@ def lookup(debugger, command, exe_ctx, result, internal_dict):
         return
 
     clean_command = ('').join(args)
-    target = debugger.GetSelectedTarget()
+    target = exe_ctx.target
+    frame = exe_ctx.frame
     if options.stripped_executable is not None or options.stripped_executable_main:
         expr_options = lldb.SBExpressionOptions()
         expr_options.SetIgnoreBreakpoints(False);
@@ -81,7 +82,6 @@ def lookup(debugger, command, exe_ctx, result, internal_dict):
         expr_options.SetGenerateDebugInfo(True)
         expr_options.SetLanguage (lldb.eLanguageTypeObjC_plus_plus)
         expr_options.SetCoerceResultToId(True)
-        frame = debugger.GetSelectedTarget().GetProcess().GetSelectedThread().GetSelectedFrame()
         if frame is None:
             result.SetError('You must have the process suspended in order to execute this command')
             return
@@ -89,7 +89,6 @@ def lookup(debugger, command, exe_ctx, result, internal_dict):
         if options.stripped_executable:
             module_name = options.stripped_executable
 
-            target = debugger.GetSelectedTarget() 
             module = target.module[module_name]
 
             if module is None:
@@ -123,7 +122,7 @@ def lookup(debugger, command, exe_ctx, result, internal_dict):
         return
 
     if options.strings:
-        output = generate_cstring_dict(debugger, args[0], options)
+        output = generate_cstring_dict(target, args[0], options)
         result.AppendMessage(output)
         return
 
@@ -170,12 +169,11 @@ def lookup(debugger, command, exe_ctx, result, internal_dict):
         else:
             module_dict[key].append(symbol_context)
 
-    return_string = generate_return_string(debugger, module_dict, options)
+    return_string = generate_return_string(target, frame, module_dict, options)
     result.AppendMessage(return_string)
 
-def generate_cstring_dict(debugger, command, options):
+def generate_cstring_dict(target, command, options):
 
-    target = ds.getTarget()
     if options.module:
         module_name = options.module
         module = target.FindModule(lldb.SBFileSpec(module_name))
@@ -185,7 +183,7 @@ def generate_cstring_dict(debugger, command, options):
             return
         modules = [module]
     else:
-        modules = ds.getTarget().modules
+        modules = target.modules
 
     return_string = ''
     error = lldb.SBError()
@@ -197,7 +195,7 @@ def generate_cstring_dict(debugger, command, options):
 
         data = section.data
         dataArray = section.data.sint8s
-        sectionAddress = section.addr.GetLoadAddress(ds.getTarget())
+        sectionAddress = section.addr.GetLoadAddress(target)
 
         moduleString = ''
         indices = [i for i, x in enumerate(dataArray) if x > 1 and dataArray[i-1] == 0 and x != 0]
@@ -225,7 +223,7 @@ def generate_cstring_dict(debugger, command, options):
 
     return return_string
 
-def generate_return_string(debugger, module_dict, options):
+def generate_return_string(target, frame, module_dict, options):
     return_string = ''
     for key in module_dict:
         count = len(module_dict[key])
@@ -245,8 +243,6 @@ def generate_return_string(debugger, module_dict, options):
             if options.global_var or options.global_var_noeval:
                 name = symbol_context.symbol.name
                 if options.global_var:
-                    frame = ds.getFrame()
-                    target = ds.getTarget()
                     addr = hex(symbol_context.symbol.addr.GetLoadAddress(target))
                     val = frame.EvaluateExpression('*(void**)' + addr)
                     name += '\n' + (val.description if val.description else '0x%010x' % val.unsigned)
@@ -267,8 +263,8 @@ def generate_return_string(debugger, module_dict, options):
 
 
             if options.load_address:
-                str_addr = str(hex(symbol_context.GetSymbol().GetStartAddress().GetLoadAddress(debugger.GetSelectedTarget())))
-                end_addr = str(hex(symbol_context.GetSymbol().GetEndAddress().GetLoadAddress(debugger.GetSelectedTarget())))
+                str_addr = str(hex(symbol_context.GetSymbol().GetStartAddress().GetLoadAddress(target)))
+                end_addr = str(hex(symbol_context.GetSymbol().GetEndAddress().GetLoadAddress(target)))
                 return_string += ds.attrStr('[' + str_addr + '-' + end_addr + '] ', 'yellow') + name
             else:  
                 return_string += name
