@@ -20,7 +20,7 @@ def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(
         'command script add -f breakifonfunc.breakifonfunc biof')
 
-def breakifonfunc(debugger, command, result, internal_dict):
+def breakifonfunc(debugger, command, exe_ctx, result, internal_dict):
     '''
     usage: biof [ModuleName] regex1 ||| [ModuleName2] regex2
     Regex breakpoint that stops only if the second regex breakpoint is in the stack trace
@@ -39,7 +39,7 @@ def breakifonfunc(debugger, command, result, internal_dict):
     #     result.SetError(parser.usage)
     #     return 
 
-    target = debugger.GetSelectedTarget()
+    target = exe_ctx.target
     # if len(command.split('|||')) != 2:
     #     result.SetError(parser.usage)
 
@@ -50,7 +50,6 @@ def breakifonfunc(debugger, command, result, internal_dict):
     else:
         breakpoint = target.BreakpointCreateByRegex(clean_command[0], None)
 
-    target = ds.getTarget()
     moduleName = t[1].strip().split()[1]
     module = target.module[moduleName] 
     if not module:

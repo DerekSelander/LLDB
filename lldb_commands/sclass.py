@@ -32,7 +32,7 @@ def __lldb_init_module(debugger, internal_dict):
         'command script add -f sclass.sclass sclass')
 
 
-def sclass(debugger, command, result, internal_dict):
+def sclass(debugger, command, exe_ctx, result, internal_dict):
     '''
     Swizzle Class. Generates a NSObject category file 
     that swizzles the class that you supply. 
@@ -75,7 +75,7 @@ Examples:
     interpreter.HandleCommand('expression -lobjc -O -- @import ObjectiveC', res)
     res.Clear()
 
-    target = debugger.GetSelectedTarget()
+    target = exe_ctx.target
     interpreter.HandleCommand('expression -lobjc -O -- (Class)NSClassFromString(@\"{}\")'.format(clean_command), res)
     if 'nil' in res.GetOutput():
         result.SetError('Can\'t find class named "{}". Womp womp...'.format(clean_command))

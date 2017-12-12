@@ -10,7 +10,7 @@ def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(
     'command script add -f snoopie.handle_command snoopie')
 
-def handle_command(debugger, command, result, internal_dict):
+def handle_command(debugger, command, exe_ctx, result, internal_dict):
     '''
     Generates a DTrace sciprt that will only profile classes implemented
     in the main executable irregardless if binary is stripped or not.
@@ -25,8 +25,8 @@ def handle_command(debugger, command, result, internal_dict):
         return
 
 
-    script = generateDTraceScript(debugger, options)
-    pid = debugger.GetSelectedTarget().process.id
+    script = generateDTraceScript(exe_ctx.target, options)
+    pid = exe_ctx.process.id
     filename = '/tmp/lldb_dtrace_profile_snoopie.d'
     
     createOrTouchFilePath(filename, script)
@@ -45,8 +45,7 @@ def createOrTouchFilePath(filepath, dtrace_script):
     file.close()
 
 
-def generateDTraceScript(debugger, options):
-    target = debugger.GetSelectedTarget()
+def generateDTraceScript(target, options):
     path = target.executable.fullpath
     section = target.module[path].section['__DATA']
     start_address = section.GetLoadAddress(target)

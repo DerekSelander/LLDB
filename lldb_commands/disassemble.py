@@ -11,13 +11,13 @@ def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(
     'command script add -f disassemble.handle_command dd')
 
-def handle_command(debugger, command, result, internal_dict):
+def handle_command(debugger, command, exe_ctx, result, internal_dict):
     '''
     Disassemble with colors! Terminal only
     '''
 
     command_args = shlex.split(command, posix=False)
-    target = ds.getTarget()
+    target = exe_ctx.target
     parser = generate_option_parser()
     try:
         (options, args) = parser.parse_args(command_args)
@@ -33,16 +33,16 @@ def handle_command(debugger, command, result, internal_dict):
         query = options.search_functions
         symbol_context_list = target.FindGlobalFunctions(query, 0, lldb.eMatchTypeRegex)    
         for symContext in symbol_context_list:
-            output += generateAssemblyFromSymbol(symContext.symbol, options)
+            output += generateAssemblyFromSymbol(symContext.symbol, options, exe_ctx)
     elif len(args) == 0:
-        sym = ds.getFrame().GetSymbol()
-        output += generateAssemblyFromSymbol(sym, options)
+        sym = exe_ctx.frame.symbol
+        output += generateAssemblyFromSymbol(sym, options, exe_ctx)
     elif args[0].startswith('0x'):
-        sym = ds.getTarget().ResolveLoadAddress(long(args[0], 16)).GetSymbol()
-        output += generateAssemblyFromSymbol(sym, options)
+        sym = target.ResolveLoadAddress(long(args[0], 16)).GetSymbol()
+        output += generateAssemblyFromSymbol(sym, options, exe_ctx)
     elif args[0].isdigit():
-        sym = ds.getTarget().ResolveLoadAddress(long(args[0])).GetSymbol()
-        output += generateAssemblyFromSymbol(sym, options)
+        sym = target.ResolveLoadAddress(long(args[0])).GetSymbol()
+        output += generateAssemblyFromSymbol(sym, options, exe_ctx)
     else:
         cleanCommand = ' '.join(args)
         symList = target.FindGlobalFunctions(cleanCommand, 0, lldb.eMatchTypeNormal)    
@@ -50,12 +50,12 @@ def handle_command(debugger, command, result, internal_dict):
             result.SetError(ds.attrStr("Couldn't find any matches for \"{}\"".format(cleanCommand), 'red'))
             return
         sym = symList
-        output += generateAssemblyFromSymbol(symList.GetContextAtIndex(0).symbol, options)
+        output += generateAssemblyFromSymbol(symList.GetContextAtIndex(0).symbol, options, exe_ctx)
 
     result.AppendMessage(output)
 
-def generateAssemblyFromSymbol(sym, options):
-    target = ds.getTarget()
+def generateAssemblyFromSymbol(sym, options, exe_ctx):
+    target = exe_ctx.target
     instructions = sym.GetInstructions(target)
     output = ds.attrStr(str(sym.addr.module.file.basename) + ', ', 'cyan') + ds.attrStr(str(sym.name), 'yellow') + '\n'
     counter = 0
@@ -63,8 +63,6 @@ def generateAssemblyFromSymbol(sym, options):
     if len(instructions) == 0:
         return
     startAddress = instructions.GetInstructionAtIndex(0).GetAddress().GetLoadAddress(target)
-
-    frame = ds.getFrame()
 
     branches = []
     offsetSizeDict = {}
@@ -101,8 +99,8 @@ def generateAssemblyFromSymbol(sym, options):
                 nextPCAddr = hex(nextInst.addr.GetLoadAddress(target))
                 commentLoadAddr = eval(m.group(0).replace('rip', nextPCAddr))
 
-                addr = ds.getTarget().ResolveLoadAddress(commentLoadAddr)
-                showComments, modName = generateDescriptionByAddress(addr)
+                addr = target.ResolveLoadAddress(commentLoadAddr)
+                showComments, modName = generateDescriptionByAddress(addr, target)
                 if not showComments:
                     comments = ''
 
@@ -167,8 +165,7 @@ def generateAssemblyFromSymbol(sym, options):
     return output + '\n'
 
 
-def generateDescriptionByAddress(addr):
-    target = ds.getTarget()
+def generateDescriptionByAddress(addr, target):
     section = addr.section
     name = ''
     retDescription = ''

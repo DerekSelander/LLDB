@@ -12,12 +12,12 @@ def __lldb_init_module(debugger, internal_dict):
 class GlobalProcess:
     hasPerformedSetup = False
 
-def handle_command(debugger, command, result, internal_dict):
+def handle_command(debugger, command, exe_ctx, result, internal_dict):
     '''
     Toggles the UIDebuggingInformationOverlay, iOS 9.X - 11.X only
     '''
 
-    target = debugger.GetSelectedTarget()
+    target = exe_ctx.target
     if GlobalProcess.hasPerformedSetup is False:
         setupIfiOS11(target)
         debugger.HandleCommand('exp -lobjc -O -- [UIDebuggingInformationOverlay prepareDebuggingOverlay]')

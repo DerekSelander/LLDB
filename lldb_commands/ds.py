@@ -68,13 +68,6 @@ def isProcStopped():
         return True 
     return False
 
-def getFrame(error=None):
-    frame = lldb.debugger.GetSelectedTarget().GetProcess().GetSelectedThread().GetSelectedFrame()
-    # if frame is None and error is not None:
-    #     pass # TODO
-    return frame
-
-
 def getSectionName(section):
         name = section.name
         parent = section.GetParent()
@@ -125,7 +118,7 @@ def create_or_touch_filepath(filepath, contents):
     file.flush()
     file.close()
 
-def copy(debugger, command, result, internal_dict):
+def copy(debugger, command, exe_ctx, result, internal_dict):
     res = lldb.SBCommandReturnObject()
     debugger = lldb.debugger
     interpreter = debugger.GetCommandInterpreter()
@@ -605,7 +598,7 @@ def getType(typeStr, count=None):
     return t
 
 
-def sys(debugger, command, result, internal_dict):
+def sys(debugger, command, exe_ctx, result, internal_dict):
     search =  re.search('(?<=\$\().*(?=\))', command)
     if search:
         cleanCommand = search.group(0)

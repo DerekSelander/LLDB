@@ -31,7 +31,7 @@ def __lldb_init_module(debugger, internal_dict):
         'command script add -f iap.iap iap')
 
 
-def iap(debugger, command, result, internal_dict):
+def iap(debugger, command, exe_ctx, result, internal_dict):
     '''
     iap expects at least one argument. The following arguments are currently supported
 

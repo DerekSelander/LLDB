@@ -9,7 +9,7 @@ def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(
     'command script add -f fileoffsetbreakpoint.handle_command lbr')
 
-def handle_command(debugger, command, result, internal_dict):
+def handle_command(debugger, command, exe_ctx, result, internal_dict):
     '''
     Creates a breakpoint on the fileoffset of a module and resolves 
     to the load address in memory. 
@@ -32,7 +32,7 @@ def handle_command(debugger, command, result, internal_dict):
         result.SetError(parser.usage)
         return 
 
-    target = debugger.GetSelectedTarget()
+    target = exe_ctx.target
     module = target.module[args[0]]
     try: 
         offset = long(args[1], 16)

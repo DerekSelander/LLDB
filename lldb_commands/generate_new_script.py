@@ -31,7 +31,7 @@ def __lldb_init_module(debugger, internal_dict):
         'command script add -f generate_new_script.generate_new_script __generate_script')
 
 
-def generate_new_script(debugger, command, result, internal_dict):
+def generate_new_script(debugger, command, exe_ctx, result, internal_dict):
     '''
     Generates a new script in the same directory as this file.
     Can generate function styled scripts or class styled scripts.
@@ -146,7 +146,7 @@ def __lldb_init_module(debugger, internal_dict):
     script += '\'command script add -f {}.handle_command {}\')'.format(filename, resolved_name)
     script += r'''
 
-def handle_command(debugger, command, result, internal_dict):
+def handle_command(debugger, command, exe_ctx, result, internal_dict):
     ''' 
     script += "\'\'\'\n    Documentation for how to use " + resolved_name + " goes here \n    \'\'\'"
     

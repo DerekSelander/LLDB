@@ -30,7 +30,7 @@ def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(
     'command script add -f sbt.handle_command sbt')
 
-def handle_command(debugger, command, result, internal_dict):
+def handle_command(debugger, command, exe_ctx, result, internal_dict):
     '''
     Symbolicate backtrace. Will symbolicate a stripped backtrace
     from an executable if the backtrace is using Objective-C 
@@ -46,9 +46,8 @@ def handle_command(debugger, command, result, internal_dict):
         return
 
 
-    target = debugger.GetSelectedTarget()
-    process = target.GetProcess()
-    thread = process.GetSelectedThread()
+    target = exe_ctx.target
+    thread = exe_ctx.thread
     if thread is None:
         result.SetError('LLDB must be paused to execute this command')
         return

@@ -34,7 +34,7 @@ def __lldb_init_module(debugger, internal_dict):
         'command script add -f dclass.dclass dclass')
 
 
-def dclass(debugger, command, result, internal_dict):
+def dclass(debugger, command, exe_ctx, result, internal_dict):
     '''
     Dumps all the NSObject inherited classes in the process. If you give it a module, 
     it will dump only the classes within that module. You can also filter out classes 
@@ -90,26 +90,26 @@ def dclass(debugger, command, result, internal_dict):
 
     res = lldb.SBCommandReturnObject()
     interpreter = debugger.GetCommandInterpreter()
-    target = debugger.GetSelectedTarget()
+    target = exe_ctx.target
     if options.dump_code_output:
-        directory = '/tmp/{}_{}/'.format(ds.getTarget().executable.basename, datetime.datetime.now().time())
+        directory = '/tmp/{}_{}/'.format(target.executable.basename, datetime.datetime.now().time())
         os.makedirs(directory)
 
-        modules = ds.getTarget().modules
+        modules = target.modules
         if len(args) > 0 and args[0] == '__all':
             os.makedirs(directory + 'PrivateFrameworks')
             os.makedirs(directory + 'Frameworks')
-            modules = [i for i in ds.getTarget().modules if '/usr/lib/' not in i.file.fullpath and '__lldb_' not in i.file.fullpath]
+            modules = [i for i in target.modules if '/usr/lib/' not in i.file.fullpath and '__lldb_' not in i.file.fullpath]
             outputMsg = "Dumping all private Objective-C frameworks"
         elif len(args) > 0 and args[0]:
-            module = ds.getTarget().module[args[0]]
+            module = target.module[args[0]]
             if module is None:
                 result.SetError( "Unable to open module name '{}', to see list of images use 'image list -b'".format(args[0]))
                 return
             modules = [module]
             outputMsg = "Dumping all private Objective-C frameworks"
         else:
-            modules = [ds.getTarget().module[ds.getTarget().executable.fullpath]]
+            modules = [target.module[target.executable.fullpath]]
 
         for module in modules:
             command_script = generate_module_header_script(options, module.file.fullpath.replace('//', '/'))
@@ -147,7 +147,7 @@ def dclass(debugger, command, result, internal_dict):
     if options.generate_header or options.generate_protocol:
         command_script = generate_header_script(options, clean_command)
     else:
-        command_script = generate_class_dump(debugger, options, clean_command)
+        command_script = generate_class_dump(target, options, clean_command)
 
     if options.generate_header or options.generate_protocol:
         interpreter.HandleCommand('expression -lobjc -O -- (Class)NSClassFromString(@\"{}\")'.format(clean_command), res)
@@ -184,7 +184,7 @@ def dclass(debugger, command, result, internal_dict):
             result.AppendMessage(res.GetOutput())
 
 
-def generate_class_dump(debugger, options, clean_command=None):
+def generate_class_dump(target, options, clean_command=None):
     command_script = r'''
   @import ObjectiveC;
   @import Foundation;
@@ -213,7 +213,7 @@ def generate_class_dump(debugger, options, clean_command=None):
         command_script += 'objc_getClass(allClasses[i]);' if clean_command else 'allClasses[i];'
 
     if options.module is not None: 
-        command_script += generate_module_search_sections_string(options.module, debugger, options.search_protocols)
+        command_script += generate_module_search_sections_string(options.module, target, options.search_protocols)
 
     if not options.search_protocols and options.conforms_to_protocol is not None:
       command_script +=  'if (!class_conformsToProtocol(cls, NSProtocolFromString(@"'+ options.conforms_to_protocol + '"))) { continue; }'
@@ -281,9 +281,7 @@ def generate_class_dump(debugger, options, clean_command=None):
         command_script += '\n  free(allProtocols);\n  [classesString description];'
     return command_script
 
-def generate_module_search_sections_string(module_name, debugger, useProtocol=False):
-    target = debugger.GetSelectedTarget()
-
+def generate_module_search_sections_string(module_name, target, useProtocol=False):
     module = target.FindModule(lldb.SBFileSpec(module_name))
     if not module.IsValid():
         result.SetError(
