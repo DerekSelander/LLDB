@@ -44,6 +44,8 @@ command regex gdocumentation 's/(.+)/script import os; os.system("open https:" +
 
 command regex pbpaste 's/(.+)/expression -l objc -O -- [[UIPasteboard generalPasteboard] setString:@"%1"]/'
 
+command regex bdel 's/(.+)/script junk = [i.FindLocationByAddress(%1).SetEnabled(False) for i in lldb.target.breakpoint_iter() if i.FindLocationByAddress(%1).IsValid()]/'
+
 command alias enable_logging expression -lobjc -O -- extern void turn_on_stack_logging(int); turn_on_stack_logging(1);
 
 
