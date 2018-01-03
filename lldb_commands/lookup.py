@@ -252,11 +252,25 @@ def generate_return_string(target, frame, module_dict, options):
                 if options.mangled_name:
                     mangledName = symbol_context.symbol.GetMangledName()
                     name += ', ' + mangledName if mangledName else '[NONE]'
+
+                if options.source_info:
+                    lineEntry = symbol_context.GetSymbol().GetStartAddress().GetLineEntry()
+                    if lineEntry.IsValid():
+                        name += '\n' + lineEntry.file.fullpath + ':' + str(lineEntry.line)
+
+
+
             elif symbol_context.symbol.name is not None:
                 name = symbol_context.symbol.name
                 if options.mangled_name:
                     mangledName = symbol_context.symbol.GetMangledName()
                     name += ', ' + mangledName if mangledName else '[NONE]'
+
+                if options.source_info:
+                    lineEntry = symbol_context.GetSymbol().GetStartAddress().GetLineEntry()
+                    if lineEntry.IsValid():
+                        name += '\n' + lineEntry.file.fullpath + ':' + str(lineEntry.line)
+
             else:
                 return_string += 'Can\'t find info for ' + str(symbol_context) + '\n\n'
                 continue
@@ -407,4 +421,10 @@ def generate_option_parser():
                       default=False,
                       dest="create_breakpoint",
                       help="Creates a breakpoint on the found functions. Only works with the -X or -x option. Use rb otherwise")
+
+    parser.add_option("-i", "--source_info",
+                      action="store_true",
+                      default=False,
+                      dest="source_info",
+                      help="Print out the source info for an function hit, if available")
     return parser
