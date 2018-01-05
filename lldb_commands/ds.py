@@ -26,7 +26,7 @@ import re
 import subprocess
 
 def __lldb_init_module(debugger, internal_dict):
-    debugger.HandleCommand('command script add -f ds.copy copy')
+    debugger.HandleCommand('command script add -f ds.dcpy dcpy')
     debugger.HandleCommand('command script add -f ds.sys sys')
     if not isXcode():
         debugger.HandleCommand('settings set frame-format "\033[2mframe #${frame.index}: ${frame.pc}\033[0m{ \x1b\x5b36m${module.file.basename}\x1b\x5b39m{` \x1b\x5b33m${function.name-with-args} \x1b\x5b39m${function.pc-offset}}}\033[2m{ at ${line.file.basename}:${line.number}}\033[0m\n"')
@@ -118,7 +118,7 @@ def create_or_touch_filepath(filepath, contents):
     file.flush()
     file.close()
 
-def copy(debugger, command, exe_ctx, result, internal_dict):
+def dcpy(debugger, command, exe_ctx, result, internal_dict):
     res = lldb.SBCommandReturnObject()
     debugger = lldb.debugger
     interpreter = debugger.GetCommandInterpreter()
