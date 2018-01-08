@@ -190,6 +190,15 @@ def generate_class_dump(target, options, clean_command=None):
   @import Foundation;
   unsigned int count = 0;
 
+  typedef struct ds_cls_struct {
+    void *isa;
+    void *supercls;
+    void *buckets;
+    uint32_t _mask;
+    uint32_t _occupied;
+    uintptr_t bits;
+  } ds_cls_struct;
+
   '''
     if options.search_protocols:
         command_script += 'Protocol **allProtocols = objc_copyProtocolList(&count);\n'
@@ -230,6 +239,11 @@ def generate_class_dump(target, options, clean_command=None):
       continue;
     }
         '''
+    if options.class_type == 'objc':
+        command_script += ' if ((((ds_cls_struct *)cls)->bits & 1UL) == 1) { continue; }\n'
+    if options.class_type == 'swift':
+        command_script += 'if ((((ds_cls_struct *)cls)->bits & 1UL) == 0) { continue; }\n'
+
     if not options.search_protocols and options.superclass is not None:
 
         command_script += 'NSString *parentClassName = @"' + options.superclass + '";'
@@ -825,6 +839,12 @@ def generate_option_parser():
                       default=None,
                       dest="regular_expression",
                       help="Search the available classes using a regular expression search")
+
+    parser.add_option("-t", "--class_type",
+                      action="store",
+                      default=None,
+                      dest="class_type",
+                      help="Specifies the class type, only supports \"objc\" or \"swift\"")
 
     parser.add_option("-v", "--verbose",
                       action="store_true",
