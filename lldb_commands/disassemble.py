@@ -56,6 +56,7 @@ def handle_command(debugger, command, exe_ctx, result, internal_dict):
 
 def generateAssemblyFromSymbol(sym, options, exe_ctx):
     target = exe_ctx.target
+    frame = exe_ctx.GetFrame()
     instructions = sym.GetInstructions(target)
     output = ds.attrStr(str(sym.addr.module.file.basename) + ', ', 'cyan') + ds.attrStr(str(sym.name), 'yellow') + '\n'
     counter = 0
