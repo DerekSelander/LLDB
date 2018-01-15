@@ -91,7 +91,33 @@ def dclass(debugger, command, exe_ctx, result, internal_dict):
     res = lldb.SBCommandReturnObject()
     interpreter = debugger.GetCommandInterpreter()
     target = exe_ctx.target
-    if options.dump_code_output:
+
+    if options.info:
+        isHexAddress = True
+        try:
+            int(options.info, 16)
+        except ValueError:
+            isHexAddress = False
+
+        if isHexAddress:
+            script = generate_class_info("(" + options.info + ")")
+        else:
+            script = generate_class_info("NSClassFromString(@\"" + options.info + "\")")
+
+        # print(script)
+        # return
+        interpreter.HandleCommand('expression -lobjc -O -- ' + script, res)
+        if res.GetError():
+            result.SetError(res.GetError()) 
+            return
+        contents = res.GetOutput()
+        result.AppendMessage(contents)
+        return
+
+
+
+
+    elif options.dump_code_output:
         directory = '/tmp/{}_{}/'.format(target.executable.basename, datetime.datetime.now().time())
         os.makedirs(directory)
 
@@ -816,6 +842,530 @@ def generate_module_header_script(options, modulePath):
 '''
     return script
 
+def generate_class_info(classInfo):
+    script =  r'''
+    #define RO_META               (1<<0)
+  // class is a root class
+#define RO_ROOT               (1<<1)
+  // class has .cxx_construct/destruct implementations
+#define RO_HAS_CXX_STRUCTORS  (1<<2)
+  // class has +load implementation
+  // #define RO_HAS_LOAD_METHOD    (1<<3)
+  // class has visibility=hidden set
+#define RO_HIDDEN             (1<<4)
+  // class has attribute(objc_exception): OBJC_EHTYPE_$_ThisClass is non-weak
+#define RO_EXCEPTION          (1<<5)
+  // this bit is available for reassignment
+  // #define RO_REUSE_ME           (1<<6)
+  // class compiled with ARC
+#define RO_IS_ARC             (1<<7)
+  // class has .cxx_destruct but no .cxx_construct (with RO_HAS_CXX_STRUCTORS)
+#define RO_HAS_CXX_DTOR_ONLY  (1<<8)
+  // class is not ARC but has ARC-style weak ivar layout
+#define RO_HAS_WEAK_WITHOUT_ARC (1<<9)
+  
+  // class is in an unloadable bundle - must never be set by compiler
+#define RO_FROM_BUNDLE        (1<<29)
+  // class is unrealized future class - must never be set by compiler
+#define RO_FUTURE             (1<<30)
+  // class is realized - must never be set by compiler
+#define RO_REALIZED           (1<<31)
+  
+  // Values for class_rw_t->flags
+  // These are not emitted by the compiler and are never used in class_ro_t.
+  // Their presence should be considered in future ABI versions.
+  // class_t->data is class_rw_t, not class_ro_t
+#define RW_REALIZED           (1<<31)
+  // class is unresolved future class
+#define RW_FUTURE             (1<<30)
+  // class is initialized
+#define RW_INITIALIZED        (1<<29)
+  // class is initializing
+#define RW_INITIALIZING       (1<<28)
+  // class_rw_t->ro is heap copy of class_ro_t
+#define RW_COPIED_RO          (1<<27)
+  // class allocated but not yet registered
+#define RW_CONSTRUCTING       (1<<26)
+  // class allocated and registered
+#define RW_CONSTRUCTED        (1<<25)
+  // available for use; was RW_FINALIZE_ON_MAIN_THREAD
+  // #define RW_24 (1<<24)
+  // class +load has been called
+#define RW_LOADED             (1<<23)
+#if !SUPPORT_NONPOINTER_ISA
+  // class instances may have associative references
+#define RW_INSTANCES_HAVE_ASSOCIATED_OBJECTS (1<<22)
+#endif
+  // class has instance-specific GC layout
+#define RW_HAS_INSTANCE_SPECIFIC_LAYOUT (1 << 21)
+  // available for use
+  // #define RW_20       (1<<20)
+  // class has started realizing but not yet completed it
+#define RW_REALIZING          (1<<19)
+  
+  // NOTE: MORE RW_ FLAGS DEFINED BELOW
+  
+  
+  // Values for class_rw_t->flags or class_t->bits
+  // These flags are optimized for retain/release and alloc/dealloc
+  // 64-bit stores more of them in class_t->bits to reduce pointer indirection.
+  
+#if !__LP64__
+  
+  // class or superclass has .cxx_construct implementation
+#define RW_HAS_CXX_CTOR       (1<<18)
+  // class or superclass has .cxx_destruct implementation
+#define RW_HAS_CXX_DTOR       (1<<17)
+  // class or superclass has default alloc/allocWithZone: implementation
+  // Note this is is stored in the metaclass.
+#define RW_HAS_DEFAULT_AWZ    (1<<16)
+  // class's instances requires raw isa
+#if SUPPORT_NONPOINTER_ISA
+#define RW_REQUIRES_RAW_ISA   (1<<15)
+#endif
+  
+  // class is a Swift class
+#define FAST_IS_SWIFT         (1UL<<0)
+  // class or superclass has default retain/release/autorelease/retainCount/
+  //   _tryRetain/_isDeallocating/retainWeakReference/allowsWeakReference
+#define FAST_HAS_DEFAULT_RR   (1UL<<1)
+  // data pointer
+#define FAST_DATA_MASK        0xfffffffcUL
+  
+#elif 1
+  // Leaks-compatible version that steals low bits only.
+  
+  // class or superclass has .cxx_construct implementation
+#define RW_HAS_CXX_CTOR       (1<<18)
+  // class or superclass has .cxx_destruct implementation
+#define RW_HAS_CXX_DTOR       (1<<17)
+  // class or superclass has default alloc/allocWithZone: implementation
+  // Note this is is stored in the metaclass.
+#define RW_HAS_DEFAULT_AWZ    (1<<16)
+  
+  // class is a Swift class
+#define FAST_IS_SWIFT           (1UL<<0)
+  // class or superclass has default retain/release/autorelease/retainCount/
+  //   _tryRetain/_isDeallocating/retainWeakReference/allowsWeakReference
+#define FAST_HAS_DEFAULT_RR     (1UL<<1)
+  // class's instances requires raw isa
+#define FAST_REQUIRES_RAW_ISA   (1UL<<2)
+  // data pointer
+#define FAST_DATA_MASK          0x00007ffffffffff8UL
+  
+#else
+  // Leaks-incompatible version that steals lots of bits.
+  
+  // class is a Swift class
+#define FAST_IS_SWIFT           (1UL<<0)
+  // class's instances requires raw isa
+#define FAST_REQUIRES_RAW_ISA   (1UL<<1)
+  // class or superclass has .cxx_destruct implementation
+  //   This bit is aligned with isa_t->hasCxxDtor to save an instruction.
+#define FAST_HAS_CXX_DTOR       (1UL<<2)
+  // data pointer
+#define FAST_DATA_MASK          0x00007ffffffffff8UL
+  // class or superclass has .cxx_construct implementation
+#define FAST_HAS_CXX_CTOR       (1UL<<47)
+  // class or superclass has default alloc/allocWithZone: implementation
+  // Note this is is stored in the metaclass.
+#define FAST_HAS_DEFAULT_AWZ    (1UL<<48)
+  // class or superclass has default retain/release/autorelease/retainCount/
+  //   _tryRetain/_isDeallocating/retainWeakReference/allowsWeakReference
+#define FAST_HAS_DEFAULT_RR     (1UL<<49)
+  // summary bit for fast alloc path: !hasCxxCtor and
+  //   !instancesRequireRawIsa and instanceSize fits into shiftedSize
+#define FAST_ALLOC              (1UL<<50)
+  // instance size in units of 16 bytes
+  //   or 0 if the instance size is too big in this field
+  //   This field must be LAST
+#define FAST_SHIFTED_SIZE_SHIFT 51
+  
+  // FAST_ALLOC means
+  //   FAST_HAS_CXX_CTOR is set
+  //   FAST_REQUIRES_RAW_ISA is not set
+  //   FAST_SHIFTED_SIZE is not zero
+  // FAST_ALLOC does NOT check FAST_HAS_DEFAULT_AWZ because that
+  // bit is stored on the metaclass.
+#define FAST_ALLOC_MASK  (FAST_HAS_CXX_CTOR | FAST_REQUIRES_RAW_ISA)
+#define FAST_ALLOC_VALUE (0)
+  
+#endif
+  
+//*****************************************************************************/
+#pragma mark - Methods
+//*****************************************************************************/
+  
+typedef struct method_t {
+    SEL name;
+    const char *types;
+    IMP imp;
+} method_t;
+  
+typedef struct method_list_t {
+    uint32_t entsizeAndFlags;
+    uint32_t count;
+    method_t *first;
+} method_list_t;
+  
+  
+typedef  struct  method_array_t {
+    uint32_t count;
+    method_list_t *methods;
+} method_array_t;
+  
+  
+//*****************************************************************************/
+#pragma mark - Ivars
+//*****************************************************************************/
+  
+typedef struct ivar_t {
+#if __x86_64__
+    // *offset was originally 64-bit on some x86_64 platforms.
+    // We read and write only 32 bits of it.
+    // Some metadata provides all 64 bits. This is harmless for unsigned
+    // little-endian values.
+    // Some code uses all 64 bits. class_addIvar() over-allocates the
+    // offset for their benefit.
+#endif
+    int32_t *offset;
+    const char *name;
+    const char *type;
+    // alignment is sometimes -1; use alignment() instead
+    uint32_t alignment_raw;
+    uint32_t size;
+    
+  } ivar_t;
+  
+  
+typedef struct ivar_list_t {
+    uint32_t entsizeAndFlags;
+    uint32_t count;
+    ivar_t *first;
+} ivar_list_t;
+  
+//*****************************************************************************/
+#pragma mark - Properties
+//*****************************************************************************/
+typedef struct property_t {
+    const char *name;
+    const char *attributes;
+} property_t;
+
+  
+typedef struct property_list_t {
+    uint32_t entsizeAndFlags;
+    uint32_t count;
+    property_t *first;
+} property_list_t;
+
+  
+typedef  struct  property_array_t {
+    uint32_t count;
+    property_list_t *properties;
+} property_array_t;
+
+//*****************************************************************************/
+#pragma mark - Protocols
+//*****************************************************************************/
+  
+ typedef struct protocol_t  {
+
+    uint32_t flags;
+    uint32_t version;
+    const char *name;
+//    struct protocol_list_t *protocols;
+//    method_list_t *instanceMethods;
+//    method_list_t *classMethods;
+//    method_list_t *optionalInstanceMethods;
+//    method_list_t *optionalClassMethods;
+//    property_list_t *instanceProperties;
+//    uint32_t size;   // sizeof(protocol_t)
+//    uint32_t flags;
+//    // Fields below this point are not always present on disk.
+//    const char **_extendedMethodTypes;
+//    const char *_demangledName;
+//    property_list_t *_classProperties;
+
+} protocol_t;
+
+
+typedef struct protocol_list_t {
+    uintptr_t count;
+    protocol_t *first;
+} protocol_list_t;
+  
+typedef  struct  protocol_array_t {
+    uint32_t count;
+    protocol_list_t *protocols;
+} protocol_array_t;
+  
+//*****************************************************************************/
+#pragma mark - Categories
+//*****************************************************************************/
+
+typedef struct class_ro_t {
+    uint32_t flags;
+    uint32_t instanceStart;
+    uint32_t instanceSize;
+#ifdef __LP64__
+    uint32_t reserved;
+#endif
+    
+    const uint8_t * ivarLayout;
+    
+    const char * name;
+    method_list_t * baseMethodList;
+    protocol_list_t * baseProtocols;
+    ivar_list_t * ivars;
+    uint8_t * weakIvarLayout;
+    property_list_t *baseProperties;
+  
+} class_ro_t;
+  
+  
+typedef struct class_rw_t {
+    uint32_t flags;
+    uint32_t version;
+    
+    const class_ro_t *ro;
+    
+    method_array_t methods;        // redefined from method_array_t
+    property_array_t properties;   // redefined from property_array_t
+    protocol_list_t protocols;    // redefined from protocol_array_t
+  
+    struct objc_class*   firstSubclass;
+    struct objc_class* nextSiblingClass;
+    
+    char *demangledName;
+    
+} class_rw_t;
+  
+  typedef struct objc_class {
+    struct objc_class* isa;
+    struct objc_class* superclass;
+    void *_buckets;             // formerly cache pointer and vtable
+    uint32_t _mask;
+    uint32_t _occupied;
+    uintptr_t bits;
+    
+    class_rw_t *data() {
+      return (class_rw_t *)(bits & FAST_DATA_MASK);
+    }
+    
+  } objc_class;
+
+  objc_class *dsclass = (objc_class*)''' + classInfo + r''';
+  uint32_t roflags = dsclass->data()->ro->flags;
+  uint32_t rwflags = dsclass->data()->flags;
+  const char* name = dsclass->data()->ro->name;
+  const char* superclassName = dsclass->superclass ? dsclass->superclass->data()->ro->name : nil;
+  
+  NSMutableString *returnString = [NSMutableString new];
+
+
+  [returnString appendString:@"\n******************************************\n"];
+  [returnString appendString:@"  "];
+  [returnString appendString:[NSString stringWithUTF8String:(char *)name]];
+  if (superclassName) {
+    [returnString appendString:@" : "];
+    [returnString appendString:[NSString stringWithUTF8String:(char *)superclassName]];
+  }
+  [returnString appendString:@"\n******************************************\n\n"];
+
+
+  [returnString appendString:@"Found in: "];
+  [returnString appendString:[NSString stringWithUTF8String:(char *)class_getImageName((id)dsclass)]];
+  [returnString appendString:@"\n\n"];
+
+  property_list_t *bprops = dsclass->data()->ro->baseProperties;
+  protocol_list_t *bprot = dsclass->data()->ro->baseProtocols;
+  method_list_t *bmeth = dsclass->data()->ro->baseMethodList;
+  ivar_list_t *bivar = dsclass->data()->ro->ivars;
+
+  [returnString appendString:@"Swift:\t\t\t"];
+  [returnString appendString:dsclass->bits & FAST_IS_SWIFT ? @"YES\n" : @"NO\n" ];
+
+  [returnString appendString:@"Size:\t\t\t"];
+  [returnString appendString:[@(dsclass->data()->ro->instanceSize) description]];
+  [returnString appendString:@" bytes"];
+
+  [returnString appendString:@"\nInstance Start:\t"];
+  [returnString appendString:[@(dsclass->data()->ro->instanceStart) description]];
+
+  [returnString appendString:@"\nMeta:\t\t\t"];
+  [returnString appendString:(BOOL)class_isMetaClass((Class*)dsclass) ? @"YES" : @"NO"];;
+  [returnString appendString:@"\n\n"];
+
+  ///////////////////////////////////////////////////////////////////
+  [returnString appendString:@"Protocols: "];
+  [returnString appendString:(id)[[NSString alloc] initWithFormat:@"\t\t%d\t%p\n",  bprot ? bprot->count : 0, bprot ? &bprot->first : 0]];
+
+  [returnString appendString:@"Ivars: "];
+  [returnString appendString:(id)[[NSString alloc] initWithFormat:@"\t\t\t%d\t%p\n",  bivar ? bivar->count : 0, bivar ? &bivar->first : 0]];
+
+  [returnString appendString:@"Properties: "];
+  [returnString appendString:(id)[[NSString alloc] initWithFormat:@"\t%d\t%p\n", bprops ? bprops->count : 0, bprops ? &bprops->first : 0]];
+
+  [returnString appendString:@"Methods: "];
+  [returnString appendString:(id)[[NSString alloc] initWithFormat:@"\t\t%d\t%p\n", bmeth ? bmeth->count : 0, bmeth ? &bmeth->first : 0]];
+  ///////////////////////////////////////////////////////////////////
+  [returnString appendString:@"\nRW Flags:\n"];
+
+  [returnString appendString:@" "];
+  [returnString appendString:(rwflags & RW_REALIZED) ? @"1" : @"0"];
+  [returnString appendString:@"\tRW_REALIZED\t\t\t\tclass is realized\n"];
+
+  [returnString appendString:@" "];
+  [returnString appendString:(rwflags & RW_FUTURE) ? @"1" : @"0"];
+  [returnString appendString:@"\tRW_FUTURE\t\t\t\tclass is unresolved future class\n"];
+
+  [returnString appendString:@" "];
+  [returnString appendString:(rwflags & RW_INITIALIZED) ? @"1" : @"0"];
+  [returnString appendString:@"\tRW_INITIALIZED\t\t\tclass is initialized\n"];
+
+  [returnString appendString:@" "];
+  [returnString appendString:(rwflags & RW_INITIALIZING) ? @"1" : @"0"];
+  [returnString appendString:@"\tRW_INITIALIZING\t\t\tclass is initializing\n"];
+
+  [returnString appendString:@" "];
+  [returnString appendString:(rwflags & RW_COPIED_RO) ? @"1" : @"0"];
+  [returnString appendString:@"\tRW_COPIED_RO\t\t\tclass_rw_t->ro is heap copy of class_ro_t\n"];
+
+  [returnString appendString:@" "];
+  [returnString appendString:(rwflags & RW_CONSTRUCTING) ? @"1" : @"0"];
+  [returnString appendString:@"\tRW_CONSTRUCTING\t\t\tclass allocated but not yet registered\n"];
+
+  [returnString appendString:@" "];
+  [returnString appendString:(rwflags & RW_CONSTRUCTED) ? @"1" : @"0"];
+  [returnString appendString:@"\tRW_CONSTRUCTED\t\t\tclass allocated and registered\n"];
+
+  [returnString appendString:@" "];
+  [returnString appendString:(rwflags & RW_LOADED) ? @"1" : @"0"];
+  [returnString appendString:@"\tRW_LOADED\t\t\t\tclass +load has been called\n"];
+
+  /////////////////////////////////////////////////////////////////////
+
+  [returnString appendString:@"\nRO Flags:\n"];
+  [returnString appendString:@" "];
+  [returnString appendString:(roflags & RO_META) ? @"1" : @"0"];
+  [returnString appendString:@"\tRO_META\t\t\t\t\tclass is a metaclass\n"];
+
+  [returnString appendString:@" "];
+  [returnString appendString: roflags & RO_ROOT ? @"1" : @"0"];
+  [returnString appendString:@"\tRO_ROOT\t\t\t\t\tclass is a root class\n"];
+
+  [returnString appendString:@" "];
+  [returnString appendString: roflags & RO_HAS_CXX_STRUCTORS ? @"1" : @"0"];
+  [returnString appendString:@"\tRO_HAS_CXX_STRUCTORS\tclass has .cxx_construct/destruct implementations\n"];
+
+  [returnString appendString:@" "];
+  [returnString appendString: roflags & RO_HIDDEN ? @"1": @"0"];
+  [returnString appendString:@"\tRO_HIDDEN\t\t\t\tclass has visibility=hidden set\n"];
+
+  [returnString appendString:@" "];
+  [returnString appendString:roflags & RO_EXCEPTION ? @"1" : @"0"];
+  [returnString appendString:@"\tRO_EXCEPTION\t\t\tclass has attribute(objc_exception): OBJC_EHTYPE_$_ThisClass is non-weak\n"];
+
+  [returnString appendString:@" "];
+  [returnString appendString:roflags & RO_IS_ARC ? @"1" : @"0"];
+  [returnString appendString:@"\tRO_IS_ARC\t\t\t\tclass compiled with ARC\n"];
+
+  [returnString appendString:@" "];
+  [returnString appendString:roflags & RO_HAS_CXX_DTOR_ONLY ? @"1" : @"0"];
+  [returnString appendString:@"\tRO_HAS_CXX_DTOR_ONLY\tclass has .cxx_destruct but no .cxx_construct (with RO_HAS_CXX_STRUCTORS)\n"];
+
+  [returnString appendString:@" "];
+  [returnString appendString:roflags & RO_HAS_WEAK_WITHOUT_ARC ? @"1" : @"0"];
+  [returnString appendString:@"\tRO_HAS_WEAK_WITHOUT_ARC\tclass is not ARC but has ARC-style weak ivar layout\n"];
+
+  [returnString appendString:@" "];
+  [returnString appendString:roflags & RO_FROM_BUNDLE ? @"1" : @"0"];
+  [returnString appendString:@"\tRO_FROM_BUNDLE\t\t\tclass is in an unloadable bundle - must never be set by compiler\n"];
+
+  [returnString appendString:@" "];
+  [returnString appendFormat:roflags & RO_FUTURE ? @"1" : @"0"];
+  [returnString appendFormat:@"\tRO_FUTURE\t\t\t\tclass is unrealized future class - must never be set by compiler\n"];
+
+  [returnString appendString:@" "];
+  [returnString appendFormat:roflags & RO_REALIZED ? @"1" : @"0"];
+  [returnString appendFormat:@"\tRO_REALIZED\t\t\t\tclass is realized - must never be set by compiler\n"];
+
+  [returnString appendFormat:@"\n@interface "];
+
+  [returnString appendString:[NSString stringWithUTF8String:(char *)name]];
+  [returnString appendString:@" : "];
+  if (superclassName) {
+    [returnString appendString:[NSString stringWithUTF8String:(char *)superclassName]];
+  }
+  
+  if (bprot) {
+    [returnString appendString:@" <"];
+    for (int i = 0; i < bprot->count; i++) {
+      protocol_t *pp = (protocol_t *)(&bprot->first);
+      //[returnString appendString:[NSString stringWithUTF8String:(char *)pp[i].name]];
+      [returnString appendString:(id)[[NSString alloc] initWithFormat:@"(%p)", pp[i]]];
+ 
+      if (i < (bprot->count - 1)) {
+        [returnString appendString:@", "];
+      }
+    }
+    [returnString appendString:@">"];
+    
+  }
+  [returnString appendString:@" {\n"];
+
+  if (bivar) {
+    for (int i = 0; i < bivar->count; i++) {
+      ivar_t *iv = (ivar_t *)(&bivar->first);
+      [returnString appendString:@"    "];
+      [returnString appendString:[NSString stringWithUTF8String:(char *)iv[i].type]] ;
+      [returnString appendString:@" "];
+
+      [returnString appendString:[NSString stringWithUTF8String:(char *)iv[i].name]];
+
+      [returnString appendString:(id)[[NSString alloc] initWithFormat:@";\t\t\t\t offset 0x%x", *(int32_t *)iv[i].offset]];
+      [returnString appendString:@"\n"];
+    }
+  }
+
+  [returnString appendString:@"}\n\n"];
+
+  if (bprops) {
+    for (int i = 0; i < bprops->count; i++) {
+      property_t *iv = (property_t *)(&bprops->first);
+      [returnString appendString:@"@property "];
+      [returnString appendString:[NSString stringWithUTF8String:(char *)iv[i].attributes]];
+      [returnString appendString:@" *"];
+      [returnString appendString:[NSString stringWithUTF8String:(char *)iv[i].name]];
+      [returnString appendString:@"\n"];
+    }
+  }
+
+  [returnString appendString:@"\n"];
+
+  if (bmeth) {
+    for (int i = 0; i < bmeth->count; i++) {
+      NSString *methodType = (BOOL)class_isMetaClass((Class *)dsclass) ? @"+" : @"-";
+      method_t *mt = (method_t*)(&bmeth->first);
+        // [returnString appendString:[NSString stringWithUTF8String:(char *)mt[i].types]];
+        [returnString appendString:@" "];
+        [returnString appendString:methodType];
+        //[returnString appendString:[NSString stringWithUTF8String:(char *)sel_getName(mt[i].name)]];
+        [returnString appendString:(id)[[NSString alloc] initWithFormat:@"%30s  %p", (char *)sel_getName(mt[i].name), mt[i].imp]];
+        [returnString appendString:@"\n"];
+    }
+  }
+
+
+  [returnString appendString:@"\n"];
+  [returnString appendString:@"@end\n"];
+  
+  
+  returnString;
+    '''
+    return script
+
 
 
 def generate_option_parser():
@@ -887,4 +1437,10 @@ def generate_option_parser():
                       default=None,
                       dest="superclass",
                       help="Returns only if the parent class is of type")
+
+    parser.add_option("-i", "--info",
+                      action="store",
+                      default=None,
+                      dest="info",
+                      help="Get the info about a Objectie-C class, i.e. dclass -i UIViewController")
     return parser
