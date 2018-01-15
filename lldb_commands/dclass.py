@@ -1167,7 +1167,10 @@ typedef struct class_rw_t {
   [returnString appendString:@"\n******************************************\n"];
   [returnString appendString:@"  "];
   [returnString appendString:[NSString stringWithUTF8String:(char *)name]];
-  if (superclassName) {
+  if (superclassName && (roflags & RO_META)) {
+
+    [returnString appendString:@" : (META)"];
+  } else if (superclassName) {
     [returnString appendString:@" : "];
     [returnString appendString:[NSString stringWithUTF8String:(char *)superclassName]];
   }
@@ -1194,7 +1197,7 @@ typedef struct class_rw_t {
   [returnString appendString:[@(dsclass->data()->ro->instanceStart) description]];
 
   [returnString appendString:@"\nMeta:\t\t\t"];
-  [returnString appendString:(BOOL)class_isMetaClass((Class*)dsclass) ? @"YES" : @"NO"];;
+  [returnString appendString:(BOOL)class_isMetaClass((Class)dsclass) ? @"YES" : @"NO"];;
   [returnString appendString:@"\n\n"];
 
   ///////////////////////////////////////////////////////////////////
@@ -1207,8 +1210,19 @@ typedef struct class_rw_t {
   [returnString appendString:@"Properties: "];
   [returnString appendString:(id)[[NSString alloc] initWithFormat:@"\t%d\t%p\n", bprops ? bprops->count : 0, bprops ? &bprops->first : 0]];
 
-  [returnString appendString:@"Methods: "];
+  if (!(roflags & RO_META)) {
+    [returnString appendString:@"I Methods: "];
+  } else {
+    [returnString appendString:@"C Methods: "];
+  }
   [returnString appendString:(id)[[NSString alloc] initWithFormat:@"\t\t%d\t%p\n", bmeth ? bmeth->count : 0, bmeth ? &bmeth->first : 0]];
+
+  if (!(roflags & RO_META)) {
+    method_list_t *classmeth = dsclass->isa->data()->ro->baseMethodList;
+    [returnString appendString:@"C Methods: "];
+    [returnString appendString:(id)[[NSString alloc] initWithFormat:@"\t\t%d\t%p\n", classmeth ? classmeth->count : 0, classmeth ? &classmeth->first : 0]];
+  }
+
   ///////////////////////////////////////////////////////////////////
   [returnString appendString:@"\nRW Flags:\n"];
 
@@ -1313,19 +1327,12 @@ typedef struct class_rw_t {
     [returnString appendString:@">"];
     
   }
-  [returnString appendString:@" {\n"];
+  [returnString appendString:@"\n{\n"];
 
   if (bivar) {
     for (int i = 0; i < bivar->count; i++) {
       ivar_t *iv = (ivar_t *)(&bivar->first);
-      [returnString appendString:@"    "];
-      [returnString appendString:[NSString stringWithUTF8String:(char *)iv[i].type]] ;
-      [returnString appendString:@" "];
-
-      [returnString appendString:[NSString stringWithUTF8String:(char *)iv[i].name]];
-
-      [returnString appendString:(id)[[NSString alloc] initWithFormat:@";\t\t\t\t offset 0x%x", *(int32_t *)iv[i].offset]];
-      [returnString appendString:@"\n"];
+      [returnString appendString:(id)[[NSString alloc] initWithFormat:@" %20s %-30s; offset 0x%x\n", (char *)iv[i].type, (char *)iv[i].name, *(int32_t *)iv[i].offset]];
     }
   }
 
@@ -1346,16 +1353,25 @@ typedef struct class_rw_t {
 
   if (bmeth) {
     for (int i = 0; i < bmeth->count; i++) {
-      NSString *methodType = (BOOL)class_isMetaClass((Class *)dsclass) ? @"+" : @"-";
+      NSString *methodType = (BOOL)class_isMetaClass((Class)dsclass) ? @"+" : @"-";
       method_t *mt = (method_t*)(&bmeth->first);
         // [returnString appendString:[NSString stringWithUTF8String:(char *)mt[i].types]];
-        [returnString appendString:@" "];
-        [returnString appendString:methodType];
         //[returnString appendString:[NSString stringWithUTF8String:(char *)sel_getName(mt[i].name)]];
-        [returnString appendString:(id)[[NSString alloc] initWithFormat:@"%30s  %p", (char *)sel_getName(mt[i].name), mt[i].imp]];
-        [returnString appendString:@"\n"];
+        [returnString appendString:(id)[[NSString alloc] initWithFormat:@" %s%40s  %p\n", [methodType UTF8String], (char *)sel_getName(mt[i].name), mt[i].imp]];
     }
   }
+
+  if (!(roflags & RO_META)) {
+    method_list_t *classmeth = dsclass->isa->data()->ro->baseMethodList;
+    if (classmeth) {
+      for (int i = 0; i < classmeth->count; i++) {
+        NSString *methodType = (BOOL)class_isMetaClass((Class)dsclass->isa) ? @"+" : @"-";
+        method_t *mt = (method_t*)(&classmeth->first);
+        [returnString appendString:(id)[[NSString alloc] initWithFormat:@" %s%40s  %p\n", [methodType UTF8String], (char *)sel_getName(mt[i].name), mt[i].imp]];
+      }
+    }
+  }
+
 
 
   [returnString appendString:@"\n"];
