@@ -1134,16 +1134,16 @@ typedef struct class_rw_t {
     property_array_t properties;   // redefined from property_array_t
     protocol_list_t protocols;    // redefined from protocol_array_t
   
-    struct objc_class*   firstSubclass;
-    struct objc_class* nextSiblingClass;
+    struct dsobjc_class*   firstSubclass;
+    struct dsobjc_class* nextSiblingClass;
     
     char *demangledName;
     
 } class_rw_t;
   
-  typedef struct objc_class {
-    struct objc_class* isa;
-    struct objc_class* superclass;
+  typedef struct dsobjc_class {
+    struct dsobjc_class* isa;
+    struct dsobjc_class* superclass;
     void *_buckets;             // formerly cache pointer and vtable
     uint32_t _mask;
     uint32_t _occupied;
@@ -1153,9 +1153,9 @@ typedef struct class_rw_t {
       return (class_rw_t *)(bits & FAST_DATA_MASK);
     }
     
-  } objc_class;
+  } dsobjc_class;
 
-  objc_class *dsclass = (objc_class*)''' + classInfo + r''';
+  dsobjc_class *dsclass = (dsobjc_class*)''' + classInfo + r''';
   uint32_t roflags = dsclass->data()->ro->flags;
   uint32_t rwflags = dsclass->data()->flags;
   const char* name = dsclass->data()->ro->name;
