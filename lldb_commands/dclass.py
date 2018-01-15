@@ -1190,11 +1190,9 @@ typedef struct class_rw_t {
   [returnString appendString:dsclass->bits & FAST_IS_SWIFT ? @"YES\n" : @"NO\n" ];
 
   [returnString appendString:@"Size:\t\t\t"];
-  [returnString appendString:[@(dsclass->data()->ro->instanceSize) description]];
-  [returnString appendString:@" bytes"];
+  [returnString appendString:[[NSString alloc] initWithFormat:@"0x%x bytes", dsclass->data()->ro->instanceSize]];
 
-  [returnString appendString:@"\nInstance Start:\t"];
-  [returnString appendString:[@(dsclass->data()->ro->instanceStart) description]];
+  [returnString appendString:[[NSString alloc] initWithFormat:@"\nInstance Start:\t0x%x", dsclass->data()->ro->instanceStart]];
 
   [returnString appendString:@"\nMeta:\t\t\t"];
   [returnString appendString:(BOOL)class_isMetaClass((Class)dsclass) ? @"YES" : @"NO"];;
