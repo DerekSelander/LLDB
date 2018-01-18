@@ -11,7 +11,20 @@ def __lldb_init_module(debugger, internal_dict):
 
 def handle_command(debugger, command, exe_ctx, result, internal_dict):
     '''
-    Documentation for how to use keychain goes here 
+    keychain will dump all the generic password and generic internet passwords
+    known to the process (iOS only).
+
+    If you give an argument, keychain will only return the hits that match either
+    the service or the account name
+
+    For example: 
+    # Dump all password content for a process 
+    keychain
+
+    # Dump all password content for a process whose service or account name contains tmp
+    keychain tmp
+
+    You iOS device must be turned on, keychain will not return any hits if the device is locked
     '''
 
     command_args = shlex.split(command, posix=False)
