@@ -44,20 +44,20 @@ def generate_script_info(query):
 
     script += r'''
    NSMutableDictionary *query = [NSMutableDictionary dictionaryWithDictionary:
-                                  @{ @"r_Attributes" : @YES,
-                                    @"r_Data" : @YES,
-                                     @"m_Limit" : @"m_LimitAll"}];
+                                  @{ (id)@"r_Attributes" : (id)@YES,
+                                    (id)@"r_Data" : (id)@YES,
+                                     (id)@"m_Limit" : (id)@"m_LimitAll"}];
     
     
-    NSArray *secItemClasses =  @[@"genp", /* kSecClassGenericPassword  */
-                                 @"inet", /* kSecClassInternetPassword */
-                                 @"cert", /* kSecClassCertificate */
-                                 @"keys", /* kSecClassKey */
-                                 @"idnt", /* kSecClassIdentity */ ];
+    NSArray *secItemClasses =  @[(id)@"genp", /* kSecClassGenericPassword  */
+                                 (id)@"inet", /* kSecClassInternetPassword */
+                                 (id)@"cert", /* kSecClassCertificate */
+                                 (id)@"keys", /* kSecClassKey */
+                                 (id)@"idnt", /* kSecClassIdentity */ ];
     
     NSMutableArray *returnArray = [NSMutableArray new];
     for (id secItemClass in secItemClasses) {
-        [query setObject:secItemClass forKey:@"class"];
+        [query setObject:secItemClass forKey:(id)@"class"];
         
         CFTypeRef result = NULL;
         SecItemCopyMatching((__bridge CFDictionaryRef)query, &result);
@@ -66,10 +66,10 @@ def generate_script_info(query):
         NSDictionary * (^grabContents)(NSDictionary *) = ^NSDictionary* (NSDictionary *dict) {
             NSMutableDictionary *returnDict = [NSMutableDictionary new];
             if ([dict objectForKey:@"agrp"]) {
-                [returnDict setObject:[dict objectForKey:@"agrp"] forKey:@"agrp"];
+                [returnDict setObject:(id)[dict objectForKey:(id)@"agrp"] forKey:(id)@"agrp"];
             }
             if ([dict objectForKey:@"acct"]) {
-                [returnDict setObject:[dict objectForKey:@"acct"] forKey:@"acct"];
+                [returnDict setObject:(id)[dict objectForKey:(id)@"acct"] forKey:(id)@"acct"];
             }
             if ([dict objectForKey:@"v_Data"]) {
                 
@@ -80,23 +80,23 @@ def generate_script_info(query):
                  }
                 NSString *str = [[NSString alloc] initWithData:data encoding:4];
                 if (str) {
-                    [returnDict setObject:str forKey:@"v_Data (str)"];
+                    [returnDict setObject:str forKey:(id)@"v_Data (str)"];
                 } 
-              else if ((BOOL)[receivedObject isKindOfClass:[NSArray class]]) {
-                    [returnDict setObject:receivedObject forKey:@"v_Data (arr)"];
-                } else if ((BOOL)[receivedObject isKindOfClass:[NSDictionary class]]) {
-                    [returnDict setObject:receivedObject forKey:@"v_Data (dict)"];
+              else if ((BOOL)[receivedObject isKindOfClass:(id)[NSArray class]]) {
+                    [returnDict setObject:receivedObject forKey:(id)@"v_Data (arr)"];
+                } else if ((BOOL)[receivedObject isKindOfClass:(id)[NSDictionary class]]) {
+                    [returnDict setObject:receivedObject forKey:(id)@"v_Data (dict)"];
                 } else if ((BOOL)[receivedObject isKindOfClass:[NSObject class]]) {
                     NSMutableString *dskey = [NSMutableString string];
-                    [dskey appendString:@"v_Data ("];
+                    [dskey appendString:(id)@"v_Data ("];
                     [dskey appendString:(id)NSStringFromClass((id)[receivedObject class])];
-                    [dskey appendString:@")"];
-                    [returnDict setObject:receivedObject forKey:dskey];
+                    [dskey appendString:(id)@")"];
+                    [returnDict setObject:receivedObject forKey:(id)dskey];
                 } else {
-                    [returnDict setObject:data forKey:@"v_Data (error)"];
+                    [returnDict setObject:data forKey:(id)@"v_Data (error)"];
                 }
             } else {
-                [returnDict setObject:@"[NONE]" forKey:@"v_Data"];
+                [returnDict setObject:@"[NONE]" forKey:(id)@"v_Data"];
             }
             return returnDict;
         };
