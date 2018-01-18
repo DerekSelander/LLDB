@@ -17,14 +17,16 @@ def handle_command(debugger, command, exe_ctx, result, internal_dict):
     If you give an argument, keychain will only return the hits that match either
     the service or the account name
 
+    You iOS device must be turned on, keychain will not return any hits if the device is locked
+
     For example: 
+
     # Dump all password content for a process 
     keychain
 
-    # Dump all password content for a process whose service or account name contains tmp
+    # Dump content whose service or account name contains "tmp"
     keychain tmp
 
-    You iOS device must be turned on, keychain will not return any hits if the device is locked
     '''
 
     command_args = shlex.split(command, posix=False)
