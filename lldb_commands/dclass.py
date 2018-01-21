@@ -92,11 +92,8 @@ def dclass(debugger, command, exe_ctx, result, internal_dict):
     interpreter = debugger.GetCommandInterpreter()
     target = exe_ctx.target
 
-    if options.info:
-        if '.' in options.info:
-            script = generate_class_info("(id)NSClassFromString(@\"" + options.info + "\")")
-        else:
-            script = generate_class_info("[" + options.info + " class]")
+    if options.info or options.verbose_info:
+        script = generate_class_info(options)
 
         # print(script)
         # return
@@ -836,8 +833,21 @@ def generate_module_header_script(options, modulePath):
 '''
     return script
 
-def generate_class_info(classInfo):
-    script =  r'''
+def generate_class_info(options):
+    if options.verbose_info and not options.info:
+        options.info = options.verbose_info
+        verboseOutput = True
+    else:
+        verboseOutput = False
+
+    if '.' in options.info:
+        classInfo = "(id)NSClassFromString(@\"" + options.info + "\")"
+    else:
+        classInfo = "[" + options.info + " class]"
+
+
+    script = "BOOL verboseOutput = {};\n".format("YES" if verboseOutput else "NO")
+    script +=  r'''
     @import Foundation;
     #define RO_META               (1<<0)
   // class is a root class
@@ -1181,10 +1191,14 @@ typedef struct class_rw_t {
   uint32_t rwflags = dsclass->data()->flags;
   const char* name = dsclass->data()->ro->name;
   const char* superclassName = dsclass->superclass ? dsclass->superclass->data()->ro->name : nil;
-  
+  property_list_t *bprops = dsclass->data()->ro->baseProperties;
+  protocol_list_t *bprot = dsclass->data()->ro->baseProtocols;
+  method_list_t *bmeth = dsclass->data()->ro->baseMethodList;
+  ivar_list_t *bivar = dsclass->data()->ro->ivars;  
+
   NSMutableString *returnString = [NSMutableString new];
 
-
+  if (verboseOutput) {
   [returnString appendString:@"\n******************************************\n"];
   [returnString appendString:@"  "];
   [returnString appendString:[NSString stringWithUTF8String:(char *)name]];
@@ -1203,11 +1217,6 @@ typedef struct class_rw_t {
   [returnString appendString:@"Found in: "];
   [returnString appendString:[NSString stringWithUTF8String:(char *)class_getImageName((id)dsclass)]];
   [returnString appendString:@"\n\n"];
-
-  property_list_t *bprops = dsclass->data()->ro->baseProperties;
-  protocol_list_t *bprot = dsclass->data()->ro->baseProtocols;
-  method_list_t *bmeth = dsclass->data()->ro->baseMethodList;
-  ivar_list_t *bivar = dsclass->data()->ro->ivars;
 
   [returnString appendString:@"Swift:\t\t\t"];
   [returnString appendString:dsclass->bits & FAST_IS_SWIFT ? @"YES\n" : @"NO\n" ];
@@ -1325,7 +1334,7 @@ typedef struct class_rw_t {
   [returnString appendString:@" "];
   [returnString appendFormat:roflags & RO_REALIZED ? @"1" : @"0"];
   [returnString appendFormat:@"\tRO_REALIZED\t\t\t\tclass is realized - must never be set by compiler\n"];
-
+}
   [returnString appendFormat:@"\n@interface "];
 
   [returnString appendString:[NSString stringWithUTF8String:(char *)name]];
@@ -1489,5 +1498,11 @@ def generate_option_parser():
                       action="store",
                       default=None,
                       dest="info",
+                      help="Get the info about a Objectie-C class, i.e. dclass -i UIViewController")
+
+    parser.add_option("-I", "--verbose_info",
+                      action="store",
+                      default=None,
+                      dest="verbose_info",
                       help="Get the info about a Objectie-C class, i.e. dclass -i UIViewController")
     return parser
