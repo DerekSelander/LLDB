@@ -93,16 +93,10 @@ def dclass(debugger, command, exe_ctx, result, internal_dict):
     target = exe_ctx.target
 
     if options.info:
-        isHexAddress = True
-        try:
-            int(options.info, 16)
-        except ValueError:
-            isHexAddress = False
-
-        if isHexAddress:
-            script = generate_class_info("(" + options.info + ")")
+        if '.' in options.info:
+            script = generate_class_info("(id)NSClassFromString(@\"" + options.info + "\")")
         else:
-            script = generate_class_info("NSClassFromString(@\"" + options.info + "\")")
+            script = generate_class_info("[" + options.info + " class]")
 
         # print(script)
         # return
@@ -844,6 +838,7 @@ def generate_module_header_script(options, modulePath):
 
 def generate_class_info(classInfo):
     script =  r'''
+    @import Foundation;
     #define RO_META               (1<<0)
   // class is a root class
 #define RO_ROOT               (1<<1)
@@ -1069,7 +1064,7 @@ typedef  struct  property_array_t {
 #pragma mark - Protocols
 //*****************************************************************************/
   
- typedef struct protocol_t  {
+ typedef struct dsprotocol_t  {
 
     uint32_t flags;
     uint32_t version;
@@ -1087,12 +1082,12 @@ typedef  struct  property_array_t {
 //    const char *_demangledName;
 //    property_list_t *_classProperties;
 
-} protocol_t;
+} dsprotocol_t;
 
 
 typedef struct protocol_list_t {
     uintptr_t count;
-    protocol_t *first;
+    dsprotocol_t *first;
 } protocol_list_t;
   
 typedef  struct  protocol_array_t {
@@ -1155,6 +1150,32 @@ typedef struct class_rw_t {
     
   } dsobjc_class;
 
+
+  typedef struct dsswift_class {
+    struct objc_class *isa;
+    struct objc_class *superclass;
+    void *_buckets;
+    void *maskAndOccupied;
+    uintptr_t bits;
+    uint32_t flags;
+    uint32_t instanceAddressPoint;
+    uint32_t instanceSize;
+    uint16_t instanceAlignMask;
+    uint16_t runtimeReservedBits;
+    uint32_t classSize;
+    uint32_t classAddressPoint;
+    uintptr_t typeDescriptor;
+    uintptr_t ivarDestroyer;
+    uintptr_t *methods;
+
+    class_rw_t *data() {
+      return (class_rw_t *)(bits & FAST_DATA_MASK);
+    }
+    
+  } dsswift_class;
+  
+
+
   dsobjc_class *dsclass = (dsobjc_class*)''' + classInfo + r''';
   uint32_t roflags = dsclass->data()->ro->flags;
   uint32_t rwflags = dsclass->data()->flags;
@@ -1174,6 +1195,8 @@ typedef struct class_rw_t {
     [returnString appendString:@" : "];
     [returnString appendString:[NSString stringWithUTF8String:(char *)superclassName]];
   }
+
+   [returnString appendString:(id)[[NSString alloc] initWithFormat:@" (%p)", dsclass]];
   [returnString appendString:@"\n******************************************\n\n"];
 
 
@@ -1190,7 +1213,7 @@ typedef struct class_rw_t {
   [returnString appendString:dsclass->bits & FAST_IS_SWIFT ? @"YES\n" : @"NO\n" ];
 
   [returnString appendString:@"Size:\t\t\t"];
-  [returnString appendString:[[NSString alloc] initWithFormat:@"0x%x bytes", dsclass->data()->ro->instanceSize]];
+  [returnString appendString:(id)[[NSString alloc] initWithFormat:@"0x%x bytes", dsclass->data()->ro->instanceSize]];
 
   [returnString appendString:[[NSString alloc] initWithFormat:@"\nInstance Start:\t0x%x", dsclass->data()->ro->instanceStart]];
 
@@ -1209,16 +1232,16 @@ typedef struct class_rw_t {
   [returnString appendString:(id)[[NSString alloc] initWithFormat:@"\t%d\t%p\n", bprops ? bprops->count : 0, bprops ? &bprops->first : 0]];
 
   if (!(roflags & RO_META)) {
-    [returnString appendString:@"I Methods: "];
+    [returnString appendString:@"I ObjC Meth: "];
   } else {
-    [returnString appendString:@"C Methods: "];
+    [returnString appendString:@"C ObjC Meth: "];
   }
-  [returnString appendString:(id)[[NSString alloc] initWithFormat:@"\t\t%d\t%p\n", bmeth ? bmeth->count : 0, bmeth ? &bmeth->first : 0]];
+  [returnString appendString:(id)[[NSString alloc] initWithFormat:@"\t%d\t%p\n", bmeth ? bmeth->count : 0, bmeth ? &bmeth->first : 0]];
 
-  if (!(roflags & RO_META)) {
+  if (!(roflags & RO_META) && NSClassFromString(@"UIView")) { // Cocoa's isa layout is different?
     method_list_t *classmeth = dsclass->isa->data()->ro->baseMethodList;
-    [returnString appendString:@"C Methods: "];
-    [returnString appendString:(id)[[NSString alloc] initWithFormat:@"\t\t%d\t%p\n", classmeth ? classmeth->count : 0, classmeth ? &classmeth->first : 0]];
+    [returnString appendString:@"C ObjC Meth: "];
+    [returnString appendString:(id)[[NSString alloc] initWithFormat:@"\t%d\t%p\n", classmeth ? classmeth->count : 0, classmeth ? &classmeth->first : 0]];
   }
 
   ///////////////////////////////////////////////////////////////////
@@ -1314,9 +1337,8 @@ typedef struct class_rw_t {
   if (bprot) {
     [returnString appendString:@" <"];
     for (int i = 0; i < bprot->count; i++) {
-      protocol_t *pp = (protocol_t *)(&bprot->first);
-      //[returnString appendString:[NSString stringWithUTF8String:(char *)pp[i].name]];
-      [returnString appendString:(id)[[NSString alloc] initWithFormat:@"(%p)", pp[i]]];
+      dsprotocol_t **pp = (&bprot->first);
+      [returnString appendString:(id)[[NSString alloc] initWithFormat:@"%s", pp[i]->name]];
  
       if (i < (bprot->count - 1)) {
         [returnString appendString:@", "];
@@ -1329,8 +1351,8 @@ typedef struct class_rw_t {
 
   if (bivar) {
     for (int i = 0; i < bivar->count; i++) {
-      ivar_t *iv = (ivar_t *)(&bivar->first);
-      [returnString appendString:(id)[[NSString alloc] initWithFormat:@" %20s %-30s; offset 0x%x\n", (char *)iv[i].type, (char *)iv[i].name, *(int32_t *)iv[i].offset]];
+      ivar_t *dsiv = (ivar_t *)(&bivar->first);
+      [returnString appendString:(id)[[NSString alloc] initWithFormat:@" %20s %-30s; offset 0x%x\n", (char *)dsiv[i].type, (char *)dsiv[i].name, *(int32_t *)dsiv[i].offset]];
     }
   }
 
@@ -1338,11 +1360,11 @@ typedef struct class_rw_t {
 
   if (bprops) {
     for (int i = 0; i < bprops->count; i++) {
-      property_t *iv = (property_t *)(&bprops->first);
+      property_t *dsiv = (property_t *)(&bprops->first);
       [returnString appendString:@"@property "];
-      [returnString appendString:[NSString stringWithUTF8String:(char *)iv[i].attributes]];
+      [returnString appendString:[NSString stringWithUTF8String:(char *)dsiv[i].attributes]];
       [returnString appendString:@" *"];
-      [returnString appendString:[NSString stringWithUTF8String:(char *)iv[i].name]];
+      [returnString appendString:[NSString stringWithUTF8String:(char *)dsiv[i].name]];
       [returnString appendString:@"\n"];
     }
   }
@@ -1359,7 +1381,7 @@ typedef struct class_rw_t {
     }
   }
 
-  if (!(roflags & RO_META)) {
+  if (!(roflags & RO_META) && NSClassFromString(@"UIView")) { // Cocoa's isa is different? TODO
     method_list_t *classmeth = dsclass->isa->data()->ro->baseMethodList;
     if (classmeth) {
       for (int i = 0; i < classmeth->count; i++) {
@@ -1371,6 +1393,17 @@ typedef struct class_rw_t {
   }
 
 
+  if (dsclass->bits & FAST_IS_SWIFT) {
+    uintptr_t startAddress = ((uintptr_t)dsclass + 0x50UL);
+    int methodCount = ((*(int *)(((uintptr_t)dsclass) + 0x38UL) - 0x50UL) / sizeof(uintptr_t)) - 2;
+
+    [returnString appendString:(id)[[NSString alloc] initWithFormat:@"Swift methods: %d\n", methodCount ]];
+    for (int i = 0; i < methodCount; i++) {
+    
+      [returnString appendString:(id)[[NSString alloc] initWithFormat:@"(%p)\n",  *(uintptr_t *)(startAddress + i*sizeof(uintptr_t)) ]];
+    }
+
+  }
 
   [returnString appendString:@"\n"];
   [returnString appendString:@"@end\n"];
