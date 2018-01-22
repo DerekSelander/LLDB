@@ -30,25 +30,20 @@ command regex ls 's/(.+)/expression -lobjc -O -- @import Foundation; NSError *er
 ### reload_lldbinit
 Reloads all the contents in your ~/.lldbinit file. Useful for seeing if your python script(s) broke or want to do incremental updates to a python script
 
-```
-command alias reload_lldbinit command source ~/.lldbinit
-```
+    # Reload/Refresh your LLDB scripts
+    (lldb) reload_lldbinit
 
 ### tv
 Toggle view. Hides/Shows a view depending on it's current state. You don't need to resume LLDB to see changes. ObjC only
 
-```
-command regex -- tv 's/(.+)/expression -l objc -O -- @import QuartzCore; [%1 setHidden:!(BOOL)[%1 isHidden]]; (void)[CATransaction flush];/'
-```
+    # Toggle a view on or off
+    (lldb) tv [UIView new]
 
 ### pprotocol
 Dumps all the required and optional methods for specific protocol (Objective-C only)
 
+    # Dump the protocol for UITableViewDataSource
     (lldb) pprotocol UITableViewDataSource
-
-```
-command regex protocol 's/(.+)/expression -lobjc -O -- @import Foundation; NSMutableString *string = [NSMutableString string]; Protocol * prot = objc_getProtocol("%1"); [string appendFormat:@"\nProtocol: %s, %@\n", (char *)[prot name], (id)prot]; [string appendString:@"==========================================\n"]; for (int isRequired = 1; isRequired > -1; isRequired--) { [string appendFormat:@" (%@)\n", isRequired ? @"Required" : @"Optional"]; for (int isInstanceMethod = 0; isInstanceMethod < 2; isInstanceMethod++) { unsigned int ds_count = 0; struct objc_method_description * methods = (struct objc_method_description *)protocol_copyMethodDescriptionList(prot, (BOOL)isRequired, (BOOL)isInstanceMethod, &ds_count); for (int i = 0; i < ds_count; i++) { struct objc_method_description method = methods[i]; [string appendFormat:@"%@ %@, %s\n", isInstanceMethod ? @"-": @"+", NSStringFromSelector(method.name), method.types]; }}} string;/'
-```
 
 ### pexecutable
 Prints the location (on disk) of the filepath to the executable
@@ -75,19 +70,16 @@ Drops into the shell to execute commands. Note you can execute LLDB commands via
 ### methods 
 Dumps all methods inplemented by the NSObject subclass (iOS, NSObject subclass only)
 
+    # Get all the methods of UIView
     (lldb) methods UIView 
-```
-command regex methods 's/(.+)/expression -lobjc -O -- [%1 _shortMethodDescription]/'
-```
+
 
 ### ivars
 Dumps all ivars for an instance of a particular class which inherits from NSObject (iOS, NSObject subclass only)
 
+    # Get all the ivars on a newly created instance of UIView
     (lldb) ivars [UIView new]
     
-```
-command regex ivars 's/(.+)/expression -lobjc -O -- [%1 _ivarDescription]/'
-```
 
 # LLDB Scripts
 
