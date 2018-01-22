@@ -50,6 +50,28 @@ Dumps all the required and optional methods for specific protocol (Objective-C o
 command regex protocol 's/(.+)/expression -lobjc -O -- @import Foundation; NSMutableString *string = [NSMutableString string]; Protocol * prot = objc_getProtocol("%1"); [string appendFormat:@"\nProtocol: %s, %@\n", (char *)[prot name], (id)prot]; [string appendString:@"==========================================\n"]; for (int isRequired = 1; isRequired > -1; isRequired--) { [string appendFormat:@" (%@)\n", isRequired ? @"Required" : @"Optional"]; for (int isInstanceMethod = 0; isInstanceMethod < 2; isInstanceMethod++) { unsigned int ds_count = 0; struct objc_method_description * methods = (struct objc_method_description *)protocol_copyMethodDescriptionList(prot, (BOOL)isRequired, (BOOL)isInstanceMethod, &ds_count); for (int i = 0; i < ds_count; i++) { struct objc_method_description method = methods[i]; [string appendFormat:@"%@ %@, %s\n", isInstanceMethod ? @"-": @"+", NSStringFromSelector(method.name), method.types]; }}} string;/'
 ```
 
+### pexecutable
+Prints the location (on disk) of the filepath to the executable
+
+    (lldb) pexecutable
+
+### pframework
+Prints the location (on disk) of a frmaework
+
+    (lldb) pframework UIKit
+
+### sys
+Drops into the shell to execute commands. Note you can execute LLDB commands via the $() syntax
+    
+    # ls the directory LLDB is running in
+    (lldb) sys ls
+
+    # Use otool -l on the UIKit framework
+    (lldb) sys otool -l $(pframework UIKit)
+    
+    # Open the main executable in another program
+    (lldb) sys open -a "Hopper" $(pexecutable)
+
 ### methods 
 Dumps all methods inplemented by the NSObject subclass (iOS, NSObject subclass only)
 
