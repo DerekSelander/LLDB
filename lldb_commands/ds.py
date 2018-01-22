@@ -28,6 +28,7 @@ import subprocess
 def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand('command script add -f ds.dcpy dcpy')
     debugger.HandleCommand('command script add -f ds.sys sys')
+    debugger.HandleCommand('command script add -f ds.pframework pframework')
     if not isXcode():
         debugger.HandleCommand('settings set frame-format "\033[2mframe #${frame.index}: ${frame.pc}\033[0m{ \x1b\x5b36m${module.file.basename}\x1b\x5b39m{` \x1b\x5b33m${function.name-with-args} \x1b\x5b39m${function.pc-offset}}}\033[2m{ at ${line.file.basename}:${line.number}}\033[0m\n"')
         debugger.HandleCommand(r'''settings set thread-format "\033[2mthread #${thread.index}: tid = ${thread.id%tid}{, ${frame.pc}}\033[0m{ \033[36m'${module.file.basename}{\033[0m`\x1b\x5b33m${function.name-with-args}\x1b\x5b39m{${frame.no-debug}${function.pc-offset}}}}{ at ${line.file.basename}:${line.number}}{, name = '${thread.name}'}{, queue = '${thread.queue}'}{, activity = '${thread.info.activity.name}'}{, ${thread.info.trace_messages} messages}{, stop reason = ${thread.stop-reason}}{\nReturn value: ${thread.return-value}}{\nCompleted expression: ${thread.completed-expression}}\033[0m\n"''')
@@ -128,6 +129,18 @@ def dcpy(debugger, command, exe_ctx, result, internal_dict):
         return 
     os.system("echo '%s' | tr -d '\n'  | pbcopy" % res.GetOutput().rstrip())
     result.AppendMessage('Content copied to clipboard...')
+
+def pframework(debugger, command, exe_ctx, result, internal_dict):
+    target = getTarget()
+    res = lldb.SBCommandReturnObject()
+    debugger = lldb.debugger
+    interpreter = debugger.GetCommandInterpreter()
+    module = target.module[command]
+    if not module:
+        result.SetError("Couldn't find module: {}".format(command))
+        return 
+    
+    result.AppendMessage("\"" + module.file.fullpath + "\"")
 
 def getSectionData(section, outputCount=0):
     name = getSectionName(section)
@@ -604,10 +617,15 @@ def sys(debugger, command, exe_ctx, result, internal_dict):
         cleanCommand = search.group(0)
         res = lldb.SBCommandReturnObject()
         interpreter = debugger.GetCommandInterpreter()
-        interpreter.HandleCommand(cleanCommand, res)
+        interpreter.HandleCommand(cleanCommand, res, True)
         if not res.Succeeded():
             result.SetError(res.GetError())
             return
+
+        if not res.HasResult():
+            # result.SetError("NoneType for {}".format(cleanCommand))
+            return
+
         command = command.replace('$(' + cleanCommand + ')', res.GetOutput().rstrip())
     # command = re.search('\s*(?<=sys).*', command).group(0)
     output = subprocess.Popen(command, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE, shell=True).communicate()
