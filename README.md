@@ -19,12 +19,11 @@ You can test to make sure everything worked successfully by just trying one of t
 
 ### ls 
 List a directory from the process's perspective. Useful when working on an actual device. 
-```
-command regex ls 's/(.+)/expression -lobjc -O -- @import Foundation; NSError *err = nil; NSArray *arr = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:@"%1" error:&err]; id retValue = err ? [err localizedDescription] : arr; retValue/'
-```
-  Example: 
       
+      # List the root dir's contents on an actual iOS device
       (lldb) ls /
+      
+      # List contents for /System/Library on an actual iOS device
       (lldb) ls /System/Library
       
 ### reload_lldbinit
@@ -81,6 +80,13 @@ Dumps all ivars for an instance of a particular class which inherits from NSObje
     (lldb) ivars [UIView new]
     
 
+### overlaydbg
+Displays the UIDebuggingInformationOverlay on iOS in 11. Check out http://ryanipete.com/blog/ios/swift/objective-c/uidebugginginformationoverlay/ for instructions
+
+    # Display UIDebuggingInformationOverlay
+    (lldb) overlaydbg
+    
+
 # LLDB Scripts
 
 For all commands below, you can view the documentation via `help {command}`. If you want to see what options a command has, type `{command} -h`.
@@ -105,6 +111,18 @@ If you like ObjC swizzling, check out `sclass`. If you like DTrace, check out `p
       
       # Find all instances of a UIView subclass whose class is implemented in the SpringBoardUI module
       (lldb) search UIView -m SpringBoardUI
+      
+      # Find all UIView subclasses created in the "Woot" module and hide them
+      (lldb) search UIView -m Woot -p "[obj setHidden:YES]"
+      
+      # Search for UIViews but just print the class, don't print object description (ideal for Swift where they hide the pointer)
+      (lldb) search UIView -b
+      
+      # Remember, Swift includes the module in a class name, so if you have a Swift UIView called TestView in module WOOT...
+      (lldb) search WOOT.TestView -b
+      
+      # Search for exact matches, ignore subclasses of UIViews
+      (lldb) search -e UIView
 
 ### dclass
 Dumps all the NSObject inherited classes in the process. If you give it a module, it will dump only the classes within that module. You can also filter out classes to only a certain type and can also generate a header file for a specific class.
@@ -237,3 +255,5 @@ Perform a regular expression search for stuff in an executable
     profiling objc_msgSend. The creation of this command is discussed in the book.
 
   WARNING: YOU MUST DISABLE ROOTLESS TO USE DTRACE
+  
+You read all the way to here!? <a href="https://vimeo.com/231806976">Here's a video highlighting some of these scripts</a>
