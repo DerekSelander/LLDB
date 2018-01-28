@@ -7,7 +7,7 @@ import optparse
 
 def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(
-    'command script add -f overlaydbg.handle_command overlaydbg')
+    'command script add -f overlaydbg.handle_command overlaydbg -h "Display UIDebuggingInformationOverlay on iOS"')
 
 class GlobalProcess:
     hasPerformedSetup = False

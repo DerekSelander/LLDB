@@ -28,7 +28,7 @@ import optparse
 
 def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(
-    'command script add -f sbt.handle_command sbt')
+    'command script add -f sbt.handle_command sbt -h "Resymbolicate stripped ObjC backtrace"')
 
 def handle_command(debugger, command, exe_ctx, result, internal_dict):
     '''

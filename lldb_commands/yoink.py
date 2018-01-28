@@ -28,7 +28,7 @@ import optparse
 
 def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(
-        'command script add -f yoink.yoink yoink')
+        'command script add -f yoink.yoink yoink -h "Copies contents of remote contents to local computer"')
 
 
 def yoink(debugger, command, exe_ctx, result, internal_dict):

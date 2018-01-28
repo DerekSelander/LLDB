@@ -29,7 +29,7 @@ import lldb.utils.symbolication
 
 def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(
-        'command script add -f sclass.sclass sclass')
+        'command script add -f sclass.sclass sclass -h "Swizzle class helper"')
 
 
 def sclass(debugger, command, exe_ctx, result, internal_dict):

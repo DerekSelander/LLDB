@@ -30,7 +30,7 @@ from stat import *
 
 def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(
-        'command script add -f pmodule.pmodule pmodule')
+        'command script add -f pmodule.pmodule pmodule -h "Generates DTrace script to profile module"')
 
 
 def pmodule(debugger, command, exe_ctx, result, internal_dict):

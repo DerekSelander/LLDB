@@ -10,7 +10,7 @@ import optparse
 
 def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(
-    'command script add -f xref.handle_command xref')
+    'command script add -f xref.handle_command xref -h "Find references to (non heap) code/data"')
 
 def handle_command(debugger, command, exe_ctx, result, internal_dict):
     '''

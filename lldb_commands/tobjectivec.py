@@ -11,7 +11,7 @@ from stat import *
 
 def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(
-    'command script add -f tobjectivec.handle_command tobjectivec')
+    'command script add -f tobjectivec.handle_command tobjectivec -h "Generates DTrace profiling scripts"')
 
 def handle_command(debugger, command, exe_ctx, result, internal_dict):
     '''

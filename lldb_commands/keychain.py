@@ -7,7 +7,7 @@ import optparse
 
 def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(
-    'command script add -f keychain.handle_command keychain')
+    'command script add -f keychain.handle_command keychain -h "iOS keychain methods"')
 
 def handle_command(debugger, command, exe_ctx, result, internal_dict):
     '''

@@ -29,7 +29,7 @@ import optparse
 
 def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(
-        'command script add -f lookup.lookup lookup')
+        'command script add -f lookup.lookup lookup -h "lookup functions or variables"')
 
 
 def lookup(debugger, command, exe_ctx, result, internal_dict):

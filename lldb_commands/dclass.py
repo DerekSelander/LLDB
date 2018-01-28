@@ -31,7 +31,7 @@ import lldb.utils.symbolication
 
 def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(
-        'command script add -f dclass.dclass dclass')
+        'command script add -f dclass.dclass dclass -h "Dumps info about objc/swift classes"')
 
 
 def dclass(debugger, command, exe_ctx, result, internal_dict):

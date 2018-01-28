@@ -8,7 +8,7 @@ from stat import *
 
 def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(
-    'command script add -f snoopie.handle_command snoopie')
+    'command script add -f snoopie.handle_command snoopie -h "Profile stripped ObjC methods using DTrace"')
 
 def handle_command(debugger, command, exe_ctx, result, internal_dict):
     '''

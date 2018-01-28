@@ -9,7 +9,7 @@ import re
 
 def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(
-    'command script add -f disassemble.handle_command dd')
+    'command script add -f disassemble.handle_command dd -h "Alternative to LLDB\'s disassemble cmd"')
 
 def handle_command(debugger, command, exe_ctx, result, internal_dict):
     '''

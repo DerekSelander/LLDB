@@ -8,7 +8,7 @@ import ds
 
 def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(
-    'command script add -f section.handle_command section')
+    'command script add -f section.handle_command section -h "Mach-O segment/section helper"')
 
 def handle_command(debugger, command, exe_ctx, result, internal_dict):
     '''

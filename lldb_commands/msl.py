@@ -9,7 +9,7 @@ import sbt
 
 def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(
-    'command script add -f msl.handle_command msl')
+    'command script add -f msl.handle_command msl -h "get stack trace of address, needs MallocStackLogging"')
 
 def handle_command(debugger, command, exe_ctx, result, internal_dict):
     '''
