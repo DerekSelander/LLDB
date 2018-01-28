@@ -143,7 +143,7 @@ import optparse
 def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(
     '''
-    script += '\'command script add -f {}.handle_command {}\')'.format(filename, resolved_name)
+    script += '\'command script add -f {}.handle_command {} -h "{}"\')'.format(filename, resolved_name, "Short documentation here")
     script += r'''
 
 def handle_command(debugger, command, exe_ctx, result, internal_dict):
