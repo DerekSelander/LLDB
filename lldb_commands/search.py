@@ -122,7 +122,7 @@ Examples:
     expr_options.SetTimeoutInMicroSeconds (30*1000*1000) # 30 second timeout
     expr_options.SetTryAllThreads (True)
     expr_options.SetTrapExceptions(False)
-    expr_options.SetUnwindOnError(False)
+    expr_options.SetUnwindOnError(True)
     expr_options.SetGenerateDebugInfo(True)
     expr_options.SetLanguage (lldb.eLanguageTypeObjC_plus_plus)
     expr_options.SetCoerceResultToId(True)
