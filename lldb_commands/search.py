@@ -39,8 +39,10 @@ import ds
 import optparse
 import lldb.utils.symbolication
 
+
+s = ""
 def __lldb_init_module(debugger, internal_dict):
-    debugger.HandleCommand('command script add -f search.search search')
+    debugger.HandleCommand('command script add -f search.search search -h "Searches heap for instances')
 
 
 def search(debugger, command, exe_ctx, result, internal_dict):
@@ -98,13 +100,21 @@ Examples:
         options.module = generate_module_search_sections_string(module, target)
 
 
-    interpreter.HandleCommand('expression -lobjc -O -- (Class)NSClassFromString(@\"{}\")'.format(clean_command), res)
-    if 'nil' in res.GetOutput():
-        result.SetError('Can\'t find class named "{}". Womp womp...'.format(clean_command))
-        return
+    if options.pointer_reference:
+        objectiveC_class = '(uintptr_t *){}'.format(clean_command)
+        if options.pointer_reference and (options.exact_match or options.module or options.module or options.condition or options.perform_action):
+            result.SetError("Can only use the --pointer_reference with --barebones")
+    else:
+        
+        interpreter.HandleCommand('expression -lobjc -O -- (Class)NSClassFromString(@\"{}\")'.format(clean_command), res)
+        if 'nil' in res.GetOutput():
+            result.SetError('Can\'t find class named "{}". Womp womp...'.format(clean_command))
+            return
+        objectiveC_class = 'NSClassFromString(@"{}")'.format(clean_command)
 
-    objectiveC_class = 'NSClassFromString(@"{}")'.format(clean_command)
     command_script = get_command_script(objectiveC_class, options)
+    # print command_script
+    # return
 
     expr_options = lldb.SBExpressionOptions()
     expr_options.SetIgnoreBreakpoints(True);
@@ -112,7 +122,7 @@ Examples:
     expr_options.SetTimeoutInMicroSeconds (30*1000*1000) # 30 second timeout
     expr_options.SetTryAllThreads (True)
     expr_options.SetTrapExceptions(False)
-    expr_options.SetUnwindOnError(True)
+    expr_options.SetUnwindOnError(False)
     expr_options.SetGenerateDebugInfo(True)
     expr_options.SetLanguage (lldb.eLanguageTypeObjC_plus_plus)
     expr_options.SetCoerceResultToId(True)
@@ -134,23 +144,32 @@ Examples:
     
     val = lldb.value(expr_sbvalue)
     count = val.count.sbvalue.unsigned
+    global s
+    s = val 
 
     if count > 100:
         result.AppendWarning('Exceeded 100 hits, try narrowing your search with the --condition option')
         count = 100
 
-    if options.barebones:
+    if options.pointer_reference:
         for i in range(count):
             v = val.values[i].sbvalue
-            val_description = ds.attrStr(str(v.GetTypeName()), 'cyan') + ' [' + ds.attrStr(str(v.GetValue()), 'yellow')  + ']'
+            offset = val.offsets[i].sbvalue.unsigned
+            val_description = ds.attrStr(str(v.GetTypeName()), 'cyan') + ' [' + ds.attrStr(str(v.GetValue()), 'yellow')  + ']' + ' + '  + ds.attrStr(str(offset), 'yellow')
             result.AppendMessage(val_description)
     else:
-        for i in range(count):
-            v = val.values[i].sbvalue
-            if not v.description:
-                continue
-            desc = v.description 
-            result.AppendMessage(desc + '\n')
+	    if options.barebones:
+	        for i in range(count):
+	            v = val.values[i].sbvalue
+	            val_description = ds.attrStr(str(v.GetTypeName()), 'cyan') + ' [' + ds.attrStr(str(v.GetValue()), 'yellow')  + ']'
+	            result.AppendMessage(val_description)
+	    else:
+	        for i in range(count):
+	            v = val.values[i].sbvalue
+	            if not v.description:
+	                continue
+	            desc = v.description 
+	            result.AppendMessage(desc + '\n')
 
 
 def get_command_script(objectiveC_class, options):
@@ -162,6 +181,10 @@ typedef struct _DSSearchContext {
     Class query;
     CFMutableSetRef classesSet;
     CFMutableSetRef results;
+    uintptr_t *pointerRef;
+    int *offsets;
+    CFMutableArrayRef ptrRefResults;
+
 } DSSearchContext;
 
 auto task_peek = [](task_t task, vm_address_t remote_address, vm_size_t size, void **local_memory) -> kern_return_t {
@@ -171,12 +194,13 @@ auto task_peek = [](task_t task, vm_address_t remote_address, vm_size_t size, vo
 
 vm_address_t *zones = NULL;
 unsigned int count = 0;
-unsigned int maxresults = ''' + str(options.max_results) + r'''
+unsigned int maxresults = ''' + str(options.max_results) + r''';
 kern_return_t error = (kern_return_t)malloc_get_all_zones(0, 0, &zones, &count);
 
-DSSearchContext *_ds_context = (DSSearchContext *)calloc(sizeof(DSSearchContext), 1);
+DSSearchContext *_ds_context = (DSSearchContext *)calloc(1, sizeof(DSSearchContext));
 int classCount = (int)objc_getClassList(NULL, 0);
 CFMutableSetRef set = (CFMutableSetRef)CFSetCreateMutable(0, classCount, NULL);
+CFMutableArrayRef ptrRefResults = (CFMutableArrayRef)CFArrayCreateMutable(0, classCount, NULL);
 Class *classes = (__unsafe_unretained Class *)malloc(sizeof(Class) * classCount);
 objc_getClassList(classes, classCount);
 
@@ -201,8 +225,15 @@ for (int i = 0; i < classCount; i++) {
   
 // Setup callback context
 _ds_context->results = (CFMutableSetRef)CFSetCreateMutable(0, maxresults, NULL);
+_ds_context->ptrRefResults = (CFMutableArrayRef)CFArrayCreateMutable(0, maxresults, NULL);
 _ds_context->classesSet = set;
-_ds_context->query =  ''' + objectiveC_class + r''';
+_ds_context->offsets = (int *)calloc(maxresults, sizeof(int));
+''' 
+    if options.pointer_reference:
+        command_script += r'''_ds_context->pointerRef =  ''' + objectiveC_class + ';' # actually ptr address here
+    else:
+        command_script += r'''_ds_context->query =  ''' + objectiveC_class + ';'
+    command_script += r'''
 for (unsigned i = 0; i < count; i++) {
     const malloc_zone_t *zone = (const malloc_zone_t *)zones[i];
     if (zone == NULL || zone->introspect == NULL){
@@ -214,13 +245,21 @@ for (unsigned i = 0; i < count; i++) {
     [] (task_t task, void *baton, unsigned type, vm_range_t *ranges, unsigned count) -> void {
 
         DSSearchContext *_ds_context =  (DSSearchContext *)baton;
-        Class query = _ds_context->query;
         CFMutableSetRef classesSet = _ds_context->classesSet;
         CFMutableSetRef results = _ds_context->results;
-
+        CFMutableArrayRef ptrRefResults = _ds_context->ptrRefResults;
+        int *offsets = _ds_context->offsets; 
         int maxCount = ''' + str(options.max_results) + ''';
+        '''
+
+
+    if not options.pointer_reference:
+        command_script += r'''
+        Class query = _ds_context->query;
         size_t querySize = (size_t)class_getInstanceSize(query);
-      
+    '''
+
+    command_script += r''' 
         int (^isBlackListClass)(Class) = ^int(Class aClass) {
             NSString *className = (NSString *)NSStringFromClass(aClass);
 
@@ -242,16 +281,20 @@ for (unsigned i = 0; i < count; i++) {
             if (CFSetGetCount(results) >= maxCount) {
                 break;
             }
-        
+            '''
+    if not options.pointer_reference:
+        command_script += r'''
             // test 1
             if (ranges[i].size < querySize) {
               continue;
             }
+            '''
 
-        
+    command_script += r'''
+            
             vm_address_t potentialObject = ranges[i].address;
-
-            if (0xFFFF800000000000 & potentialObject != 0) {
+            // ignore tagged pointer stuff 
+            if ((0xFFFF800000000000 & potentialObject) != 0) {
                 continue;
             }
          
@@ -268,7 +311,7 @@ for (unsigned i = 0; i < count; i++) {
             }
 
             // test 4 is a tagged pointer 0x8000000000000000
-            if (potentialObject & 0x8000000000000000 == 0x8000000000000000) {
+            if ((potentialObject & 0x8000000000000000) == 0x8000000000000000) {
                 continue;
             }
             
@@ -284,23 +327,42 @@ for (unsigned i = 0; i < count; i++) {
             }
             '''
 
-    if options.exact_match:
-        command_script  += 'if ((int)[potentialClass isMemberOfClass:query]'
-    else: 
-        command_script += 'if ((int)[[potentialClass class] isSubclassOfClass:query]'
+    if options.pointer_reference:
+        command_script += r'''
+        size_t enumeratorSize = sizeof(uintptr_t*);
+        uintptr_t* ptr_objc = (uintptr_t*)ranges[i].address;
+        long pointerMask = 0L - sizeof(uintptr_t*);
+        uintptr_t *ptrRef = _ds_context->pointerRef;
 
-    if options.condition:
-        cmd = options.condition
-        command_script += '&& (BOOL)(' + options.condition + ')'
-
-    command_script += r') {'
-
-    if options.module:
-        command_script += options.module
-
-    command_script += r'''
-                CFSetAddValue(results, (__bridge const void *)(obj));
+        for (int z = 0; i < ranges[z].size; z++) {
+            if((ptr_objc[z] & pointerMask) == ptrRef) {
+                offsets[CFArrayGetCount(ptrRefResults)] = z * enumeratorSize;
+                CFArrayAppendValue(ptrRefResults, obj);
             }
+        }
+
+     
+    '''
+    else:
+        if options.exact_match:
+            command_script  += 'if ((int)[potentialClass isMemberOfClass:query]'
+        else: 
+            command_script += 'if ((int)[[potentialClass class] isSubclassOfClass:query]'
+
+        if options.condition:
+            cmd = options.condition
+            command_script += '&& (BOOL)(' + options.condition + ')'
+
+        command_script += r') {'
+
+        if options.module:
+            command_script += options.module
+
+        command_script += r'''
+                CFSetAddValue(results, (__bridge const void *)(obj));
+            } 
+        '''
+    command_script += r'''
         }
      });
 }
@@ -310,6 +372,7 @@ CFIndex index = (CFIndex)CFSetGetCount(_ds_context->results);
 typedef struct $LLDBHeapObjects {
     const void **values;
     uint32_t count = 0;
+    int *offsets;
 } $LLDBHeapObjects;
 
 $LLDBHeapObjects lldbheap;
@@ -317,8 +380,15 @@ $LLDBHeapObjects lldbheap;
 lldbheap.values = (const void **)calloc(index, sizeof(id));
 CFSetGetValues(_ds_context->results, lldbheap.values);
 lldbheap.count = index;  
-  
+''' 
+    if options.pointer_reference:
+        command_script += r'''
+lldbheap.offsets = _ds_context->offsets;
+CFArrayGetValues(_ds_context->ptrRefResults, CFRangeMake(0, CFArrayGetCount(_ds_context->ptrRefResults)),lldbheap.values);
+lldbheap.count = CFArrayGetCount(_ds_context->ptrRefResults);
+	'''
 
+	command_script += r'''
 free(set);
 free(_ds_context); 
 free(classes);'''
@@ -397,4 +467,10 @@ def generate_option_parser():
                       type="int",
                       dest="max_results",
                       help="Specifies the maximum return count that the script should return")
+
+    parser.add_option("-r", "--reference",
+                      action="store_true",
+                      default=False,
+                      dest="pointer_reference",
+                      help="Expects a pointer instead of a class, searches for references to that pointer in a class")
     return parser
