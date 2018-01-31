@@ -1162,8 +1162,8 @@ typedef struct class_rw_t {
 
 
   typedef struct dsswift_class {
-    struct objc_class *isa;
-    struct objc_class *superclass;
+    struct dsobjc_class *isa;
+    struct dsobjc_class *superclass;
     void *_buckets;
     void *maskAndOccupied;
     uintptr_t bits;
@@ -1224,7 +1224,7 @@ typedef struct class_rw_t {
   [returnString appendString:@"Size:\t\t\t"];
   [returnString appendString:(id)[[NSString alloc] initWithFormat:@"0x%x bytes", dsclass->data()->ro->instanceSize]];
 
-  [returnString appendString:[[NSString alloc] initWithFormat:@"\nInstance Start:\t0x%x", dsclass->data()->ro->instanceStart]];
+  [returnString appendString:(id)[[NSString alloc] initWithFormat:@"\nInstance Start:\t0x%x", dsclass->data()->ro->instanceStart]];
 
   [returnString appendString:@"\nMeta:\t\t\t"];
   [returnString appendString:(BOOL)class_isMetaClass((Class)dsclass) ? @"YES" : @"NO"];;
@@ -1258,7 +1258,7 @@ typedef struct class_rw_t {
 
   [returnString appendString:@" "];
   [returnString appendString:(rwflags & RW_REALIZED) ? @"1" : @"0"];
-  [returnString appendString:@"\tRW_REALIZED\t\t\t\tclass is realized\n"];
+  [returnString appendString:@"\tRW_REALIZED\t\t\tclass is realized\n"];
 
   [returnString appendString:@" "];
   [returnString appendString:(rwflags & RW_FUTURE) ? @"1" : @"0"];
@@ -1266,11 +1266,11 @@ typedef struct class_rw_t {
 
   [returnString appendString:@" "];
   [returnString appendString:(rwflags & RW_INITIALIZED) ? @"1" : @"0"];
-  [returnString appendString:@"\tRW_INITIALIZED\t\t\tclass is initialized\n"];
+  [returnString appendString:@"\tRW_INITIALIZED\t\tclass is initialized\n"];
 
   [returnString appendString:@" "];
   [returnString appendString:(rwflags & RW_INITIALIZING) ? @"1" : @"0"];
-  [returnString appendString:@"\tRW_INITIALIZING\t\t\tclass is initializing\n"];
+  [returnString appendString:@"\tRW_INITIALIZING\t\tclass is initializing\n"];
 
   [returnString appendString:@" "];
   [returnString appendString:(rwflags & RW_COPIED_RO) ? @"1" : @"0"];
@@ -1278,11 +1278,11 @@ typedef struct class_rw_t {
 
   [returnString appendString:@" "];
   [returnString appendString:(rwflags & RW_CONSTRUCTING) ? @"1" : @"0"];
-  [returnString appendString:@"\tRW_CONSTRUCTING\t\t\tclass allocated but not yet registered\n"];
+  [returnString appendString:@"\tRW_CONSTRUCTING\t\tclass allocated but not yet registered\n"];
 
   [returnString appendString:@" "];
   [returnString appendString:(rwflags & RW_CONSTRUCTED) ? @"1" : @"0"];
-  [returnString appendString:@"\tRW_CONSTRUCTED\t\t\tclass allocated and registered\n"];
+  [returnString appendString:@"\tRW_CONSTRUCTED\t\tclass allocated and registered\n"];
 
   [returnString appendString:@" "];
   [returnString appendString:(rwflags & RW_LOADED) ? @"1" : @"0"];
@@ -1293,11 +1293,11 @@ typedef struct class_rw_t {
   [returnString appendString:@"\nRO Flags:\n"];
   [returnString appendString:@" "];
   [returnString appendString:(roflags & RO_META) ? @"1" : @"0"];
-  [returnString appendString:@"\tRO_META\t\t\t\t\tclass is a metaclass\n"];
+  [returnString appendString:@"\tRO_META\t\t\t\tclass is a metaclass\n"];
 
   [returnString appendString:@" "];
   [returnString appendString: roflags & RO_ROOT ? @"1" : @"0"];
-  [returnString appendString:@"\tRO_ROOT\t\t\t\t\tclass is a root class\n"];
+  [returnString appendString:@"\tRO_ROOT\t\t\t\tclass is a root class\n"];
 
   [returnString appendString:@" "];
   [returnString appendString: roflags & RO_HAS_CXX_STRUCTORS ? @"1" : @"0"];
@@ -1325,7 +1325,7 @@ typedef struct class_rw_t {
 
   [returnString appendString:@" "];
   [returnString appendString:roflags & RO_FROM_BUNDLE ? @"1" : @"0"];
-  [returnString appendString:@"\tRO_FROM_BUNDLE\t\t\tclass is in an unloadable bundle - must never be set by compiler\n"];
+  [returnString appendString:@"\tRO_FROM_BUNDLE\t\tclass is in an unloadable bundle - must never be set by compiler\n"];
 
   [returnString appendString:@" "];
   [returnString appendFormat:roflags & RO_FUTURE ? @"1" : @"0"];
@@ -1333,7 +1333,7 @@ typedef struct class_rw_t {
 
   [returnString appendString:@" "];
   [returnString appendFormat:roflags & RO_REALIZED ? @"1" : @"0"];
-  [returnString appendFormat:@"\tRO_REALIZED\t\t\t\tclass is realized - must never be set by compiler\n"];
+  [returnString appendFormat:@"\tRO_REALIZED\t\t\tclass is realized - must never be set by compiler\n"];
 }
   [returnString appendFormat:@"\n@interface "];
 
