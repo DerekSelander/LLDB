@@ -120,7 +120,7 @@ Examples:
     expr_options.SetIgnoreBreakpoints(True);
     expr_options.SetFetchDynamicValue(lldb.eNoDynamicValues);
     expr_options.SetTimeoutInMicroSeconds (30*1000*1000) # 30 second timeout
-    expr_options.SetTryAllThreads (True)
+    expr_options.SetTryAllThreads (False)
     expr_options.SetTrapExceptions(False)
     expr_options.SetUnwindOnError(True)
     expr_options.SetGenerateDebugInfo(True)
@@ -136,6 +136,7 @@ Examples:
 
     # debugger.HandleCommand('expression -lobjc++ -g -O -- ' + command_script)
     # return
+    # print(command_script)
     expr_sbvalue = frame.EvaluateExpression(command_script, expr_options)
 
     if not expr_sbvalue.error.success:
@@ -200,7 +201,6 @@ kern_return_t error = (kern_return_t)malloc_get_all_zones(0, 0, &zones, &count);
 DSSearchContext *_ds_context = (DSSearchContext *)calloc(1, sizeof(DSSearchContext));
 int classCount = (int)objc_getClassList(NULL, 0);
 CFMutableSetRef set = (CFMutableSetRef)CFSetCreateMutable(0, classCount, NULL);
-CFMutableArrayRef ptrRefResults = (CFMutableArrayRef)CFArrayCreateMutable(0, classCount, NULL);
 Class *classes = (__unsafe_unretained Class *)malloc(sizeof(Class) * classCount);
 objc_getClassList(classes, classCount);
 
@@ -235,10 +235,11 @@ _ds_context->offsets = (int *)calloc(maxresults, sizeof(int));
         command_script += r'''_ds_context->query =  ''' + objectiveC_class + ';'
     command_script += r'''
 for (unsigned i = 0; i < count; i++) {
-    const malloc_zone_t *zone = (const malloc_zone_t *)zones[i];
+    malloc_zone_t *zone = (malloc_zone_t *)zones[i];
     if (zone == NULL || zone->introspect == NULL){
         continue;
     }
+
 
     //for each zone, enumerate using our enumerator callback
     zone->introspect->enumerator(0, _ds_context, 1, zones[i], task_peek, 
@@ -250,98 +251,89 @@ for (unsigned i = 0; i < count; i++) {
         CFMutableArrayRef ptrRefResults = _ds_context->ptrRefResults;
         int *offsets = _ds_context->offsets; 
         int maxCount = ''' + str(options.max_results) + ''';
-        '''
 
+      
+        for (int j = 0; j < count; j++) {
+            if (CFSetGetCount(results) >= maxCount) {
+                break;
+            }
 
+            vm_address_t potentialObject = ranges[j].address;
+
+            '''
     if not options.pointer_reference:
         command_script += r'''
         Class query = _ds_context->query;
         size_t querySize = (size_t)class_getInstanceSize(query);
-    '''
 
-    command_script += r''' 
-        int (^isBlackListClass)(Class) = ^int(Class aClass) {
-            NSString *className = (NSString *)NSStringFromClass(aClass);
+        // test 1
+        if (ranges[j].size < querySize) {
+          continue;
+        }
 
-            if ([@"_NSZombie_" isEqualToString:className]) return 1;
-            if ([@"__ARCLite__" isEqualToString:className]) return 1;
-            if ([@"__NSCFCalendar" isEqualToString:className]) return 1;
-            if ([@"__NSCFTimer" isEqualToString:className]) return 1;
-            if ([@"NSCFTimer" isEqualToString:className]) return 1;
-            if ([@"__NSMessageBuilder" isEqualToString:className]) return 1;
-            if ([@"__NSGenericDeallocHandler" isEqualToString:className]) return 1;
-            if ([@"NSAutoreleasePool" isEqualToString:className]) return 1;
-            if ([@"Object" isEqualToString:className]) return 1;
-            if ([@"VMUArchitecture" isEqualToString:className]) return 1;
+        // ignore tagged pointer stuff 
+        if ((0xFFFF800000000000 & potentialObject) != 0) {
+            continue;
+        }
 
-            return 0;
-        };
-      
-        for (int i = 0; i < count; i++) {
-            if (CFSetGetCount(results) >= maxCount) {
-                break;
-            }
-            '''
-    if not options.pointer_reference:
-        command_script += r'''
-            // test 1
-            if (ranges[i].size < querySize) {
-              continue;
-            }
-            '''
+        // test 4 is a tagged pointer 0x8000000000000000
+        if ((potentialObject & 0x8000000000000000) == 0x8000000000000000) {
+            continue;
+        }
+        '''
 
     command_script += r'''
-            
-            vm_address_t potentialObject = ranges[i].address;
-            // ignore tagged pointer stuff 
-            if ((0xFFFF800000000000 & potentialObject) != 0) {
-                continue;
-            }
          
-            Class potentialClass = object_getClass((__bridge id)((void *)potentialObject));
+	        Class potentialClass = object_getClass((__bridge id)((void *)potentialObject));
 
-            // test 2
-            if (!(int)CFSetContainsValue(classesSet, (__bridge const void *)(potentialClass))) {
-                continue;
-            }
-            
-            // test 3
-            if ((size_t)malloc_good_size((size_t)class_getInstanceSize(potentialClass)) != ranges[i].size) {
-                continue;
-            }
+	        // test 2
+	        if (!(int)CFSetContainsValue(classesSet, (__bridge const void *)(potentialClass))) {
+	            continue;
+	        }
+	        
+	        // test 3
+	        if ((size_t)malloc_good_size((size_t)class_getInstanceSize(potentialClass)) != ranges[j].size) {
+	            continue;
+	        }
 
-            // test 4 is a tagged pointer 0x8000000000000000
-            if ((potentialObject & 0x8000000000000000) == 0x8000000000000000) {
-                continue;
-            }
-            
-            // Yay, if we are here this is likely an NSObject
-            if (isBlackListClass(potentialClass)) {
-                continue;
-            }
-            
-            id obj = (__bridge id)(void *)potentialObject;
 
-            if (!(BOOL)[obj respondsToSelector:@selector(description)]) {
-                continue;
-            }
-            '''
+
+	        // TODO, I don't think? This is malloc'ing anything but don't know yet
+		    NSString *className = (NSString *)NSStringFromClass(potentialClass);
+		    if ([@"_NSZombie_" isEqualToString:className])  { continue };
+		    if ([@"__ARCLite__" isEqualToString:className])  { continue };
+		    if ([@"__NSCFCalendar" isEqualToString:className])  { continue };
+		    if ([@"__NSCFTimer" isEqualToString:className])  { continue };
+		    if ([@"NSCFTimer" isEqualToString:className])  { continue };
+		    if ([@"__NSMessageBuilder" isEqualToString:className])  { continue };
+		    if ([@"__NSGenericDeallocHandler" isEqualToString:className])  { continue };
+		    if ([@"NSAutoreleasePool" isEqualToString:className])  { continue };
+		    if ([@"Object" isEqualToString:className])  { continue };
+		    if ([@"VMUArchitecture" isEqualToString:className])  { continue };
+
+	        
+	        id obj = (__bridge id)(void *)potentialObject;
+
+	        if (!(BOOL)[obj respondsToSelector:@selector(description)]) {
+	            continue;
+	        }
+	        '''
 
     if options.pointer_reference:
         command_script += r'''
-        size_t enumeratorSize = sizeof(uintptr_t*);
-        uintptr_t* ptr_objc = (uintptr_t*)ranges[i].address;
-        long pointerMask = 0L - sizeof(uintptr_t*);
-        uintptr_t *ptrRef = _ds_context->pointerRef;
+	        size_t enumeratorSize = sizeof(uintptr_t*);
+	        uintptr_t* ptr_objc = (uintptr_t*)ranges[j].address;
+	        long pointerMask = 0L - sizeof(uintptr_t*);
+	        uintptr_t *ptrRef = _ds_context->pointerRef;
 
-        for (int z = 0; i < ranges[z].size; z++) {
-            if((ptr_objc[z] & pointerMask) == ptrRef) {
-                offsets[CFArrayGetCount(ptrRefResults)] = z * enumeratorSize;
-                CFArrayAppendValue(ptrRefResults, obj);
-            }
-        }
+	        size_t totalSize = ranges[j].size / sizeof(uintptr_t *);
+	        for (int z = 0; z < totalSize; z++) {
+	            if(ptr_objc[z] == ptrRef) {
+	                offsets[CFArrayGetCount(ptrRefResults)] = z * enumeratorSize;
+	                CFArrayAppendValue(ptrRefResults, obj);
+	            }
+	        }
 
-     
     '''
     else:
         if options.exact_match:
@@ -363,7 +355,7 @@ for (unsigned i = 0; i < count; i++) {
             } 
         '''
     command_script += r'''
-        }
+	        }
      });
 }
  
@@ -390,6 +382,7 @@ lldbheap.count = CFArrayGetCount(_ds_context->ptrRefResults);
 
 	command_script += r'''
 free(set);
+free(_ds_context->ptrRefResults);
 free(_ds_context); 
 free(classes);'''
 
