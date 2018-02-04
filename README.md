@@ -50,7 +50,7 @@ Prints the location (on disk) of the filepath to the executable
     (lldb) pexecutable
 
 ### pframework
-Prints the location (on disk) of a frmaework
+Prints the location (on disk) of a framework
 
     (lldb) pframework UIKit
 
@@ -168,6 +168,27 @@ Dumps all the NSObject inherited classes in the process. If you give it a module
       # Get more information than you ever wanted to know about UIView
       (lldb) dclass -I UIView
       
+
+### section
+Displays data in the Mach-O segments/sections of the executable or frameworks loaded into the proc
+
+      # Dump the Mach-O segments to the main executable
+      (lldb) section
+      
+      # Dump the Mach-O segments to UIKit
+      (lldb) section UIKit
+      
+      # Dump the Mach-O sections of the __TEXT segment of UIKit
+      (lldb) section UIKit __TEXT
+      
+      # Get the load address of all the hard-coded uint8_t * strings in the UIKit binary
+      (lldb) section UIKit __TEXT.__cstring -l
+      
+      # Get the entitlements for the executable
+      (lldb) section  __TEXT.__entitlements
+      
+      # Get all the load address to the lazy symbol stubs in the main executable
+      (lldb) section  __DATA.__la_symbol_ptr -l 
 
 ### dd
 Alternative to LLDB's `disassemble` command. Uses colors. Terminal only
