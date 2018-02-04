@@ -123,6 +123,9 @@ If you like ObjC swizzling, check out `sclass`. If you like DTrace, check out `p
       
       # Search for exact matches, ignore subclasses of UIViews
       (lldb) search -e UIView
+      
+      # Search for all classes that contain a reference to the pointer 0xfeedfacf
+      (lldb) search -r 0xfeedfacf
 
 ### dclass
 Dumps all the NSObject/SwiftObject inherited classes in the process. If you give it a module, it will dump only the classes within that module. You can also filter out classes to only a certain type and can also generate a header file for a specific class.
