@@ -96,7 +96,7 @@ TLDR: `search`, `lookup`, and `dclass` are good GOTOs irregardless if you're a d
 If you like ObjC swizzling, check out `sclass`. If you like DTrace, check out `pmodule` and `snoopie`.
 
 ### search
-  Searchs the heap for all alive instances of a certain class. This class must by dynamic (aka inherit from a NSObject class). Currently doesn't work with NSString or NSNumber (tagged pointer objects). 
+  Searchs the heap for all alive instances of a certain class. This class must by dynamic (aka inherit from a NSObject/SwiftObject class). Currently doesn't work with NSString or NSNumber (tagged pointer objects). 
   
   Example: 
   
@@ -125,7 +125,7 @@ If you like ObjC swizzling, check out `sclass`. If you like DTrace, check out `p
       (lldb) search -e UIView
 
 ### dclass
-Dumps all the NSObject inherited classes in the process. If you give it a module, it will dump only the classes within that module. You can also filter out classes to only a certain type and can also generate a header file for a specific class.
+Dumps all the NSObject/SwiftObject inherited classes in the process. If you give it a module, it will dump only the classes within that module. You can also filter out classes to only a certain type and can also generate a header file for a specific class.
   
   Example: 
   
