@@ -155,6 +155,19 @@ Dumps all the NSObject inherited classes in the process. If you give it a module
 
       # Only dump classes whose superclass is of type NSObjecr and in the UIKit module. Ideal for going after specific classes like a datasource where it will likely inherit from NSObject
       (lldb) dclass -s NSObject -m UIKit
+      
+      # Dump only Swift classes 
+      (lldb) dclass -t swift
+      
+      # Dump only Objective-C classes 
+      (lldb) dclass -t objc
+      
+      # Get a simplified "class-dump" of the UIView class
+      (lldb) dclass -i UIView
+      
+      # Get more information than you ever wanted to know about UIView
+      (lldb) dclass -I UIView
+      
 
 ### dd
 Alternative to LLDB's `disassemble` command. Uses colors. Terminal only
