@@ -92,6 +92,9 @@ def dclass(debugger, command, exe_ctx, result, internal_dict):
     interpreter = debugger.GetCommandInterpreter()
     target = exe_ctx.target
 
+    if not options.info and not options.class_type and not options.verbose and not options.regular_expression and not options.module and not options.filter and not options.search_protocols and not options.dump_code_output and not options.generate_header and not options.verbose_info and not options.generate_protocol and not options.conforms_to_protocol and not options.superclass and len(args) == 1:
+        options.info = args[0]
+
     if options.info or options.verbose_info:
         script = generate_class_info(options)
 
@@ -1264,7 +1267,7 @@ typedef struct class_rw_t {
 
   [returnString appendString:@" "];
   [returnString appendString:(rwflags & RW_FUTURE) ? @"1" : @"0"];
-  [returnString appendString:@"\tRW_FUTURE\t\t\t\tclass is unresolved future class\n"];
+  [returnString appendString:@"\tRW_FUTURE\t\t\tclass is unresolved future class\n"];
 
   [returnString appendString:@" "];
   [returnString appendString:(rwflags & RW_INITIALIZED) ? @"1" : @"0"];
@@ -1276,7 +1279,7 @@ typedef struct class_rw_t {
 
   [returnString appendString:@" "];
   [returnString appendString:(rwflags & RW_COPIED_RO) ? @"1" : @"0"];
-  [returnString appendString:@"\tRW_COPIED_RO\t\t\tclass_rw_t->ro is heap copy of class_ro_t\n"];
+  [returnString appendString:@"\tRW_COPIED_RO\t\tclass_rw_t->ro is heap copy of class_ro_t\n"];
 
   [returnString appendString:@" "];
   [returnString appendString:(rwflags & RW_CONSTRUCTING) ? @"1" : @"0"];
@@ -1288,7 +1291,7 @@ typedef struct class_rw_t {
 
   [returnString appendString:@" "];
   [returnString appendString:(rwflags & RW_LOADED) ? @"1" : @"0"];
-  [returnString appendString:@"\tRW_LOADED\t\t\t\tclass +load has been called\n"];
+  [returnString appendString:@"\tRW_LOADED\t\t\tclass +load has been called\n"];
 
   /////////////////////////////////////////////////////////////////////
 
@@ -1331,7 +1334,7 @@ typedef struct class_rw_t {
 
   [returnString appendString:@" "];
   [returnString appendFormat:roflags & RO_FUTURE ? @"1" : @"0"];
-  [returnString appendFormat:@"\tRO_FUTURE\t\t\t\tclass is unrealized future class - must never be set by compiler\n"];
+  [returnString appendFormat:@"\tRO_FUTURE\t\t\tclass is unrealized future class - must never be set by compiler\n"];
 
   [returnString appendString:@" "];
   [returnString appendFormat:roflags & RO_REALIZED ? @"1" : @"0"];
@@ -1410,8 +1413,13 @@ typedef struct class_rw_t {
 
     [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@"Swift methods: %d\n", methodCount ]];
     for (int i = 0; i < methodCount; i++) {
-    
-      [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@"(%p)\n",  *(uintptr_t *)(startAddress + i*sizeof(uintptr_t)) ]];
+      void * addr = (void *)*(uintptr_t *)(startAddress + i*sizeof(uintptr_t));
+      Dl_info dsinfo = {};
+      dladdr(addr, &dsinfo);
+      if (dsinfo.dli_sname == NULL) {
+        continue;
+      }
+      [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@"(%p) %s\n",  addr, dsinfo.dli_sname]];
     }
 
   }
