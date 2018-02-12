@@ -1408,18 +1408,17 @@ typedef struct class_rw_t {
 
 
   if (dsclass->bits & FAST_IS_SWIFT) {
-    uintptr_t startAddress = ((uintptr_t)dsclass + 0x50UL);
-    int methodCount = ((*(int *)(((uintptr_t)dsclass) + 0x38UL) - 0x50UL) / sizeof(uintptr_t)) - 2;
+    dsswift_class *dsswiftcls = (dsswift_class*)dsclass;
+    unsigned long methodsAddress = (unsigned long)&dsswiftcls->methods;
+    unsigned long endAddress = (unsigned long)dsswiftcls + dsswiftcls->classSize - dsswiftcls->classAddressPoint;
+    int methodCount = ((int)(endAddress - methodsAddress)) / sizeof(uintptr_t*);
 
-    [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@"Swift methods: %d\n", methodCount ]];
+    [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@"Swift methods: %d\n", methodCount]];
     for (int i = 0; i < methodCount; i++) {
-      void * addr = (void *)*(uintptr_t *)(startAddress + i*sizeof(uintptr_t));
+      uintptr_t * ptr = (uintptr_t*)methodsAddress;
       Dl_info dsinfo = {};
-      dladdr(addr, &dsinfo);
-      if (dsinfo.dli_sname == NULL) {
-        continue;
-      }
-      [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@"(%p) %s\n",  addr, dsinfo.dli_sname]];
+      dladdr((void*)ptr[i], &dsinfo);
+      [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@"(%p) %s\n",  ptr[i], dsinfo.dli_sname]];
     }
 
   }
