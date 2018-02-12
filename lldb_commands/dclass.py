@@ -265,7 +265,7 @@ def generate_class_dump(target, options, clean_command=None):
 
         command_script += 'NSString *parentClassName = @"' + options.superclass + '";'
         command_script += r'''
-        if (!(BOOL)[NSStringFromClass((id)[cls superclass]) isEqualToString:parentClassName]) { 
+        if (!(BOOL)[NSStringFromClass((Class)[cls superclass]) isEqualToString:parentClassName]) { 
           continue; 
         }
           '''
@@ -498,7 +498,7 @@ def generate_header_script(options, class_to_generate_header):
     
     for (int i = 0; i < classCount; i++) {
       Method m = methods[i];
-      NSString *methodName = NSStringFromSelector((SEL)method_getName(m));
+      NSString *methodName = NSStringFromSelector((char *)method_getName(m));
       if ([blackListMethodNames containsObject:methodName]) {
         continue;
       }
@@ -761,7 +761,7 @@ def generate_module_header_script(options, modulePath):
       
       for (int i = 0; i < classCount; i++) {
         Method m = methods[i];
-        NSString *methodName = NSStringFromSelector((SEL)method_getName(m));
+        NSString *methodName = NSStringFromSelector((char *)method_getName(m));
         if ([blackListMethodNames containsObject:methodName]) {
           continue;
         }
@@ -841,7 +841,7 @@ def generate_class_info(options):
         verboseOutput = False
 
     if '.' in options.info:
-        classInfo = "(id)NSClassFromString(@\"" + options.info + "\")"
+        classInfo = "(Class)NSClassFromString(@\"" + options.info + "\")"
     else:
         classInfo = "[" + options.info + " class]"
 
@@ -849,6 +849,8 @@ def generate_class_info(options):
     script = "BOOL verboseOutput = {};\n".format("YES" if verboseOutput else "NO")
     script +=  r'''
     @import Foundation;
+    @import ObjectiveC;
+
     #define RO_META               (1<<0)
   // class is a root class
 #define RO_ROOT               (1<<1)
@@ -1002,7 +1004,7 @@ def generate_class_info(options):
 //*****************************************************************************/
   
 typedef struct method_t {
-    SEL name;
+    char * name;
     const char *types;
     IMP imp;
 } method_t;
@@ -1210,21 +1212,21 @@ typedef struct class_rw_t {
     [returnString appendString:[NSString stringWithUTF8String:(char *)superclassName]];
   }
 
-   [returnString appendString:(id)[[NSString alloc] initWithFormat:@" (%p)", dsclass]];
+   [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@" (%p)", dsclass]];
   [returnString appendString:@"\n******************************************\n\n"];
 
 
   [returnString appendString:@"Found in: "];
-  [returnString appendString:[NSString stringWithUTF8String:(char *)class_getImageName((id)dsclass)]];
+  [returnString appendString:[NSString stringWithUTF8String:(char *)class_getImageName((Class)dsclass)]];
   [returnString appendString:@"\n\n"];
 
   [returnString appendString:@"Swift:\t\t\t"];
   [returnString appendString:dsclass->bits & FAST_IS_SWIFT ? @"YES\n" : @"NO\n" ];
 
   [returnString appendString:@"Size:\t\t\t"];
-  [returnString appendString:(id)[[NSString alloc] initWithFormat:@"0x%x bytes", dsclass->data()->ro->instanceSize]];
+  [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@"0x%x bytes", dsclass->data()->ro->instanceSize]];
 
-  [returnString appendString:(id)[[NSString alloc] initWithFormat:@"\nInstance Start:\t0x%x", dsclass->data()->ro->instanceStart]];
+  [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@"\nInstance Start:\t0x%x", dsclass->data()->ro->instanceStart]];
 
   [returnString appendString:@"\nMeta:\t\t\t"];
   [returnString appendString:(BOOL)class_isMetaClass((Class)dsclass) ? @"YES" : @"NO"];;
@@ -1232,25 +1234,25 @@ typedef struct class_rw_t {
 
   ///////////////////////////////////////////////////////////////////
   [returnString appendString:@"Protocols: "];
-  [returnString appendString:(id)[[NSString alloc] initWithFormat:@"\t\t%d\t%p\n",  bprot ? bprot->count : 0, bprot ? &bprot->first : 0]];
+  [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@"\t\t%d\t%p\n",  bprot ? bprot->count : 0, bprot ? &bprot->first : 0]];
 
   [returnString appendString:@"Ivars: "];
-  [returnString appendString:(id)[[NSString alloc] initWithFormat:@"\t\t\t%d\t%p\n",  bivar ? bivar->count : 0, bivar ? &bivar->first : 0]];
+  [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@"\t\t\t%d\t%p\n",  bivar ? bivar->count : 0, bivar ? &bivar->first : 0]];
 
   [returnString appendString:@"Properties: "];
-  [returnString appendString:(id)[[NSString alloc] initWithFormat:@"\t%d\t%p\n", bprops ? bprops->count : 0, bprops ? &bprops->first : 0]];
+  [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@"\t%d\t%p\n", bprops ? bprops->count : 0, bprops ? &bprops->first : 0]];
 
   if (!(roflags & RO_META)) {
     [returnString appendString:@"I ObjC Meth: "];
   } else {
     [returnString appendString:@"C ObjC Meth: "];
   }
-  [returnString appendString:(id)[[NSString alloc] initWithFormat:@"\t%d\t%p\n", bmeth ? bmeth->count : 0, bmeth ? &bmeth->first : 0]];
+  [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@"\t%d\t%p\n", bmeth ? bmeth->count : 0, bmeth ? &bmeth->first : 0]];
 
   if (!(roflags & RO_META) && NSClassFromString(@"UIView")) { // Cocoa's isa layout is different?
     method_list_t *classmeth = dsclass->isa->data()->ro->baseMethodList;
     [returnString appendString:@"C ObjC Meth: "];
-    [returnString appendString:(id)[[NSString alloc] initWithFormat:@"\t%d\t%p\n", classmeth ? classmeth->count : 0, classmeth ? &classmeth->first : 0]];
+    [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@"\t%d\t%p\n", classmeth ? classmeth->count : 0, classmeth ? &classmeth->first : 0]];
   }
 
   ///////////////////////////////////////////////////////////////////
@@ -1347,7 +1349,7 @@ typedef struct class_rw_t {
     [returnString appendString:@" <"];
     for (int i = 0; i < bprot->count; i++) {
       dsprotocol_t **pp = (&bprot->first);
-      [returnString appendString:(id)[[NSString alloc] initWithFormat:@"%s", pp[i]->name]];
+      [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@"%s", pp[i]->name]];
  
       if (i < (bprot->count - 1)) {
         [returnString appendString:@", "];
@@ -1361,7 +1363,7 @@ typedef struct class_rw_t {
   if (bivar) {
     for (int i = 0; i < bivar->count; i++) {
       ivar_t *dsiv = (ivar_t *)(&bivar->first);
-      [returnString appendString:(id)[[NSString alloc] initWithFormat:@" %20s %-30s; offset 0x%x\n", (char *)dsiv[i].type, (char *)dsiv[i].name, *(int32_t *)dsiv[i].offset]];
+      [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@" %20s %-30s; offset 0x%x\n", (char *)dsiv[i].type, (char *)dsiv[i].name, *(int32_t *)dsiv[i].offset]];
     }
   }
 
@@ -1385,8 +1387,8 @@ typedef struct class_rw_t {
       NSString *methodType = (BOOL)class_isMetaClass((Class)dsclass) ? @"+" : @"-";
       method_t *mt = (method_t*)(&bmeth->first);
         // [returnString appendString:[NSString stringWithUTF8String:(char *)mt[i].types]];
-        //[returnString appendString:[NSString stringWithUTF8String:(char *)sel_getName(mt[i].name)]];
-        [returnString appendString:(id)[[NSString alloc] initWithFormat:@" %s%40s  %p\n", [methodType UTF8String], (char *)sel_getName(mt[i].name), mt[i].imp]];
+        //[returnString appendString:[NSString stringWithUTF8String:(char *)mt[i].name]];
+        [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@" %s%40s  %p\n", [methodType UTF8String], mt[i].name, mt[i].imp]];
     }
   }
 
@@ -1396,7 +1398,7 @@ typedef struct class_rw_t {
       for (int i = 0; i < classmeth->count; i++) {
         NSString *methodType = (BOOL)class_isMetaClass((Class)dsclass->isa) ? @"+" : @"-";
         method_t *mt = (method_t*)(&classmeth->first);
-        [returnString appendString:(id)[[NSString alloc] initWithFormat:@" %s%40s  %p\n", [methodType UTF8String], (char *)sel_getName(mt[i].name), mt[i].imp]];
+        [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@" %s%40s  %p\n", [methodType UTF8String], mt[i].name, mt[i].imp]];
       }
     }
   }
@@ -1406,10 +1408,10 @@ typedef struct class_rw_t {
     uintptr_t startAddress = ((uintptr_t)dsclass + 0x50UL);
     int methodCount = ((*(int *)(((uintptr_t)dsclass) + 0x38UL) - 0x50UL) / sizeof(uintptr_t)) - 2;
 
-    [returnString appendString:(id)[[NSString alloc] initWithFormat:@"Swift methods: %d\n", methodCount ]];
+    [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@"Swift methods: %d\n", methodCount ]];
     for (int i = 0; i < methodCount; i++) {
     
-      [returnString appendString:(id)[[NSString alloc] initWithFormat:@"(%p)\n",  *(uintptr_t *)(startAddress + i*sizeof(uintptr_t)) ]];
+      [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@"(%p)\n",  *(uintptr_t *)(startAddress + i*sizeof(uintptr_t)) ]];
     }
 
   }
