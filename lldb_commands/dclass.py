@@ -1002,6 +1002,14 @@ def generate_class_info(options):
   
 #endif
   
+typedef struct dsdl_info {
+        const char      *dli_fname;     /* Pathname of shared object */
+        void            *dli_fbase;     /* Base address of shared object */
+        const char      *dli_sname;     /* Name of nearest symbol */
+        void            *dli_saddr;     /* Address of nearest symbol */
+} dsDl_info;
+
+
 //*****************************************************************************/
 #pragma mark - Methods
 //*****************************************************************************/
@@ -1159,7 +1167,7 @@ typedef struct class_rw_t {
     uint32_t _occupied;
     uintptr_t bits;
     
-    class_rw_t *data() {
+    class_rw_t *ds_data() {
       return (class_rw_t *)(bits & FAST_DATA_MASK);
     }
     
@@ -1183,7 +1191,7 @@ typedef struct class_rw_t {
     uintptr_t ivarDestroyer;
     uintptr_t *methods;
 
-    class_rw_t *data() {
+    class_rw_t *ds_data() {
       return (class_rw_t *)(bits & FAST_DATA_MASK);
     }
     
@@ -1192,14 +1200,14 @@ typedef struct class_rw_t {
 
 
   dsobjc_class *dsclass = (dsobjc_class*)''' + classInfo + r''';
-  uint32_t roflags = dsclass->data()->ro->flags;
-  uint32_t rwflags = dsclass->data()->flags;
-  const char* name = dsclass->data()->ro->name;
-  const char* superclassName = dsclass->superclass ? dsclass->superclass->data()->ro->name : nil;
-  property_list_t *bprops = dsclass->data()->ro->baseProperties;
-  protocol_list_t *bprot = dsclass->data()->ro->baseProtocols;
-  method_list_t *bmeth = dsclass->data()->ro->baseMethodList;
-  ivar_list_t *bivar = dsclass->data()->ro->ivars;  
+  uint32_t roflags = dsclass->ds_data()->ro->flags;
+  uint32_t rwflags = dsclass->ds_data()->flags;
+  const char* name = dsclass->ds_data()->ro->name;
+  const char* superclassName = dsclass->superclass ? dsclass->superclass->ds_data()->ro->name : nil;
+  property_list_t *bprops = dsclass->ds_data()->ro->baseProperties;
+  protocol_list_t *bprot = dsclass->ds_data()->ro->baseProtocols;
+  method_list_t *bmeth = dsclass->ds_data()->ro->baseMethodList;
+  ivar_list_t *bivar = dsclass->ds_data()->ro->ivars;  
 
   NSMutableString *returnString = [NSMutableString new];
 
@@ -1227,9 +1235,9 @@ typedef struct class_rw_t {
   [returnString appendString:dsclass->bits & FAST_IS_SWIFT ? @"YES\n" : @"NO\n" ];
 
   [returnString appendString:@"Size:\t\t\t"];
-  [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@"0x%x bytes", dsclass->data()->ro->instanceSize]];
+  [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@"0x%x bytes", dsclass->ds_data()->ro->instanceSize]];
 
-  [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@"\nInstance Start:\t0x%x", dsclass->data()->ro->instanceStart]];
+  [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@"\nInstance Start:\t0x%x", dsclass->ds_data()->ro->instanceStart]];
 
   [returnString appendString:@"\nMeta:\t\t\t"];
   [returnString appendString:(BOOL)class_isMetaClass((Class)dsclass) ? @"YES" : @"NO"];;
@@ -1253,7 +1261,7 @@ typedef struct class_rw_t {
   [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@"\t%d\t%p\n", bmeth ? bmeth->count : 0, bmeth ? &bmeth->first : 0]];
 
   if (!(roflags & RO_META) && NSClassFromString(@"UIView")) { // Cocoa's isa layout is different?
-    method_list_t *classmeth = dsclass->isa->data()->ro->baseMethodList;
+    method_list_t *classmeth = dsclass->isa->ds_data()->ro->baseMethodList;
     [returnString appendString:@"C ObjC Meth: "];
     [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@"\t%d\t%p\n", classmeth ? classmeth->count : 0, classmeth ? &classmeth->first : 0]];
   }
@@ -1396,7 +1404,7 @@ typedef struct class_rw_t {
   }
 
   if (!(roflags & RO_META) && NSClassFromString(@"UIView")) { // Cocoa's isa is different? TODO
-    method_list_t *classmeth = dsclass->isa->data()->ro->baseMethodList;
+    method_list_t *classmeth = dsclass->isa->ds_data()->ro->baseMethodList;
     if (classmeth) {
       for (int i = 0; i < classmeth->count; i++) {
         NSString *methodType = (BOOL)class_isMetaClass((Class)dsclass->isa) ? @"+" : @"-";
@@ -1416,7 +1424,7 @@ typedef struct class_rw_t {
     [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@"Swift methods: %d\n", methodCount]];
     for (int i = 0; i < methodCount; i++) {
       uintptr_t * ptr = (uintptr_t*)methodsAddress;
-      Dl_info dsinfo = {};
+      dsDl_info dsinfo = {};
       dladdr((void*)ptr[i], &dsinfo);
       [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@"(%p) %s\n",  ptr[i], dsinfo.dli_sname]];
     }
