@@ -59,7 +59,7 @@ Dumps all the NSObject/SwiftObject inherited classes in the process. If you give
   
   Example: 
   
-      # Dump ALL the NSObject classes within the process
+      # Dump ALL the classes (Swift and Objective-C) found within the process
       (lldb) dclass 
       
       # Dump ObjC/Swift info (if applicable) about the class "Hello.SomeClass" (same as dclass -i Hello.SomeClass)
