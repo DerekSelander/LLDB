@@ -48,9 +48,6 @@ If you like ObjC swizzling, check out `sclass`. If you like DTrace, check out `p
       # Remember, Swift includes the module in a class name, so if you have a Swift UIView called TestView in module WOOT...
       (lldb) search WOOT.TestView -b
       
-      # Search for exact matches, ignore subclasses of UIViews
-      (lldb) search -e UIView
-      
       # Search for all classes that contain a reference to the pointer 0xfeedfacf
       (lldb) search -r 0xfeedfacf
 
