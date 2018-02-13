@@ -121,7 +121,7 @@ Displays data in the Mach-O segments/sections of the executable or frameworks lo
       (lldb) section  __DATA.__la_symbol_ptr -l 
 
 ### dd
-Alternative to LLDB's `disassemble` command. Uses colors. Terminal only
+Alternative to LLDB's `disassemble` command. Uses colors. Terminal only and designed for x86)64. ARM64 support will come one day...
 ![yoink example](https://github.com/DerekSelander/LLDB/raw/master/Media/dd.png)
 
 ### sbt
