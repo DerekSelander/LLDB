@@ -14,79 +14,6 @@ Boom! You're good to go!
 
 You can test to make sure everything worked successfully by just trying one of the commands in the debugger... i.e. `(lldb) help methods`
 
-
-## LLDB Commands
-
-### ls 
-List a directory from the process's perspective. Useful when working on an actual device. 
-      
-      # List the root dir's contents on an actual iOS device
-      (lldb) ls /
-      
-      # List contents for /System/Library on an actual iOS device
-      (lldb) ls /System/Library
-      
-### reload_lldbinit
-Reloads all the contents in your ~/.lldbinit file. Useful for seeing if your python script(s) broke or want to do incremental updates to a python script
-
-    # Reload/Refresh your LLDB scripts
-    (lldb) reload_lldbinit
-
-### tv
-Toggle view. Hides/Shows a view depending on it's current state. You don't need to resume LLDB to see changes. ObjC only
-
-    # Toggle a view on or off
-    (lldb) tv [UIView new]
-
-### pprotocol
-Dumps all the required and optional methods for specific protocol (Objective-C only)
-
-    # Dump the protocol for UITableViewDataSource
-    (lldb) pprotocol UITableViewDataSource
-
-### pexecutable
-Prints the location (on disk) of the filepath to the executable
-
-    (lldb) pexecutable
-
-### pframework
-Prints the location (on disk) of a framework
-
-    (lldb) pframework UIKit
-
-### sys
-Drops into the shell to execute commands. Note you can execute LLDB commands via the $() syntax
-    
-    # ls the directory LLDB is running in
-    (lldb) sys ls
-
-    # Use otool -l on the UIKit framework
-    (lldb) sys otool -l $(pframework UIKit)
-    
-    # Open the main executable in another program
-    (lldb) sys open -a "Hopper" $(pexecutable)
-
-### methods 
-Dumps all methods inplemented by the NSObject subclass (iOS, NSObject subclass only)
-
-    # Get all the methods of UIView
-    (lldb) methods UIView 
-
-
-### ivars
-Dumps all ivars for an instance of a particular class which inherits from NSObject (iOS, NSObject subclass only)
-
-    # Get all the ivars on a newly created instance of UIView
-    (lldb) ivars [UIView new]
-    
-
-### overlaydbg
-Displays the UIDebuggingInformationOverlay on iOS in 11. Check out http://ryanipete.com/blog/ios/swift/objective-c/uidebugginginformationoverlay/ for instructions
-
-    # Display UIDebuggingInformationOverlay
-    (lldb) overlaydbg
-    
-
 # LLDB Scripts
 
 For all commands below, you can view the documentation via `help {command}`. If you want to see what options a command has, type `{command} -h`.
@@ -292,5 +219,79 @@ Perform a regular expression search for stuff in an executable
     profiling objc_msgSend. The creation of this command is discussed in the book.
 
   WARNING: YOU MUST DISABLE ROOTLESS TO USE DTRACE
+  
+
+## LLDB Commands
+
+### ls 
+List a directory from the process's perspective. Useful when working on an actual device. 
+      
+      # List the root dir's contents on an actual iOS device
+      (lldb) ls /
+      
+      # List contents for /System/Library on an actual iOS device
+      (lldb) ls /System/Library
+      
+### reload_lldbinit
+Reloads all the contents in your ~/.lldbinit file. Useful for seeing if your python script(s) broke or want to do incremental updates to a python script
+
+    # Reload/Refresh your LLDB scripts
+    (lldb) reload_lldbinit
+
+### tv
+Toggle view. Hides/Shows a view depending on it's current state. You don't need to resume LLDB to see changes. ObjC only
+
+    # Toggle a view on or off
+    (lldb) tv [UIView new]
+
+### pprotocol
+Dumps all the required and optional methods for specific protocol (Objective-C only)
+
+    # Dump the protocol for UITableViewDataSource
+    (lldb) pprotocol UITableViewDataSource
+
+### pexecutable
+Prints the location (on disk) of the filepath to the executable
+
+    (lldb) pexecutable
+
+### pframework
+Prints the location (on disk) of a framework
+
+    (lldb) pframework UIKit
+
+### sys
+Drops into the shell to execute commands. Note you can execute LLDB commands via the $() syntax
+    
+    # ls the directory LLDB is running in
+    (lldb) sys ls
+
+    # Use otool -l on the UIKit framework
+    (lldb) sys otool -l $(pframework UIKit)
+    
+    # Open the main executable in another program
+    (lldb) sys open -a "Hopper" $(pexecutable)
+
+### methods 
+Dumps all methods inplemented by the NSObject subclass (iOS, NSObject subclass only)
+
+    # Get all the methods of UIView
+    (lldb) methods UIView 
+
+
+### ivars
+Dumps all ivars for an instance of a particular class which inherits from NSObject (iOS, NSObject subclass only)
+
+    # Get all the ivars on a newly created instance of UIView
+    (lldb) ivars [UIView new]
+    
+
+### overlaydbg
+Displays the UIDebuggingInformationOverlay on iOS in 11. Check out http://ryanipete.com/blog/ios/swift/objective-c/uidebugginginformationoverlay/ for instructions
+
+    # Display UIDebuggingInformationOverlay
+    (lldb) overlaydbg
+    
+
   
 You read all the way to here!? <a href="https://vimeo.com/231806976">Here's a video highlighting some of these scripts</a>
