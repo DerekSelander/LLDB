@@ -61,6 +61,9 @@ Dumps all the NSObject/SwiftObject inherited classes in the process. If you give
   
       # Dump ALL the NSObject classes within the process
       (lldb) dclass 
+      
+      # Dump ObjC/Swift info (if applicable) about the class "Hello.SomeClass" (same as dclass -i Hello.SomeClass)
+      (lldb) dclass Hello.SomeClass
 
       # Dump all the classes that are a UIViewController within the process
       (lldb) dclass -f UIViewController
