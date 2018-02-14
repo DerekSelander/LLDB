@@ -1200,6 +1200,7 @@ typedef struct class_rw_t {
 
 
   dsobjc_class *dsclass = (dsobjc_class*)''' + classInfo + r''';
+  dsobjc_class *dsclass_meta = (dsobjc_class*)object_getClass((Class)dsclass);
   uint32_t roflags = dsclass->ds_data()->ro->flags;
   uint32_t rwflags = dsclass->ds_data()->flags;
   const char* name = dsclass->ds_data()->ro->name;
@@ -1260,8 +1261,8 @@ typedef struct class_rw_t {
   }
   [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@"\t%d\t%p\n", bmeth ? bmeth->count : 0, bmeth ? &bmeth->first : 0]];
 
-  if (!(roflags & RO_META) && NSClassFromString(@"UIView")) { // Cocoa's isa layout is different?
-    method_list_t *classmeth = dsclass->isa->ds_data()->ro->baseMethodList;
+  if (!(roflags & RO_META) && NSClassFromString(@"UIView") && dsclass_meta) { // Cocoa's isa layout is different?
+    method_list_t *classmeth = dsclass_meta->ds_data()->ro->baseMethodList;
     [returnString appendString:@"C ObjC Meth: "];
     [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@"\t%d\t%p\n", classmeth ? classmeth->count : 0, classmeth ? &classmeth->first : 0]];
   }
@@ -1403,13 +1404,12 @@ typedef struct class_rw_t {
     }
   }
 
-  if (!(roflags & RO_META) && NSClassFromString(@"UIView")) { // Cocoa's isa is different? TODO
-    method_list_t *classmeth = dsclass->isa->ds_data()->ro->baseMethodList;
+  if (!(roflags & RO_META) && NSClassFromString(@"UIView") && dsclass_meta) { // Cocoa's isa is different? TODO
+    method_list_t *classmeth = dsclass_meta->ds_data()->ro->baseMethodList;
     if (classmeth) {
       for (int i = 0; i < classmeth->count; i++) {
-        NSString *methodType = (BOOL)class_isMetaClass((Class)dsclass->isa) ? @"+" : @"-";
         method_t *mt = (method_t*)(&classmeth->first);
-        [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@" %s%40s  %p\n", [methodType UTF8String], mt[i].name, mt[i].imp]];
+        [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@" +%40s  %p\n", mt[i].name, mt[i].imp]];
       }
     }
   }
