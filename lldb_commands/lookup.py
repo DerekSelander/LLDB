@@ -250,11 +250,13 @@ def generate_return_string(target, frame, module_dict, options):
                         if not val:
                             # TODO get variable size 
                             val = frame.EvaluateExpression('*(void**)' + addr)
+                        
+                        descp = val.description
 
                         if val.summary:
                             name += '\n' + val.summary
-                        elif val.description and val.description != '<object returned empty description>' and val.description != '<nil>':
-                            name += '\n' + val.description
+                        elif descp and descp != '<object returned empty description>' and descp != '<nil>':
+                            name += '\n' + descp
                         else:
                             name += '\n' + ('0x%010x' % val.unsigned)
                     else:
