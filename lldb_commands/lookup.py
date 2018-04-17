@@ -225,6 +225,7 @@ def generate_cstring_dict(target, command, options):
 
 def generate_return_string(target, frame, module_dict, options):
     return_string = ''
+    shouldGetSummary = True if (len(module_dict) < 32) else False 
     for key in module_dict:
         count = len(module_dict[key])
         if len(module_dict[key]) == 0:
@@ -238,14 +239,28 @@ def generate_return_string(target, frame, module_dict, options):
         return_string += ds.attrStr('****************************************************', 'cyan') + '\n'
         return_string += str(count) + ' hits in: ' + ds.attrStr(key, 'red') + '\n'
         return_string += ds.attrStr('****************************************************', 'cyan') + '\n'
-
+        module = target.module[key]
         for symbol_context in module_dict[key]:
             if options.global_var or options.global_var_noeval:
                 name = symbol_context.symbol.name
                 if options.global_var:
                     addr = hex(symbol_context.symbol.addr.GetLoadAddress(target))
-                    val = frame.EvaluateExpression('*(void**)' + addr)
-                    name += '\n' + (val.description if val.description else '0x%010x' % val.unsigned)
+                    if shouldGetSummary:
+                        val = module.FindFirstGlobalVariable(target, name)
+                        if not val:
+                            # TODO get variable size 
+                            val = frame.EvaluateExpression('*(void**)' + addr)
+
+                        if val.summary:
+                            name += '\n' + val.summary
+                        elif val.description and val.description != '<object returned empty description>' and val.description != '<nil>':
+                            name += '\n' + val.description
+                        else:
+                            name += '\n' + ('0x%010x' % val.unsigned)
+                    else:
+                        # TODO get variable size 
+                        val = frame.EvaluateExpression('*(void**)' + addr)
+                        name += '\n' + (val.description if val.description else '0x%010x' % val.unsigned)
 
             elif symbol_context.function.name is not None:
                 name = symbol_context.function.name
