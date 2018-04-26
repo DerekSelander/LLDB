@@ -50,6 +50,8 @@ command regex bdel 's/(.+)/script junk = [i.FindLocationByAddress(%1).SetEnabled
 
 command alias enable_logging expression -lobjc -O -- extern void turn_on_stack_logging(int); turn_on_stack_logging(1);
 
+command regex jj 's/(.*)/frame var %1/'
+
 
 # Jailbreak stuff
 
