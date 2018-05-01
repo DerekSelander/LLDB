@@ -149,11 +149,13 @@ def dclass(debugger, command, exe_ctx, result, internal_dict):
         return
 
     if options.module is not None:
+        options.module =  options.module.strip("\"\'")
         module = target.FindModule(lldb.SBFileSpec(options.module))
         if not module.IsValid():
-            result.SetError(
-                "Unable to open module name '{}', to see list of images use 'image list -b'".format(str(options.module)))
-            return
+            if not module or not module.IsValid():
+                result.SetError(
+                    "Unable to open module name '{}', to see list of images use 'image list -b'".format(str(options.module)))
+                return
 
 
 
