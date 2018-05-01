@@ -1002,12 +1002,12 @@ def generate_class_info(options):
   
 #endif
   
-typedef struct dsdl_info {
-        const char      *dli_fname;     /* Pathname of shared object */
-        void            *dli_fbase;     /* Base address of shared object */
-        const char      *dli_sname;     /* Name of nearest symbol */
-        void            *dli_saddr;     /* Address of nearest symbol */
-} dsDl_info;
+// typedef struct dsdl_info {
+//         const char      *dli_fname;     /* Pathname of shared object */
+//         void            *dli_fbase;     /* Base address of shared object */
+//         const char      *dli_sname;     /* Name of nearest symbol */
+//         void            *dli_saddr;     /* Address of nearest symbol */
+// } dsDl_info;
 
 
 //*****************************************************************************/
@@ -1424,8 +1424,8 @@ typedef struct class_rw_t {
     [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@"Swift methods: %d\n", methodCount]];
     for (int i = 0; i < methodCount; i++) {
       uintptr_t * ptr = (uintptr_t*)methodsAddress;
-      dsDl_info dsinfo = {};
-      dladdr((void*)ptr[i], &dsinfo);
+      dl_info dsinfo = {};
+     dladdr((void*)ptr[i], (dl_info *)&dsinfo);
       [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@"(%p) %s\n",  ptr[i], dsinfo.dli_sname]];
     }
 

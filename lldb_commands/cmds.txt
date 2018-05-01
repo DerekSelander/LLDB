@@ -52,6 +52,8 @@ command alias enable_logging expression -lobjc -O -- extern void turn_on_stack_l
 
 command regex jj 's/(.*)/frame var %1/'
 
+command alias args register read arg1 arg2 arg3 arg4 arg5 arg6
+
 
 # Jailbreak stuff
 
