@@ -1011,6 +1011,17 @@ def generate_class_info(options):
 //         void            *dli_saddr;     /* Address of nearest symbol */
 // } dsDl_info;
 
+   typedef struct {
+             const char *dli_fname;  /* Pathname of shared object that
+                                        contains address */
+             void       *dli_fbase;  /* Base address at which shared
+                                        object is loaded */
+             const char *dli_sname;  /* Name of symbol whose definition
+                                        overlaps addr */
+             void       *dli_saddr;  /* Exact address of symbol named
+                                        in dli_sname */
+   } dl_info;
+
 
 //*****************************************************************************/
 #pragma mark - Methods
