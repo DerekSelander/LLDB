@@ -26,7 +26,7 @@ import re
 import subprocess
 
 def __lldb_init_module(debugger, internal_dict):
-    debugger.HandleCommand('command script add -f ds.dcpy dcpy')
+    debugger.HandleCommand('command script add -f ds.dcpy copyz')
     debugger.HandleCommand('command script add -f ds.sys sys')
     debugger.HandleCommand('command script add -f ds.pframework pframework')
     if not isXcode():
@@ -628,7 +628,9 @@ def sys(debugger, command, exe_ctx, result, internal_dict):
 
         command = command.replace('$(' + cleanCommand + ')', res.GetOutput().rstrip())
     # command = re.search('\s*(?<=sys).*', command).group(0)
-    output = subprocess.Popen(command, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE, shell=True).communicate()
+    my_env = os.environ.copy()
+    my_env["PATH"] = "/usr/local/bin:" + my_env["PATH"]
+    output = subprocess.Popen(command, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE, shell=True, env=my_env).communicate()
     retOutput = ''
     if output[1]:
         retOutput += output[1]
