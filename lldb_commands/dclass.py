@@ -1003,24 +1003,21 @@ def generate_class_info(options):
 #define FAST_ALLOC_VALUE (0)
   
 #endif
-  
-// typedef struct dsdl_info {
-//         const char      *dli_fname;     /* Pathname of shared object */
-//         void            *dli_fbase;     /* Base address of shared object */
-//         const char      *dli_sname;     /* Name of nearest symbol */
-//         void            *dli_saddr;     /* Address of nearest symbol */
-// } dsDl_info;
+ 
 
-   typedef struct {
-             const char *dli_fname;  /* Pathname of shared object that
-                                        contains address */
-             void       *dli_fbase;  /* Base address at which shared
-                                        object is loaded */
-             const char *dli_sname;  /* Name of symbol whose definition
-                                        overlaps addr */
-             void       *dli_saddr;  /* Exact address of symbol named
-                                        in dli_sname */
-   } dl_info;
+#ifndef _DLFCN_H_
+
+
+
+typedef struct dl_info {
+        const char      *dli_fname;     /* Pathname of shared object */
+        void            *dli_fbase;     /* Base address of shared object */
+        const char      *dli_sname;     /* Name of nearest symbol */
+        void            *dli_saddr;     /* Address of nearest symbol */
+} Dl_info;
+
+
+#endif // _DLFCN_H_
 
 
 //*****************************************************************************/
@@ -1437,8 +1434,8 @@ typedef struct class_rw_t {
     [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@"Swift methods: %d\n", methodCount]];
     for (int i = 0; i < methodCount; i++) {
       uintptr_t * ptr = (uintptr_t*)methodsAddress;
-      dl_info dsinfo = {};
-     dladdr((void*)ptr[i], (dl_info *)&dsinfo);
+      Dl_info dsinfo = {};
+     dladdr((void*)ptr[i], (Dl_info *)&dsinfo);
       [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@"(%p) %s\n",  ptr[i], dsinfo.dli_sname]];
     }
 
