@@ -1408,10 +1408,17 @@ typedef struct class_rw_t {
     for (int i = 0; i < bmeth->count; i++) {
       NSString *methodType = (BOOL)class_isMetaClass((Class)dsclass) ? @"+" : @"-";
       method_t *mt = (method_t*)(&bmeth->first);
-        // [returnString appendString:[NSString stringWithUTF8String:(char *)mt[i].types]];
-        //[returnString appendString:[NSString stringWithUTF8String:(char *)mt[i].name]];
         [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@" %s%40s  %p\n", [methodType UTF8String], mt[i].name, mt[i].imp]];
     }
+    if ((BOOL)class_isMetaClass((Class)dsclass) == NO) { 
+      dsobjc_class* dsmetaclass = (dsobjc_class*)objc_getMetaClass(name);
+      method_list_t *bmetameth = dsmetaclass->ds_data()->ro->baseMethodList;
+      for (int i = 0; i < bmetameth->count; i++) {
+          NSString *methodType = (BOOL)class_isMetaClass((Class)dsmetaclass) ? @"+" : @"-";
+          method_t *mt = (method_t*)(&bmetameth->first);
+          [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@" %s%40s  %p\n", [methodType UTF8String], mt[i].name, mt[i].imp]];
+      } 
+    } 
   }
 
   if (!(roflags & RO_META) && NSClassFromString(@"UIView") && dsclass_meta) { // Cocoa's isa is different? TODO
