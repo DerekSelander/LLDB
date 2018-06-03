@@ -541,8 +541,6 @@ def getLazyPointersFromData(data, section, outputCount=0):
     return (indeces, stringList)
 
 def getStringsFromData(_data, outputCount=0):
-    global f 
-    f = _data
     indeces = []
     stringList = []
     target = getTarget()
