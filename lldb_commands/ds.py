@@ -142,15 +142,8 @@ def pframework(debugger, command, exe_ctx, result, internal_dict):
     
     result.AppendMessage("\"" + module.file.fullpath + "\"")
 
-def getSectionData(section, outputCount=0):
+def formatFromData(data, section, outputCount=0):
     name = getSectionName(section)
-    loadAddr = section.addr.GetLoadAddress(getTarget())
-    addr = section.addr
-    size = section.size
-    data = section.data
-    endAddr = loadAddr + size
-    addr = section.addr
-
     output = ([], [])
     if name == '__PAGEZERO':
         return ([0], [str(section)])
@@ -201,7 +194,7 @@ def getSectionData(section, outputCount=0):
     elif name == '__DATA.__objc_const':
         pass
     elif name == '__DATA.__objc_selrefs':
-        pass
+        return getObjCSelRefs(section, outputCount)
     elif name == '__DATA.__objc_classrefs':
         pass
     elif name == '__DATA.__objc_superrefs':
@@ -221,6 +214,17 @@ def getSectionData(section, outputCount=0):
 
     return output
 
+def getSectionData(section, outputCount=0):
+    # loadAddr = section.addr.GetLoadAddress(getTarget())
+    # addr = section.addr
+    # size = section.size
+    data = section.data
+
+    # endAddr = loadAddr + size
+    # addr = section.addr
+    return formatFromData(data, section, outputCount)
+
+
 def getFunctionsFromData(data, outputCount):
     target = getTarget()
     dataArray = data.uint64
@@ -237,6 +241,23 @@ def getFunctionsFromData(data, outputCount):
         indeces.append(i)
 
 	return (indeces, functionList)
+
+def getObjCSelRefs(section, outputCount):
+    print section
+    target = getTarget()
+    sz = section.GetByteSize() / getType("char*").GetByteSize()
+    addr = target.ResolveLoadAddress(section.GetLoadAddress(target))
+    ty = getType("char*", sz)
+    val = target.CreateValueFromAddress("somename", addr, ty)
+
+    indeces = []
+    stringList = []
+
+    for i, x in enumerate(val):
+        indeces.append(i * sz)
+        stringList.append("[{}] {}".format(hex(x.deref.GetLoadAddress()) ,x.summary))
+
+    return (indeces, stringList)
 
 
 def getCFStringsFromData(data, outputCount):
@@ -519,16 +540,29 @@ def getLazyPointersFromData(data, section, outputCount=0):
 
     return (indeces, stringList)
 
-    # return res.GetOutput()
-
-
-
-
-
-def getStringsFromData(data, outputCount=0):
-    dataArray = data.sint8
+def getStringsFromData(_data, outputCount=0):
+    global f 
+    f = _data
     indeces = []
     stringList = []
+    target = getTarget()
+
+    #  Hack, f it
+    if outputCount == 1:
+        err = lldb.SBError()
+        val = target.EvaluateExpression('(char *){}'.format(_data.GetAddress(err, 0)), genExpressionOptions())
+        print (val)
+
+    #  Force conversion of "unknown" data to known of char**
+    t = target.GetBasicType(lldb.eBasicTypeChar).GetPointerType()
+    data = _data
+
+    vl = target.CreateValueFromData("__ds_unused", _data, t)
+    if not vl.IsValid():
+        print("SBValue not valid")
+        return (indeces, stringList)
+
+    dataArray = data.sint8
     marker = 0
 
     for index, x in enumerate(dataArray):
@@ -602,7 +636,7 @@ def getType(typeStr, count=None):
         varType = lldb.eBasicTypeVoid
 
     t = target.GetBasicType(varType)
-    if '*' in typeStr:
+    for _ in xrange(typeStr.count("*")):
         t = t.GetPointerType()
 
     if count:
