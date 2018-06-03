@@ -78,7 +78,6 @@ def parseSection(sections, options, target):
         addr = section.addr
         if options.summary:
             moduleName  = addr.module.file.basename
-            # bug TODO figure why pagezero is wonky 
             if name == '__PAGEZERO':
                 loadAddr = 0
                 endAddr = size

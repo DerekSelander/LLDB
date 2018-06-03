@@ -186,19 +186,21 @@ def formatFromData(data, section, outputCount=0):
     elif name == '__DATA.__la_symbol_ptr':
         return getLazyPointersFromData(data, section, outputCount)
     elif name == '__DATA.__objc_classlist':
-        pass
+        return getObjCClassData(section, outputCount)
     elif name == '__DATA.__objc_protolist':
         pass
+    elif name == '__DATA.__objc_nlclslist':
+        return getObjCClassData(section, outputCount)
     elif name == '__DATA.__objc_imageinfo':
-        pass
+        return ([0], [str(section)])
     elif name == '__DATA.__objc_const':
         pass
     elif name == '__DATA.__objc_selrefs':
         return getObjCSelRefs(section, outputCount)
     elif name == '__DATA.__objc_classrefs':
-        pass
+        return getObjCClassData(section, outputCount)
     elif name == '__DATA.__objc_superrefs':
-        pass
+        return getObjCClassData(section, outputCount)
     elif name == '__DATA.__objc_ivar':
         pass
     elif name == '__DATA.__objc_data':
@@ -213,6 +215,30 @@ def formatFromData(data, section, outputCount=0):
         return ([0], [str(section)])
 
     return output
+
+def getObjCClassData(section, outputCount=0):
+
+    target = getTarget()
+    indeces = []
+    stringList = []
+
+    ptrsize = getType("void*").GetByteSize()
+    sz = section.GetByteSize() / ptrsize
+    addr = section.GetLoadAddress(target)
+    script = "int dssize = {};\nchar *classNames[{}];\nClass *clsPointer = (Class*){};".format(sz, sz,  addr)
+    script += r'''
+memset(&classNames, 0, sizeof(classNames))
+for (int i = 0; i < dssize; i++) {
+    classNames[i] = (char*)class_getName(clsPointer[i]);
+}
+classNames'''
+    val = target.EvaluateExpression(script, genExpressionOptions(False, True, True))
+
+    for i, x in enumerate(val):
+        indeces.append(i * ptrsize)
+        stringList.append(x.summary.replace("\"", ""))
+
+    return (indeces, stringList)
 
 def getSectionData(section, outputCount=0):
     # loadAddr = section.addr.GetLoadAddress(getTarget())
@@ -243,9 +269,9 @@ def getFunctionsFromData(data, outputCount):
 	return (indeces, functionList)
 
 def getObjCSelRefs(section, outputCount):
-    print section
     target = getTarget()
-    sz = section.GetByteSize() / getType("char*").GetByteSize()
+    ptrsize = getType("char*").GetByteSize()
+    sz = section.GetByteSize() / ptrsize
     addr = target.ResolveLoadAddress(section.GetLoadAddress(target))
     ty = getType("char*", sz)
     val = target.CreateValueFromAddress("somename", addr, ty)
@@ -254,7 +280,7 @@ def getObjCSelRefs(section, outputCount):
     stringList = []
 
     for i, x in enumerate(val):
-        indeces.append(i * sz)
+        indeces.append(i * ptrsize)
         stringList.append("[{}] {}".format(hex(x.deref.GetLoadAddress()) ,x.summary))
 
     return (indeces, stringList)
