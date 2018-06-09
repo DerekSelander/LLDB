@@ -42,7 +42,7 @@ command regex gdocumentation 's/(.+)/script import os; os.system("open https:" +
 
 command regex pbpaste 's/(.+)/expression -l objc -O -- [[UIPasteboard generalPasteboard] setString:@"%1"]/'
 
-command regex px 's/(.+)/script print lldb.frame.var("%1".rstrip()).addr/'
+command regex px 's/(.+)/script print hex(lldb.frame.var("%1".rstrip()).AddressOf().unsigned)/'
 
 command regex bdel 's/(.+)/script junk = [i.FindLocationByAddress(%1).SetEnabled(False) for i in lldb.target.breakpoint_iter() if i.FindLocationByAddress(%1).IsValid()]/'
 
