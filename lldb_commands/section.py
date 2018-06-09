@@ -27,6 +27,8 @@ def handle_command(debugger, command, exe_ctx, result, internal_dict):
     # clean_command = shlex.split(args[0])[0]
 
     target = exe_ctx.target
+    sections = None
+
     if len(args) == 0:
         options.summary = True
         sections = [i for i in ds.getSection()]
@@ -43,66 +45,81 @@ def handle_command(debugger, command, exe_ctx, result, internal_dict):
             options.summary = True
             if module:
                 sections = ds.getSection(module=args[0], name=None)
-            elif args[0] == '__PAGEZERO' or args[0] == '__LINKEDIT':
+            elif args[0] == '__PAGEZERO':
                 sections = ds.getSection(module=None, name=args[0])
             else:
-                sections = [i for i in ds.getSection(module=None, name=args[0])]
+                _sz = ds.getSection(module=None, name=args[0])
+
+                if isinstance(_sz, lldb.SBSection) and _sz.name != "__LINKEDIT":
+                    sections = [i for i in _sz]
+                elif isinstance(_sz, lldb.SBSection) and _sz.name == "__LINKEDIT":
+                    options.summary = False
+                    sections = [_sz]
     elif len(args) == 2:
         if '.' in args[1]:
             sections = [ds.getSection(args[0], args[1])]
         else:
-            options.summary = True
-            sections = [i for i in ds.getSection(args[0], args[1])]
-
+            _sz = ds.getSection(args[0], args[1])
+            if isinstance(_sz, lldb.SBSection) and _sz.name != "__LINKEDIT":
+                options.summary = True
+                sections = [i for i in _sz]
+            elif isinstance(_sz, lldb.SBSection) and _sz.name == "__LINKEDIT":
+                options.summary = False
+                sections = [_sz]
 
     if isinstance(sections, lldb.SBSection) and sections.GetNumSubSections() == 0:
         output = str(sections)
-    else:
+    elif sections is not None:
         output = parseSection(sections, options, target)
+    else:
+        if len(args) == 2:
+            output = "parsing module: \"{}\", in section \"{}\"".format(args[0], args[1])
+        else:
+            output = "parsing module: \"{}\", in section \"{}\"".format(target.executable.basename, args[0])
+        result.SetError(output)
+        return 
 
-    
     result.AppendMessage(output)
-
 
 def parseSection(sections, options, target):
     output = ''
-    for section in sections:
-        # if section 
+    # sections is a list here
+    if len(sections) > 0:
+        for section in sections:
+            name = ds.getSectionName(section)
+            loadAddr = section.addr.GetLoadAddress(target)
+            addr = section.addr
+            size = section.size
+            data = section.data
+            endAddr = loadAddr + size
+            addr = section.addr
 
-        name = ds.getSectionName(section)
-        loadAddr = section.addr.GetLoadAddress(target)
-        addr = section.addr
-        size = section.size
-        data = section.data
-        endAddr = loadAddr + size
-        addr = section.addr
-        if options.summary:
-            moduleName  = addr.module.file.basename
-            if name == '__PAGEZERO':
-                loadAddr = 0
-                endAddr = size
-            output += ds.attrStr('[' + '{0:#016x}'.format(loadAddr) + '-' + '{0:#016x}'.format(endAddr) + '] ', 'cyan')
-            output += ds.attrStr("{0:#012x}".format(size), 'grey') + ' '
-            output += ds.attrStr(moduleName, 'yellow') + '`'
-            output += ds.attrStr(name, 'cyan') + '\n'
-            continue
+            if options.summary:
+                moduleName  = addr.module.file.basename
+                if name == '__PAGEZERO':
+                    loadAddr = 0
+                    endAddr = size
+                output += ds.attrStr('[' + '{0:#016x}'.format(loadAddr) + '-' + '{0:#016x}'.format(endAddr) + '] ', 'cyan')
+                output += ds.attrStr("{0:#012x}".format(size), 'grey') + ' '
+                output += ds.attrStr(moduleName, 'yellow') + '`'
+                output += ds.attrStr(name, 'cyan') + '\n'
+                continue
 
-        returnType = ds.getSectionData(section, options.count)
+            returnType = ds.getSectionData(section, options.count)
 
-        # Ok, I really need to rewrite this, but whatever
-        if isinstance(returnType, tuple):
-            (indeces, sectionData) = returnType
-            for index, x in enumerate(sectionData):
-                if options.count != 0 and index  >= options.count:
-                    break
+            # Ok, I really need to rewrite this, but whatever
+            if isinstance(returnType, tuple):
+                (indeces, sectionData) = returnType
+                for index, x in enumerate(sectionData):
+                    if options.count != 0 and index  >= options.count:
+                        break
 
-                if options.load_address:
-                    output += ds.attrStr(hex(loadAddr + indeces[index]), 'yellow') + ' '
+                    if options.load_address:
+                        output += ds.attrStr(hex(loadAddr + indeces[index]), 'yellow') + ' '
 
-                output += ds.attrStr(str(x), 'cyan') + '\n'
-        elif isinstance(returnType, str):
-            output += returnType
-
+                    output += ds.attrStr(str(x), 'cyan') + '\n'
+            elif isinstance(returnType, str):
+                output += returnType
 
     return output
 

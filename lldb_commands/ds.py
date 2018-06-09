@@ -212,9 +212,115 @@ def formatFromData(data, section, outputCount=0):
     elif name == '__DATA.__common':
         pass
     elif name == '__LINKEDIT':
-        return ([0], [str(section)])
+        return getLINKEDITData(section)
 
     return output
+
+def getLINKEDITData(section):
+    addr = section.addr
+    module = addr.GetModule()
+    target = getTarget()
+    fileHeaderAddr = module.GetObjectFileHeaderAddress().GetLoadAddress(target)
+
+    LINKEDITAddr = section.GetLoadAddress(target)
+    indeces = []
+    stringList = []
+
+    script = generateMachOHeaders()
+    script += 'uintptr_t baseAddress = (uintptr_t){};\n'.format(fileHeaderAddr)
+    # script += 'uintptr_t linkeditAddress = (uintptr_t){};\n'.format(LINKEDITAddr)
+    script += r'''
+
+@import Foundation;
+ds_symtab_command *symtab_cmd = NULL;
+ds_dysymtab_command *dysymtab_cmd = NULL;
+char *strtab = NULL;
+
+ds_header *dsheader = (ds_header *)baseAddress;
+ds_section *la_section = NULL;
+
+ds_segment *cur_seg = NULL;
+ds_segment *linkeditSegment = NULL;
+struct nlist_64 *symtab = NULL;
+uintptr_t pagezero = 0;
+
+uintptr_t cur = baseAddress + sizeof(ds_header);
+for (int i = 0; i < dsheader->ncmds; i++, cur += cur_seg->cmdsize) {
+    cur_seg = (ds_segment *)cur;
+    if (cur_seg->cmd == 0x2) { // LC_SYMTAB
+        symtab_cmd = (ds_symtab_command *)cur_seg;
+      
+    } else if (cur_seg->cmd == 0xb) { // LC_DYSYMTAB
+        dysymtab_cmd = (ds_dysymtab_command *)cur_seg;
+    } 
+    else if (cur_seg->cmd == 0x19 && strcmp(cur_seg->segname, "__LINKEDIT") == 0) {
+        // pagezero = cur_seg->vmsize;
+        linkeditSegment = cur_seg;
+    }
+    else if (cur_seg->cmd == 0x19 && strcmp(cur_seg->segname, "__PAGEZERO") == 0) {
+        pagezero = cur_seg->vmsize;
+    }
+}
+
+strtab = (char *)(symtab_cmd->stroff + baseAddress + linkeditSegment->vmaddr - linkeditSegment->fileoff - pagezero);
+symtab = (struct nlist_64 *)(symtab_cmd->symoff + baseAddress + linkeditSegment->vmaddr - linkeditSegment->fileoff - pagezero);
+uintptr_t linkedit_base = baseAddress + linkeditSegment->vmaddr - linkeditSegment->fileoff - pagezero;
+
+NSMutableString *returnString = [NSMutableString new];
+if (symtab_cmd) {
+    [returnString appendString:@"LC_SYMTAB\n"];
+    [returnString appendString:(id)[NSString stringWithFormat:@"\t[%012p] symtab (%d entries)\n", symtab, symtab_cmd->nsyms]];
+    [returnString appendString:(id)[NSString stringWithFormat:@"\t[%012p] strtab (size %d)\n", strtab, symtab_cmd->strsize]];
+} 
+
+if (dysymtab_cmd) {
+    [returnString appendString:@"LC_DYSYMTAB\n"];
+    if (dysymtab_cmd->nlocalsym > 0) {
+        [returnString appendString:[NSString stringWithFormat:@"\t[%p] local symbols (%d entries, index %d)\n", &symtab[dysymtab_cmd->ilocalsym],  dysymtab_cmd->nlocalsym, dysymtab_cmd->ilocalsym]];
+    } else { 
+        [returnString appendString:@"\tno local symbols\n"];
+    }
+
+    if (dysymtab_cmd->nextdefsym > 0) {
+        [returnString appendString:[NSString stringWithFormat:@"\t[%p] external symbols (%d entries, index %d)\n", &symtab[dysymtab_cmd->iextdefsym], dysymtab_cmd->nextdefsym, dysymtab_cmd->iextdefsym]];
+    } else { 
+        [returnString appendString:@"\tno external symbols\n"];
+    }
+
+    if (dysymtab_cmd->nundefsym > 0) {
+        [returnString appendString:[NSString stringWithFormat:@"\t[%p] undefined symbols (%d entries, index %d)\n", &symtab[dysymtab_cmd->iundefsym], dysymtab_cmd->nundefsym, dysymtab_cmd->iundefsym]];
+    } else { 
+        [returnString appendString:@"\tno undefined symbols\n"];
+    }
+    
+    if (dysymtab_cmd->ntoc > 0) {
+        [returnString appendString:[NSString stringWithFormat:@"\t[%p] TOC (%d entries, index %d)\n", &symtab[dysymtab_cmd->tocoff], dysymtab_cmd->ntoc, dysymtab_cmd->tocoff]];
+    } else { 
+        [returnString appendString:@"\tno TOC\n"];
+    }
+
+    if (dysymtab_cmd->nmodtab > 0) {
+        [returnString appendString:[NSString stringWithFormat:@"\t[%p] modtab (%d entries, index %d)\n", &symtab[dysymtab_cmd->modtaboff], dysymtab_cmd->nmodtab, dysymtab_cmd->modtaboff]];
+    } else { 
+        [returnString appendString:@"\tno modtab\n"];
+    }
+
+    if (dysymtab_cmd->nindirectsyms > 0) {
+        [returnString appendString:[NSString stringWithFormat:@"\t[%p] indirect symbols (%d entries, index %d)\n", &symtab[dysymtab_cmd->indirectsymoff], dysymtab_cmd->nindirectsyms, dysymtab_cmd->indirectsymoff]];
+    } else { 
+        [returnString appendString:@"\tno indirect symbols\n"];
+    }
+}  
+returnString
+    '''
+    val = target.EvaluateExpression(script, genExpressionOptions(False, True, True))
+    indeces.append(0)
+    stringList.append(val.description)
+
+    return (indeces, stringList)
+
+
+
 
 def getObjCClassData(section, outputCount=0):
 
@@ -311,17 +417,10 @@ def getCFStringsFromData(data, outputCount):
 
     return (indeces, stringList)
 
+def generateMachOHeaders():
+    return r'''
 
-
-def generateLazyPointerScriptWithOptions(section):
-    size = section.size / 4 # TODO make 32 bit compatible
-    baseAddress = section.addr.module.FindSection("__TEXT").addr.GetLoadAddress(getTarget())
-    la_symbol_addr = section.addr.module.FindSection("__DATA").FindSubSection("__la_symbol_ptr").addr.GetLoadAddress(getTarget())
-    script = 'char retstring[' + str(size * 256) + '];\n'
-    script += 'uint64_t baseAddress = ' + str(baseAddress) + ';\n'
-    script += '''
 @import MachO;
-memset(&retstring[0], 0, sizeof(retstring));
 
 #define INDIRECT_SYMBOL_LOCAL   0x80000000
 #define INDIRECT_SYMBOL_ABS 0x40000000
@@ -433,7 +532,7 @@ typedef struct nlist_64 {
 
 #endif
 
-typedef struct symtab_command {
+typedef struct  {
     uint32_t    cmd;        /* LC_SYMTAB */
     uint32_t    cmdsize;    /* sizeof(struct symtab_command) */
     uint32_t    symoff;     /* symbol table offset */
@@ -442,7 +541,7 @@ typedef struct symtab_command {
     uint32_t    strsize;    /* string table size in bytes */
 } ds_symtab_command;
 
-typedef struct dysymtab_command {
+typedef struct  {
     uint32_t cmd;   /* LC_DYSYMTAB */
     uint32_t cmdsize;   /* sizeof(struct dysymtab_command) */
     uint32_t ilocalsym; /* index to local symbols */
@@ -464,6 +563,20 @@ typedef struct dysymtab_command {
     uint32_t locreloff; /* offset to local relocation entries */
     uint32_t nlocrel;   /* number of local relocation entries */
 } ds_dysymtab_command;
+    '''
+
+def generateLazyPointerScriptWithOptions(section):
+    ptrsize = getType("void*").GetByteSize()
+    size = section.GetByteSize() / ptrsize
+    baseAddress = section.addr.module.FindSection("__TEXT").addr.GetLoadAddress(getTarget())
+    linkeditAddress = section.addr.module.FindSection("__LINKEDIT").addr.GetLoadAddress(getTarget())
+    la_symbol_addr = section.addr.module.FindSection("__DATA").FindSubSection("__la_symbol_ptr").addr.GetLoadAddress(getTarget())
+    script = 'char *retstring[' + str(size) + '];\n'
+    script += 'uint64_t baseAddress = (uintptr_t)' + str(baseAddress) + ';\n'
+    script += 'uint64_t linkeditAddress = (uintptr_t)' + str(linkeditAddress) + ';\n'
+    script += generateMachOHeaders()
+    script += '''
+  memset(&retstring, 0, sizeof(retstring));
 
   ds_symtab_command *symtab_cmd = NULL;
   ds_dysymtab_command *dysymtab_cmd = NULL;
@@ -472,21 +585,23 @@ typedef struct dysymtab_command {
   ds_header *dsheader = (ds_header *)baseAddress;
   ds_section *la_section = NULL;
 
-  ds_segment *cur_seg;
+  ds_segment *cur_seg = NULL;
+  ds_segment *linkeditSegment = NULL;
   struct nlist_64 *symtab = NULL;
   uintptr_t pagezero = 0;
   
   uintptr_t cur = baseAddress + sizeof(ds_header);
-  for (int i = 0; i < dsheader->sizeofcmds; i++, cur += cur_seg->cmdsize) {
+  for (int i = 0; i < dsheader->ncmds; i++, cur += cur_seg->cmdsize) {
     cur_seg = (ds_segment *)cur;
     if (cur_seg->cmd == 0x2) { // LC_SYMTAB
-      symtab_cmd = (struct symtab_command *)cur_seg;
-      strtab = (char *)(symtab_cmd->stroff + baseAddress);
-      symtab = (struct nlist_64 *)(symtab_cmd->symoff + baseAddress);
-      
+      symtab_cmd = (ds_symtab_command *)cur_seg;
+
     } else if (cur_seg->cmd == 0xb) { // LC_DYSYMTAB
-      dysymtab_cmd = (struct dysymtab_command *)cur_seg;
+      dysymtab_cmd = (ds_dysymtab_command *)cur_seg;
     } 
+    else if (cur_seg->cmd == 0x19 && strcmp(cur_seg->segname, "__LINKEDIT") == 0) {
+        linkeditSegment = cur_seg;
+    }
     else if (cur_seg->cmd == 0x19 && strcmp(cur_seg->segname, "__PAGEZERO") == 0) {
         pagezero = cur_seg->vmsize;
     }
@@ -502,14 +617,17 @@ typedef struct dysymtab_command {
     }
   }
   
+  uintptr_t linkedit_base = baseAddress + linkeditSegment->vmaddr - linkeditSegment->fileoff - pagezero;
+  strtab = (char *)(symtab_cmd->stroff + linkedit_base);
+  symtab = (struct nlist_64 *)(symtab_cmd->symoff + linkedit_base);
+
     if (!symtab_cmd || !dysymtab_cmd || !strtab || !la_section) {
-        strcat(retstring, "0|||An error has occurred in parsing");
+        //strcat(retstring, "0|||An error has occurred in parsing");
         return;
     }
 
-  uint32_t *indirect_symbol_indices = (uint32_t *)(dysymtab_cmd->indirectsymoff + baseAddress) + la_section->reserved1;
-    void **la_ptr_section = (void **)(la_section->addr + baseAddress - pagezero);
-    
+  uint32_t *indirect_symtab = (uint32_t *)(linkedit_base + dysymtab_cmd->indirectsymoff);
+  uint32_t *indirect_symbol_indices = (uint32_t *)(indirect_symtab + la_section->reserved1);
   for (uint i = 0; i < la_section->size / sizeof(void *); i++) {
     uint32_t symtab_index = indirect_symbol_indices[i];
     if (symtab_index == INDIRECT_SYMBOL_ABS || symtab_index == INDIRECT_SYMBOL_LOCAL ||
@@ -520,50 +638,38 @@ typedef struct dysymtab_command {
     char *symbol_name = strtab + strtab_offset;
     if (symbol_name > strtab + symtab_cmd->strsize) {
         printf("something might of went wong...\\n");
+        printf("baseaddress %p, symoff %p, indrectsymoff %p, reserved1 %p, %p %i", baseAddress, dysymtab_cmd->indirectsymoff, la_section->reserved1, indirect_symbol_indices, i);
         continue;
     }
 
     if (strlen(symbol_name) < 2) {
         continue;
     }
-
-    char dsbuffer[200];
-     snprintf (dsbuffer, 200, "%p|||%s...", &la_ptr_section[i],  &symbol_name[1]);
-     strcat(retstring, dsbuffer);
+     retstring[i] = &symbol_name[1];
   }
 
   retstring
     '''
     return script
 
-
 def getLazyPointersFromData(data, section, outputCount=0):
     script = generateLazyPointerScriptWithOptions(section)
-
-    debugger = lldb.debugger
-    res = lldb.SBCommandReturnObject()
-    interpreter = debugger.GetCommandInterpreter()
-    interpreter.HandleCommand('exp -l objc++ -O -- ' + script, res) 
-    if res.GetError():
-        return res.GetError()
-
-    output = res.GetOutput()
-
-    err = lldb.SBError()
-    baseAddress = section.addr.GetLoadAddress(getTarget())
-
-    lines = list(filter(lambda x: len(x) > 1, output.replace('"', '').replace('\n', '').split("...")))
-
+    target = getTarget()
     indeces = []
     stringList = []
-    for line in lines:
+    ptrsize = getType("void*").GetByteSize()
 
-        values = line.split('|||')
-        if len(values) != 2:
-            continue
-        indeces.append(int(values[0], 16) - baseAddress)
-        stringList.append(values[1])
+    options = genExpressionOptions(False, True, True)
+    options.SetUnwindOnError(True)
 
+    val = target.EvaluateExpression(script, options)
+    # for dbg'ing 
+    # lldb.debugger.HandleCommand('exp -l objc++ -O -g -- ' + script)
+        # print(res)
+
+    for i, x in enumerate(val):
+        indeces.append(i * ptrsize)
+        stringList.append(x.summary.replace("\"", ""))
     return (indeces, stringList)
 
 def getStringsFromData(_data, outputCount=0):
