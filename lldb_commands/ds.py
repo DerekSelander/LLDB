@@ -178,11 +178,13 @@ def formatFromData(data, section, outputCount=0):
     elif name == '__DATA.__got':
         pass
     elif name == '__DATA.__nl_symbol_ptr':
-        return getFunctionsFromData(data, outputCount)
+        return getFunctionsFromData(section, outputCount)
     elif name == '__DATA.__cfstring':
         return getCFStringsFromData(data, outputCount)
     elif name == '__DATA.__const':
         pass
+    elif name == '__DATA.__mod_init_func':
+        return getFunctionsFromData(section, outputCount)
     elif name == '__DATA.__la_symbol_ptr':
         return getLazyPointersFromData(data, section, outputCount)
     elif name == '__DATA.__objc_classlist':
@@ -356,21 +358,37 @@ def getSectionData(section, outputCount=0):
     # addr = section.addr
     return formatFromData(data, section, outputCount)
 
-
-def getFunctionsFromData(data, outputCount):
+def getFunctionsFromData(section, outputCount=0):
     target = getTarget()
-    dataArray = data.uint64
+    ptrsize = getType("void*").GetByteSize()
+
     functionList = []
     indeces = []
-    print data.sint64[0]
-    for i, n in enumerate(dataArray):
-        if outputCount != 0 and len(functionList) > outputCount:
-            break
 
-        addr = target.ResolveLoadAddress(n)
-        print i
-        functionList.append(addr.symbol.name)
+    size = section.GetByteSize() / ptrsize
+    baseAddress = section.addr.GetLoadAddress(target)
+
+    script = "uintptr_t retstring[{}];\n".format(size)
+    script += "uintptr_t *baseAddress = (uintptr_t *){};\n".format(baseAddress)
+    script += "int size = {};\n".format(size)
+    script += r'''
+    memset(&retstring, 0, sizeof(retstring));
+
+    for (int i = 0; i < size; i++) {
+        retstring[i] = baseAddress[i];
+    }
+    retstring
+'''
+    options = genExpressionOptions(False, True, True)
+    val = target.EvaluateExpression(script, options)
+
+    for i, x in enumerate(val):
         indeces.append(i)
+        retval = "({})".format(hex(x.unsigned))
+        addr = target.ResolveLoadAddress(x.unsigned)
+        if addr.symbol.IsValid():
+            retval += " {}".format(addr.symbol.name)
+        functionList.append(retval)
 
 	return (indeces, functionList)
 
@@ -660,16 +678,33 @@ def getLazyPointersFromData(data, section, outputCount=0):
     ptrsize = getType("void*").GetByteSize()
 
     options = genExpressionOptions(False, True, True)
-    options.SetUnwindOnError(True)
 
     val = target.EvaluateExpression(script, options)
     # for dbg'ing 
     # lldb.debugger.HandleCommand('exp -l objc++ -O -g -- ' + script)
         # print(res)
 
+    process = target.GetProcess()
+    loadAddr = section.addr.GetLoadAddress(target)
+
+
     for i, x in enumerate(val):
         indeces.append(i * ptrsize)
-        stringList.append(x.summary.replace("\"", ""))
+        retstr = x.summary.replace("\"", "")
+
+        error = lldb.SBError()
+        ptr = process.ReadPointerFromMemory(loadAddr + i * ptrsize, error)
+        if error.success == True:
+
+            sec = target.ResolveLoadAddress(ptr).section
+            if sec.IsValid():
+                if sec.name == "__stub_helper":
+                    retstr = "- " + retstr
+                else:
+                    retstr = "+ " + retstr
+
+
+        stringList.append(retstr)
     return (indeces, stringList)
 
 def getStringsFromData(_data, outputCount=0):
