@@ -242,6 +242,10 @@ def generate_class_dump(target, options, clean_command=None):
       for (int i = 0; i < count; i++) {
         Class cls =  '''
         command_script += 'objc_getClass(allClasses[i]);' if clean_command else 'allClasses[i];'
+        command_script += '''
+        NSString *dsclsName = (NSString*)NSStringFromClass(cls);
+        if ((BOOL)[dsclsName isEqualToString:@"_CNZombie_"] || (BOOL)[dsclsName isEqualToString:@"JSExport"] ||  (BOOL)[dsclsName isEqualToString:@"__NSGenericDeallocHandler"] || (BOOL)[dsclsName isEqualToString:@"_NSZombie_"] || (BOOL)[dsclsName isEqualToString:@"__NSMessageBuilder"] || (BOOL)[dsclsName isEqualToString:@"Object"]  )  { continue; }
+        '''
 
     if options.module is not None: 
         command_script += generate_module_search_sections_string(options.module, target, options.search_protocols)
@@ -1413,11 +1417,14 @@ typedef struct class_rw_t {
     if ((BOOL)class_isMetaClass((Class)dsclass) == NO) { 
       dsobjc_class* dsmetaclass = (dsobjc_class*)objc_getMetaClass(name);
       method_list_t *bmetameth = dsmetaclass->ds_data()->ro->baseMethodList;
-      for (int i = 0; i < bmetameth->count; i++) {
-          NSString *methodType = (BOOL)class_isMetaClass((Class)dsmetaclass) ? @"+" : @"-";
-          method_t *mt = (method_t*)(&bmetameth->first);
-          [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@" %s%40s  %p\n", [methodType UTF8String], mt[i].name, mt[i].imp]];
-      } 
+      if (bmetameth) {
+
+        for (int i = 0; i < bmetameth->count; i++) {
+            NSString *methodType = (BOOL)class_isMetaClass((Class)dsmetaclass) ? @"+" : @"-";
+            method_t *mt = (method_t*)(&bmetameth->first);
+            [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@" %s%40s  %p\n", [methodType UTF8String], mt[i].name, mt[i].imp]];
+        } 
+      }
     } 
   }
 
