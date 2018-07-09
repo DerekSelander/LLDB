@@ -114,7 +114,7 @@ Displays data in the Mach-O segments/sections of the executable or frameworks lo
       # Get the load address of all the hard-coded uint8_t * strings in the UIKit binary
       (lldb) section UIKit __TEXT.__cstring -l
       
-      # Get the entitlements for the executable
+      # Get the entitlements for the executable (simulator only, entitlements for actual app in __LINKEDIT)
       (lldb) section  __TEXT.__entitlements
       
       # Get all the load address to the lazy symbol stubs in the main executable
