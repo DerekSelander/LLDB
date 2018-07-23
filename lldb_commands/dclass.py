@@ -1389,7 +1389,7 @@ typedef struct class_rw_t {
   if (bivar) {
     for (int i = 0; i < bivar->count; i++) {
       ivar_t *dsiv = (ivar_t *)(&bivar->first);
-      [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@" %20s %-30s; offset 0x%x\n", (char *)dsiv[i].type, (char *)dsiv[i].name, *(int32_t *)dsiv[i].offset]];
+      [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@" %20s %-30s; offset 0x%x, 0x%x\n", (char *)dsiv[i].type, (char *)dsiv[i].name, *(int32_t *)dsiv[i].offset, (int)dsiv[i].size]];
     }
   }
 
