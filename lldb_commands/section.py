@@ -5,6 +5,7 @@ import os
 import shlex
 import optparse
 import ds
+import re
 
 def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(
@@ -107,15 +108,33 @@ def parseSection(sections, options, target):
 
             returnType = ds.getSectionData(section, options.count)
 
+
+            if options.filter is not None:
+                prog = re.compile(options.filter.strip('"'))
+            else: 
+                prog = None 
             # Ok, I really need to rewrite this, but whatever
             if isinstance(returnType, tuple):
-                (indeces, sectionData) = returnType
+                if len(returnType) == 3:
+                    (indeces, sectionData, descriptions) = returnType
+                else:
+                    (indeces, sectionData) = returnType
+                    descriptions = None
+
+                # Filter option
                 for index, x in enumerate(sectionData):
+                    if options.filter:
+                        if prog.search(x) is None:
+                            continue
+
                     if options.count != 0 and index  >= options.count:
                         break
 
                     if options.load_address:
                         output += ds.attrStr(hex(loadAddr + indeces[index]), 'yellow') + ' '
+
+                    if descriptions != None and descriptions[index] != None:
+                        output += " {} ".format(str(descriptions[index]))
 
                     output += ds.attrStr(str(x), 'cyan') + '\n'
             elif isinstance(returnType, str):
@@ -138,11 +157,11 @@ def generate_option_parser():
                       dest="summary",
                       help="Summary for modules")
 
-    parser.add_option("-f", "--format",
+    parser.add_option("-f", "--filter",
                       action="store",
                       default=None,
-                      dest="format",
-                      help="format")
+                      dest="filter",
+                      help="filter output, section/segments will vary with output")
 
     parser.add_option("-c", "--count",
                       action="store",
@@ -150,5 +169,6 @@ def generate_option_parser():
                       type="int",
                       dest="count",
                       help="Max count of items to print out")
+
     return parser
     
