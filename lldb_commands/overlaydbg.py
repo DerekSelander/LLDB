@@ -41,11 +41,15 @@ def setupIfiOS11(target):
     debugger = target.GetDebugger()
 
     if "11." in versionvalstr:
-        tweakiOS11Memory(target)
+        tweakiOS11Memory(target, "UIKit")
+    elif "12." in versionvalstr:
+        tweakiOS11Memory(target, "UIKitCore")
+    else:
+        "print unknown version, exiting..."
 
 
-def tweakiOS11Memory(target):
-    module = target.module['UIKit']
+def tweakiOS11Memory(target, moduleName):
+    module = target.module[moduleName]
 
     symbolsFF = [ '__fetchedInternalDeviceOnceToken', 
                   'UIDebuggingOverlayIsEnabled.__overlayIsEnabled',
