@@ -131,10 +131,14 @@ def parseSection(sections, options, target):
                         break
 
                     if options.load_address:
-                        output += ds.attrStr(hex(loadAddr + indeces[index]), 'yellow') + ' '
+                        if isinstance(indeces[index], tuple):
+                            output += ds.attrStr("[" + hex(loadAddr + indeces[index][0]) + '-' + hex(loadAddr + indeces[index][0] + indeces[index][1]) + "]", 'yellow') + ' '
+                        else:
+                            output += ds.attrStr(hex(loadAddr + indeces[index]), 'yellow') + ' '
 
                     if descriptions != None and descriptions[index] != None:
-                        output += " {} ".format(str(descriptions[index]))
+                        output += "{} ".format(str(descriptions[index]))
+
 
                     output += ds.attrStr(str(x), 'cyan') + '\n'
             elif isinstance(returnType, str):

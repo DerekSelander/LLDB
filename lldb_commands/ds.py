@@ -149,6 +149,10 @@ def formatFromData(data, section, outputCount=0):
         return ([0], [str(section)])
     elif name == '__TEXT':
         return ([0], [str(section)])
+    elif name == '__TEXT.__stubs':
+        pass
+    elif name == '__TEXT.__stub_helper':
+        pass
     elif name == '__TEXT.__objc_methname':
         return getStringsFromData(data, outputCount)
     elif name == '__TEXT.__cstring':
@@ -176,27 +180,27 @@ def formatFromData(data, section, outputCount=0):
     elif name == '__DATA':
         return ([0], [str(section)])
     elif name == '__DATA.__got':
-        pass
+        return getFunctionsFromSection(section, outputCount)
     elif name == '__DATA.__nl_symbol_ptr':
-        return getFunctionsFromData(section, outputCount)
+        return getFunctionsFromSection(section, outputCount)
     elif name == '__DATA.__cfstring':
         return getCFStringsFromData(data, outputCount)
     elif name == '__DATA.__const':
         pass
     elif name == '__DATA.__mod_init_func':
-        return getFunctionsFromData(section, outputCount)
+        return getFunctionsFromSection(section, outputCount)
     elif name == '__DATA.__la_symbol_ptr':
         return getLazyPointersFromData(data, section, outputCount)
     elif name == '__DATA.__objc_classlist':
         return getObjCClassData(section, outputCount)
     elif name == '__DATA.__objc_protolist':
-        pass
+        return getProtocols(section, outputCount)
     elif name == '__DATA.__objc_nlclslist':
         return getObjCClassData(section, outputCount)
     elif name == '__DATA.__objc_imageinfo':
         return ([0], [str(section)])
     elif name == '__DATA.__objc_const':
-        pass
+        return getSymbolsForSection(section, outputCount)
     elif name == '__DATA.__objc_selrefs':
         return getObjCSelRefs(section, outputCount)
     elif name == '__DATA.__objc_classrefs':
@@ -204,19 +208,121 @@ def formatFromData(data, section, outputCount=0):
     elif name == '__DATA.__objc_superrefs':
         return getObjCClassData(section, outputCount)
     elif name == '__DATA.__objc_ivar':
-        pass
+        return getIvars(section, outputCount)
     elif name == '__DATA.__objc_data':
         pass
     elif name == '__DATA.__data':
-        pass
+        return getSymbolsForSection(section, outputCount, False)
     elif name == '__DATA.__bss':
-        pass
+        return getSymbolsForSection(section, outputCount, False)
     elif name == '__DATA.__common':
-        pass
+        return getSymbolsForSection(section, outputCount, False)
     elif name == '__LINKEDIT':
         return getLINKEDITData(section)
 
     return output
+
+def getSymbolsForSection(section, outputCount, shouldFilterDataOnly = True):
+    # Grab all the DATA related symbols
+    module = section.addr.module
+    target = getTarget()
+    section_load_addr = section.GetLoadAddress(target)
+
+    if shouldFilterDataOnly:
+        symbols = [i for i in module.symbols if i.type == 4]
+    else:
+        symbols = module.symbols
+    indeces = []
+    symbolList = []
+    descriptions = []
+
+    process = lldb.process 
+
+
+            #       error = lldb.SBError()
+        # ptr = process.ReadPointerFromMemory(loadAddr + i * ptrsize, error)
+        # if error.success == True:
+
+        #     sec = target.ResolveLoadAddress(ptr).section
+        #     if sec.IsValid():
+        #         if sec.name == "__stub_helper":
+        #             descriptions.append("-")
+        #         else:
+        #             descriptions.append("+")
+        #     else:
+        #         descriptions.append(None)
+
+
+        # stringList.append(retstr)
+    err = lldb.SBError()
+    for symbol in symbols:
+        if symbol.GetStartAddress().GetSection() == section:
+            symbolList.append(symbol.name)
+            symbol_load_address = symbol.GetStartAddress().GetLoadAddress(target)
+            symbol_end_address = symbol.GetEndAddress().GetLoadAddress(target)
+
+            size = symbol_end_address-symbol_load_address
+            indeces.append((symbol_load_address - section_load_addr, size))
+            
+            if size % 4 != 0 or size > 8:
+                descriptions.append(None)
+                continue
+
+            read_memory =  "{0:#0{1}x}".format(process.ReadUnsignedFromMemory(symbol_load_address, size, err), size *2)
+            if err.success == True:
+                descriptions.append(read_memory)
+            else:
+                print ("error parsing memory {}, {}".format(symbol_load_address, size))
+                descriptions.append(None)
+
+    return (indeces, symbolList, descriptions)
+
+def getIvars(section, outputCount):
+    target = getTarget()
+    indeces = []
+    stringList = []
+
+    ptrsize = getType("void*").GetByteSize()
+    sz = section.GetByteSize() / ptrsize
+    addr = section.GetLoadAddress(target)
+    script = "int dssize = {};\nuintptr_t *ivarOffsets[{}];\nuintptr_t **ivarPointer = (uintptr_t**){};".format(sz, sz, addr)
+    script += r'''
+memset(&ivarOffsets, 0, sizeof(ivarOffsets));
+for (int i = 0; i < dssize; i++) {
+    ivarOffsets[i] = ivarPointer[i];
+}
+ivarOffsets'''
+    val = target.EvaluateExpression(script, genExpressionOptions(False, True, True))
+    for i in  range(val.GetNumChildren()):
+        x = val.GetChildAtIndex(i)
+        indeces.append(i * ptrsize)
+        stringList.append(hex(x.unsigned))
+
+    return (indeces, stringList) 
+
+def getProtocols(section, outputCount):
+    target = getTarget()
+    indeces = []
+    stringList = []
+
+    ptrsize = getType("void*").GetByteSize()
+    sz = section.GetByteSize() / ptrsize
+    addr = section.GetLoadAddress(target)
+    script = "int dssize = {};\nchar *protNames[{}];\nClass *clsPointer = (Class*){};".format(sz, sz, addr)
+    script += r'''
+@import ObjectiveC;
+memset(&protNames, 0, sizeof(protNames));
+for (int i = 0; i < dssize; i++) {
+    protNames[i] = (char*)protocol_getName(clsPointer[i]);
+}
+protNames'''
+    val = target.EvaluateExpression(script, genExpressionOptions(False, True, True))
+    for i in  range(val.GetNumChildren()):
+        x = val.GetChildAtIndex(i)
+        indeces.append(i * ptrsize)
+        stringList.append(x.summary.replace("\"", ""))
+
+    return (indeces, stringList)
 
 def getLINKEDITData(section):
     addr = section.addr
@@ -342,7 +448,8 @@ for (int i = 0; i < dssize; i++) {
 classNames'''
     val = target.EvaluateExpression(script, genExpressionOptions(False, True, True))
 
-    for i, x in enumerate(val):
+    for i in  range(val.GetNumChildren()):
+        x = val.GetChildAtIndex(i)
         indeces.append(i * ptrsize)
         stringList.append(x.summary.replace("\"", ""))
 
@@ -358,12 +465,13 @@ def getSectionData(section, outputCount=0):
     # addr = section.addr
     return formatFromData(data, section, outputCount)
 
-def getFunctionsFromData(section, outputCount=0):
+def getFunctionsFromSection(section, outputCount=0):
     target = getTarget()
     ptrsize = getType("void*").GetByteSize()
 
     functionList = []
     indeces = []
+    descriptions = []
 
     size = section.GetByteSize() / ptrsize
     baseAddress = section.addr.GetLoadAddress(target)
@@ -383,14 +491,15 @@ def getFunctionsFromData(section, outputCount=0):
     val = target.EvaluateExpression(script, options)
 
     for i, x in enumerate(val):
-        indeces.append(i)
-        retval = "({})".format(hex(x.unsigned))
+        indeces.append(i * ptrsize)
+        descriptions.append("{}".format(hex(x.unsigned)))
+        retval = ""
         addr = target.ResolveLoadAddress(x.unsigned)
         if addr.symbol.IsValid():
             retval += " {}".format(addr.symbol.name)
         functionList.append(retval)
 
-	return (indeces, functionList)
+    return (indeces, functionList, descriptions)
 
 def getObjCSelRefs(section, outputCount):
     target = getTarget()
@@ -402,12 +511,14 @@ def getObjCSelRefs(section, outputCount):
 
     indeces = []
     stringList = []
+    descriptions = []
 
     for i, x in enumerate(val):
         indeces.append(i * ptrsize)
-        stringList.append("[{}] {}".format(hex(x.deref.GetLoadAddress()) ,x.summary))
+        descriptions.append("{}".format(hex(x.deref.GetLoadAddress())))
+        stringList.append("{}".format(x.summary))
 
-    return (indeces, stringList)
+    return (indeces, stringList, descriptions)
 
 
 def getCFStringsFromData(data, outputCount):
@@ -655,8 +766,8 @@ def generateLazyPointerScriptWithOptions(section):
     uint32_t strtab_offset = symtab[symtab_index].n_un.n_strx;
     char *symbol_name = strtab + strtab_offset;
     if (symbol_name > strtab + symtab_cmd->strsize) {
-        printf("something might of went wong...\\n");
-        printf("baseaddress %p, symoff %p, indrectsymoff %p, reserved1 %p, %p %i", baseAddress, dysymtab_cmd->indirectsymoff, la_section->reserved1, indirect_symbol_indices, i);
+        //printf("something might of went wong...\\n");
+        //printf("baseaddress %p, symoff %p, indrectsymoff %p, reserved1 %p, %p %i", baseAddress, dysymtab_cmd->indirectsymoff, la_section->reserved1, indirect_symbol_indices, i);
         continue;
     }
 
@@ -675,11 +786,13 @@ def getLazyPointersFromData(data, section, outputCount=0):
     target = getTarget()
     indeces = []
     stringList = []
+    descriptions = []
+
     ptrsize = getType("void*").GetByteSize()
 
     options = genExpressionOptions(False, True, True)
-
     val = target.EvaluateExpression(script, options)
+
     # for dbg'ing 
     # lldb.debugger.HandleCommand('exp -l objc++ -O -g -- ' + script)
         # print(res)
@@ -688,7 +801,8 @@ def getLazyPointersFromData(data, section, outputCount=0):
     loadAddr = section.addr.GetLoadAddress(target)
 
 
-    for i, x in enumerate(val):
+    for i in range(val.GetNumChildren()):
+        x = val.GetChildAtIndex(i)
         indeces.append(i * ptrsize)
         retstr = x.summary.replace("\"", "")
 
@@ -699,13 +813,15 @@ def getLazyPointersFromData(data, section, outputCount=0):
             sec = target.ResolveLoadAddress(ptr).section
             if sec.IsValid():
                 if sec.name == "__stub_helper":
-                    retstr = "- " + retstr
+                    descriptions.append("-")
                 else:
-                    retstr = "+ " + retstr
+                    descriptions.append("+")
+            else:
+                descriptions.append(None)
 
 
         stringList.append(retstr)
-    return (indeces, stringList)
+    return (indeces, stringList, descriptions)
 
 def getStringsFromData(_data, outputCount=0):
     indeces = []
