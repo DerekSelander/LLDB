@@ -165,6 +165,10 @@ def formatFromData(data, section, outputCount=0):
         pass
     elif name == '__TEXT.__swift3_typeref':
         return getStringsFromData(data, outputCount)
+    elif name == '__TEXT.__swift4_typeref':
+        return getStringsFromData(data, outputCount)
+    elif name == '__TEXT.__swift4_reflstr':
+        return getStringsFromData(data, outputCount)
     elif name == '__TEXT.__swift3_fieldmd':
         pass
     elif name == '__TEXT.__swift3_assocty':
@@ -193,7 +197,13 @@ def formatFromData(data, section, outputCount=0):
         return getLazyPointersFromData(data, section, outputCount)
     elif name == '__DATA.__objc_classlist':
         return getObjCClassData(section, outputCount)
+    elif name == '__DATA.__objc_catlist':
+        return getObjcCategoriesFromData(section, outputCount)
+    elif name == '__DATA.__objc_nlcatlist':
+        return getObjcCategoriesFromData(section, outputCount)
     elif name == '__DATA.__objc_protolist':
+        return getProtocols(section, outputCount)
+    elif name == '__DATA.__objc_protorefs':
         return getProtocols(section, outputCount)
     elif name == '__DATA.__objc_nlclslist':
         return getObjCClassData(section, outputCount)
@@ -236,7 +246,7 @@ def getSymbolsForSection(section, outputCount, shouldFilterDataOnly = True):
     symbolList = []
     descriptions = []
 
-    process = lldb.process 
+    process = target.GetProcess()
 
 
             #       error = lldb.SBError()
@@ -780,6 +790,51 @@ def generateLazyPointerScriptWithOptions(section):
   retstring
     '''
     return script
+
+def getObjcCategoriesFromData(section, outputCount=0):
+    target = getTarget()
+    ptrsize = getType("void*").GetByteSize()
+    sz = section.GetByteSize() / ptrsize
+    addr = section.GetLoadAddress(target)
+    script = r'''
+struct ds_category_t {
+    const char *name;
+    Class /* classref_t */ cls;
+    void */* struct method_list_t  */ *instanceMethods;
+    void */* struct method_list_t  */ *classMethods;
+    void */* struct protocol_list_t  */ *protocols;
+    void */* struct property_list_t  */ *instanceProperties;
+};
+
+struct ds_ret_category {
+    char *name;
+    char *className;
+};
+'''
+    
+    script += "int dssize = {};\nstruct ds_ret_category classNames[{}];\nstruct ds_category_t **categoryPointer = (struct ds_category_t**){};".format(sz, sz,  addr)
+    script += r'''
+memset(&classNames, 0, sizeof(classNames));
+for (int i = 0; i < dssize; i++) {
+    classNames[i].name = (char*)(categoryPointer[i]->name);
+    classNames[i].className = (char*)(class_getName(categoryPointer[i]->cls));
+}
+classNames'''
+    indeces = []
+    stringList = []
+    descriptions = []
+    # lldb.debugger.HandleCommand('exp -l objc++ -O -g -- ' + script)
+    # return (indeces, stringList)
+    val = target.EvaluateExpression(script, genExpressionOptions(False, True, True))
+    for i in  range(val.GetNumChildren()):
+        x = val.GetChildAtIndex(i)
+        # x.GetChildAtIndex(0) # category name
+        # x.GetChildAtIndex(1) # class name
+        indeces.append(i * ptrsize)
+        stringList.append(x.GetChildAtIndex(1).summary.strip('\"'))
+        descriptions.append("(" + x.GetChildAtIndex(0).summary.strip('\"') + ")")
+
+    return (indeces, stringList, descriptions)
 
 def getLazyPointersFromData(data, section, outputCount=0):
     script = generateLazyPointerScriptWithOptions(section)
