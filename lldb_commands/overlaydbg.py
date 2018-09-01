@@ -37,8 +37,6 @@ def setupIfiOS11(target):
 
     versionval = target.EvaluateExpression('[[UIDevice currentDevice] systemVersion]', options)
     versionvalstr = versionval.description 
-    
-    debugger = target.GetDebugger()
 
     if "11." in versionvalstr:
         tweakiOS11Memory(target, "UIKit")
