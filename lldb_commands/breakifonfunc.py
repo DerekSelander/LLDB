@@ -81,7 +81,7 @@ def breakpointHandler(frame, bp_loc, dict):
     thread = frame.thread
     if options.direct_call:
         frame = thread.frame[1]
-        print frame
+        print(frame)
         symbol = frame.symbol
         return any([symbol in searchSymbols])
 

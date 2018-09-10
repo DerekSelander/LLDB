@@ -282,7 +282,7 @@ def getSymbolsForSection(section, outputCount, shouldFilterDataOnly = True):
             if err.success == True:
                 descriptions.append(read_memory)
             else:
-                print ("error parsing memory {}, {}".format(symbol_load_address, size))
+                print("error parsing memory {}, {}".format(symbol_load_address, size))
                 descriptions.append(None)
 
     return (indeces, symbolList, descriptions)
@@ -887,7 +887,7 @@ def getStringsFromData(_data, outputCount=0):
     if outputCount == 1:
         err = lldb.SBError()
         val = target.EvaluateExpression('(char *){}'.format(_data.GetAddress(err, 0)), genExpressionOptions())
-        print (val)
+        print(val)
 
     #  Force conversion of "unknown" data to known of char**
     t = target.GetBasicType(lldb.eBasicTypeChar).GetPointerType()
