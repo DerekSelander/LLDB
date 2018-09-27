@@ -113,7 +113,7 @@ Examples:
         objectiveC_class = 'NSClassFromString(@"{}")'.format(clean_command)
 
     command_script = get_command_script(objectiveC_class, options)
-    # print command_script
+    # print(command_script)
     # return
 
     expr_options = lldb.SBExpressionOptions()
