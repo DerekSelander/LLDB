@@ -16,6 +16,8 @@ command alias gg process int
 
 command alias pexecutable exp -lobjc -O --  char a[1024]; uint32_t s = 1024; _NSGetExecutablePath(a, &s); (char *)a
 
+command alias plocalmodulelist script print '\n'.join([i.file.basename for i in lldb.target.modules if i.file.dirname and lldb.target.executable.basename in i.file.dirname])
+
 command alias cpo expression -l objc++ -O --
 
 command alias cp expression -l objc++  --
