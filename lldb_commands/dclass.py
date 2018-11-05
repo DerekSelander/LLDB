@@ -244,6 +244,7 @@ def generate_class_dump(target, options, clean_command=None):
         command_script += 'objc_getClass(allClasses[i]);' if clean_command else 'allClasses[i];'
         command_script += '''
         NSString *dsclsName = (NSString*)NSStringFromClass(cls);
+        if ((BOOL)[dsclsName hasPrefix:@"__"])  { continue; }
         if ((BOOL)[dsclsName isEqualToString:@"_CNZombie_"] || (BOOL)[dsclsName isEqualToString:@"JSExport"] ||  (BOOL)[dsclsName isEqualToString:@"__NSGenericDeallocHandler"] || (BOOL)[dsclsName isEqualToString:@"_NSZombie_"] || (BOOL)[dsclsName isEqualToString:@"__NSMessageBuilder"] || (BOOL)[dsclsName isEqualToString:@"Object"]  )  { continue; }
         '''
 
@@ -274,6 +275,10 @@ def generate_class_dump(target, options, clean_command=None):
 
         command_script += 'NSString *parentClassName = @"' + options.superclass + '";'
         command_script += r'''
+
+        if (!(BOOL)[NSStringFromClass(cls) respondsToSelector:@selector(superclass)]) {
+          continue;
+        }
         if (!(BOOL)[NSStringFromClass((Class)[cls superclass]) isEqualToString:parentClassName]) { 
           continue; 
         }
