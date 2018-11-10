@@ -299,19 +299,7 @@ for (unsigned i = 0; i < count; i++) {
 
 
 	        // TODO, I don't think? This is malloc'ing anything but don't know yet
-		    NSString *className = (NSString *)NSStringFromClass(potentialClass);
-		    if ([@"_NSZombie_" isEqualToString:className])  { continue };
-		    if ([@"__ARCLite__" isEqualToString:className])  { continue };
-		    if ([@"__NSCFCalendar" isEqualToString:className])  { continue };
-		    if ([@"__NSCFTimer" isEqualToString:className])  { continue };
-		    if ([@"NSCFTimer" isEqualToString:className])  { continue };
-		    if ([@"__NSMessageBuilder" isEqualToString:className])  { continue };
-		    if ([@"__NSGenericDeallocHandler" isEqualToString:className])  { continue };
-		    if ([@"NSAutoreleasePool" isEqualToString:className])  { continue };
-		    if ([@"Object" isEqualToString:className])  { continue };
-		    if ([@"VMUArchitecture" isEqualToString:className])  { continue };
-
-	        
+		    NSString *className = (NSString *)NSStringFromClass(potentialClass);	        
 	        id obj = (__bridge id)(void *)potentialObject;
 
 	        if (!(BOOL)[obj respondsToSelector:@selector(description)]) {
