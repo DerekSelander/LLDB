@@ -360,7 +360,7 @@ def generate_module_search_sections_string(module_name, target, useProtocol=Fals
     return returnString
 
 def generate_header_script(options, class_to_generate_header):
-    script = '@import @ObjectiveC;\n'
+    script = '@import ObjectiveC;\n'
     script += 'NSString *className = @"' + str(class_to_generate_header) + '";\n'
     script += r'''
   //Dang it. LLDB JIT Doesn't like NSString stringWithFormat on device. Need to use stringByAppendingString instead
@@ -508,7 +508,7 @@ def generate_header_script(options, class_to_generate_header):
     NSMutableString* generatedMethods = [NSMutableString stringWithString:@""];
     unsigned int classCount = 0;
     Method *methods = (Method *)class_copyMethodList(cls, &classCount);
-    NSString *classOrInstanceStart = (BOOL)class_isMetaClass(cls) ? @"+" : @"-";
+    NSString *classOrInstanceStart = (int)class_isMetaClass(cls) ? @"+" : @"-";
     
     for (int i = 0; i < classCount; i++) {
       Method m = methods[i];
@@ -771,7 +771,7 @@ def generate_module_header_script(options, modulePath):
       NSMutableString* generatedMethods = [NSMutableString stringWithString:@""];
       unsigned int classCount = 0;
       Method *methods = (Method *)class_copyMethodList(cls, &classCount);
-      NSString *classOrInstanceStart = (BOOL)class_isMetaClass(cls) ? @"+" : @"-";
+      NSString *classOrInstanceStart = (int)class_isMetaClass(cls) ? @"+" : @"-";
       
       for (int i = 0; i < classCount; i++) {
         Method m = methods[i];
@@ -860,10 +860,8 @@ def generate_class_info(options):
         classInfo = "[" + options.info + " class]"
 
 
-    script = "BOOL verboseOutput = {};\n".format("YES" if verboseOutput else "NO")
+    script = "@import ObjectiveC;\n@import Foundation;\nBOOL verboseOutput = {};\n".format("YES" if verboseOutput else "NO")
     script +=  r'''
-    @import Foundation;
-    @import ObjectiveC;
 
     #define RO_META               (1<<0)
   // class is a root class
@@ -1260,7 +1258,7 @@ typedef struct class_rw_t {
   [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@"\nInstance Start:\t0x%x", dsclass->ds_data()->ro->instanceStart]];
 
   [returnString appendString:@"\nMeta:\t\t\t"];
-  [returnString appendString:(BOOL)class_isMetaClass((Class)dsclass) ? @"YES" : @"NO"];;
+  [returnString appendString:(int)class_isMetaClass((Class)dsclass) ? @"YES" : @"NO"];;
   [returnString appendString:@"\n\n"];
 
   ///////////////////////////////////////////////////////////////////
@@ -1415,17 +1413,17 @@ typedef struct class_rw_t {
 
   if (bmeth) {
     for (int i = 0; i < bmeth->count; i++) {
-      NSString *methodType = (BOOL)class_isMetaClass((Class)dsclass) ? @"+" : @"-";
+      NSString *methodType = (int)class_isMetaClass((Class)dsclass) ? @"+" : @"-";
       method_t *mt = (method_t*)(&bmeth->first);
         [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@" %s%40s  %p\n", [methodType UTF8String], mt[i].name, mt[i].imp]];
     }
-    if ((BOOL)class_isMetaClass((Class)dsclass) == NO) { 
+    if ((int)class_isMetaClass((Class)dsclass) == NO) { 
       dsobjc_class* dsmetaclass = (dsobjc_class*)objc_getMetaClass(name);
       method_list_t *bmetameth = dsmetaclass->ds_data()->ro->baseMethodList;
       if (bmetameth) {
 
         for (int i = 0; i < bmetameth->count; i++) {
-            NSString *methodType = (BOOL)class_isMetaClass((Class)dsmetaclass) ? @"+" : @"-";
+            NSString *methodType = (int)class_isMetaClass((Class)dsmetaclass) ? @"+" : @"-";
             method_t *mt = (method_t*)(&bmetameth->first);
             [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@" %s%40s  %p\n", [methodType UTF8String], mt[i].name, mt[i].imp]];
         } 
