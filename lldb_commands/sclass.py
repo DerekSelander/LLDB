@@ -71,8 +71,8 @@ Examples:
     res = lldb.SBCommandReturnObject()
     interpreter = debugger.GetCommandInterpreter()
 
-    interpreter.HandleCommand('expression -lobjc -O -- @import Foundation', res)
-    interpreter.HandleCommand('expression -lobjc -O -- @import ObjectiveC', res)
+    # interpreter.HandleCommand('expression -lobjc -O -- @import Foundation', res)
+    # interpreter.HandleCommand('expression -lobjc -O -- @import ObjectiveC', res)
     res.Clear()
 
     target = exe_ctx.target
@@ -243,7 +243,7 @@ def generate_header_script(options, class_to_generate_header):
       [swizzledImplementationsString appendString:methodName];
       [swizzledImplementationsString appendString:@"\", "];
       
-      if (class_isMetaClass(cls)) {
+      if ((BOOL)class_isMetaClass(cls)) {
         [swizzledImplementationsString appendString:@"YES"];
       } else {
         [swizzledImplementationsString appendString:@"NO"];
