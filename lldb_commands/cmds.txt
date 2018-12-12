@@ -60,6 +60,7 @@ command regex data 's/(.+)/mem read  `(void *)[$1 bytes]` -c `(long)[$1 length]`
 
 command alias plibrary exp -l objc -O -- [(id)NSSearchPathForDirectoriesInDomains(5, 1, YES) objectAtIndex:0]
 
+command alias avoid_step_libraries settings set target.process.thread.step-avoid-libraries libswiftCore.dylib libobjc.A.dylib
 
 # Jailbreak stuff
 
