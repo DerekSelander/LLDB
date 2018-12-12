@@ -2,7 +2,9 @@ command alias -H "Reload ~/.lldbinit" -h "Reload ~/.lldbinit" -- reload_lldbinit
 
 command regex -h "Regex search" -s "rlook UIViewController.viewDidLoad" -- rlook 's/(.+)/image lookup -rn %1/'
 
-command regex -h "List a directory from the process's perspective. Useful when working on an actual device." -s "ls /System/Library" -- ls 's/(.+)/po @import Foundation; NSError *err = nil; NSArray *arr = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:@"%1" error:&err]; id retValue = err ? [err localizedDescription] : arr; retValue/
+command regex -h "List a directory from the process's perspective. Useful when working on an actual device." -s "ls /System/Library" -- ls 's/(.+)/po @import Foundation; NSError *err = nil; NSArray *arr = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:@"%1" error:&err]; id retValue = err ? [err localizedDescription] : [arr description]; retValue/
+
+command regex -h "List a directory from the process's perspective. Useful when working on an actual device." -s "la /System/Library" -- la 's/(.+)/po @import Foundation; NSError *err = nil; NSDictionary *arr = [[NSFileManager defaultManager] attributesOfItemAtPath:@"%1" error:&err]; id retValue = err ? [err localizedDescription] : [arr debugDescription]; retValue/
 
 command regex -h "Toggle view. Hides/Shows a view depending on it's current state. You don't need to resume LLDB to see changes" -s "tv 0xUIViewAddress" -- tv 's/(.+)/expression -l objc -O -- @import QuartzCore; [%1 setHidden:!(BOOL)[%1 isHidden]]; (void)[CATransaction flush];/'
 
@@ -55,6 +57,8 @@ command regex jj 's/(.*)/frame var %1/'
 command alias args register read arg1 arg2 arg3 arg4 arg5 arg6
 
 command regex data 's/(.+)/mem read  `(void *)[$1 bytes]` -c `(long)[$1 length]`/'
+
+command alias plibrary exp -l objc -O -- [(id)NSSearchPathForDirectoriesInDomains(5, 1, YES) objectAtIndex:0]
 
 
 # Jailbreak stuff
