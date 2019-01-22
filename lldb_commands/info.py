@@ -42,7 +42,20 @@ def handle_command(debugger, command, exe_ctx, result, internal_dict):
         if val.IsValid() == False:
             result.SetError("can't parse \"{}\"".format(args[0]))
             return
-        address = val.unsigned
+
+        
+        if options.address_of:
+            derefVal = val.AddressOf()
+            if derefVal.IsValid() == False:
+                result.SetError("can't deref \"{}\"".format(args[0]))
+                return
+            address = derefVal.unsigned
+        else:
+            address = val.unsigned
+        # else:
+        #     result.SetError("info expects a pointer, try \"info &{}\"".format(args[0]))
+        #     return
+
 
     addr = target.ResolveLoadAddress(address)
     res = lldb.SBCommandReturnObject()
@@ -58,14 +71,26 @@ def handle_command(debugger, command, exe_ctx, result, internal_dict):
     if foundAddress == False:
         foundAddress, returnDescription = tryHeapAddress(addr, target, options)
 
+    if foundAddress == False:
+        foundAddress, returnDescription = tryStackAddress(addr, target, options)        
 
     if foundAddress:
-        result.AppendMessage('{}'.format(returnDescription))
+        result.AppendMessage('{}{}, {}'.format("&" if options.address_of else "", args[0],returnDescription))
     else:
+        result.AppendMessage("Couldn't find address, reverting to \"image lookup -a {}\"".format(addr))
         debugger.HandleCommand("image lookup -v -a {}".format(addr))
         # result.SetError('Couldn\'t find info for address \'{}\''.format(addr))
 
     
+def tryStackAddress(addr, target, options):
+    frame = target.GetProcess().GetSelectedThread().GetSelectedFrame()
+    address = addr.GetLoadAddress(target)
+    fp = frame.GetFP()
+    if address < fp and address > frame.GetSP():
+        return True, "{} is on the stack (FP {})".format(hex(address), hex(fp))
+    else:
+        return False, ""
+
 
 def tryMachOAddress(addr, target, options):
 
@@ -142,7 +167,7 @@ def tryHeapAddress(addr, target, options):
     '''
 
     val = target.EvaluateExpression(cleanCommand, ds.genExpressionOptions())
-    if val.GetValueAsUnsigned() == 0:
+    if val.GetValueAsUnsigned() == 0 or val.description is None:
         return False, ""
 
     returnDescription += val.description
@@ -155,8 +180,13 @@ def generate_option_parser():
     parser = optparse.OptionParser(usage=usage, prog="info")
     parser.add_option("-v", "--verbose",
                       action="store_true",
-                      default=None,
+                      default=False,
                       dest="verbose",
                       help="Use verbose amount of info")
+    parser.add_option("-a", "--address_of",
+                      action="store_true",
+                      default=False,
+                      dest="address_of",
+                      help="By default Swift makes it a pain the ass to get the address a variable, this does it for you")
     return parser
     
