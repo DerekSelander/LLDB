@@ -74,8 +74,16 @@ def handle_command(debugger, command, exe_ctx, result, internal_dict):
     if foundAddress == False:
         foundAddress, returnDescription = tryStackAddress(addr, target, options)        
 
+
+    memRegion = lldb.SBMemoryRegionInfo()
+    if target.GetProcess().GetMemoryRegionInfo(address, memRegion).success:
+        memString = hex(memRegion.GetRegionBase()) + "-" + hex(memRegion.GetRegionEnd())
+        memString += " {}{}{}".format("R" if memRegion.IsReadable() else "-", "W" if memRegion.IsWritable() else "-", "X" if memRegion.IsExecutable() else "-")
+    else:
+        memString = ""
+
     if foundAddress:
-        result.AppendMessage('{}{}, {}'.format("&" if options.address_of else "", args[0],returnDescription))
+        result.AppendMessage('{}{}, {} {}'.format("&" if options.address_of else "", args[0],returnDescription, memString))
     else:
         result.AppendMessage("Couldn't find address, reverting to \"image lookup -a {}\"".format(addr))
         debugger.HandleCommand("image lookup -v -a {}".format(addr))
