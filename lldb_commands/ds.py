@@ -424,7 +424,7 @@ if (dysymtab_cmd) {
     }
 
     if (dysymtab_cmd->nindirectsyms > 0) {
-        [returnString appendString:[NSString stringWithFormat:@"\t[%p] indirect symbols (%d entries, index %d)\n", &symtab[dysymtab_cmd->indirectsymoff], dysymtab_cmd->nindirectsyms, dysymtab_cmd->indirectsymoff]];
+        [returnString appendString:[NSString stringWithFormat:@"\t[%p] indirect symbols (%d entries, index %d)\n", linkedit_base + dysymtab_cmd->indirectsymoff, dysymtab_cmd->nindirectsyms, dysymtab_cmd->indirectsymoff]];
     } else { 
         [returnString appendString:@"\tno indirect symbols\n"];
     }
