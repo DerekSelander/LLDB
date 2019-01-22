@@ -42,7 +42,7 @@ import lldb.utils.symbolication
 
 s = ""
 def __lldb_init_module(debugger, internal_dict):
-    debugger.HandleCommand('command script add -f search.search search -h "Searches heap for instances')
+    debugger.HandleCommand('command script add -f search.search search -h "Searches heap for instances"')
 
 
 def search(debugger, command, exe_ctx, result, internal_dict):
