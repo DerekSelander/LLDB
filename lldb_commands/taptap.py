@@ -27,6 +27,8 @@ def taptap(debugger, command, result, internal_dict):
             result.AppendMessage("IBAction logging already enabled")
             return
 
+        breakpoint2 = target.BreakpointCreateByName("-[UIApplication sendAction:to:from:forEvent:]")
+        breakpoint2.AddName(breakpointName)
         breakpoint = target.BreakpointCreateByName("-[UIControl sendAction:to:forEvent:]")
         breakpoint.AddName(breakpointName)
     elif args[0] == "stop":
@@ -46,18 +48,14 @@ def taptap(debugger, command, result, internal_dict):
         return
 
 
+    breakpoint2.SetScriptCallbackFunction("taptap.breakpointHandler")
     breakpoint.SetScriptCallbackFunction("taptap.breakpointHandler")
     result.AppendMessage("IBAction logging enabled")
 
 
 def breakpointHandler(frame, bp_loc, dict):
-    '''The function called when the breakpoint 
-    gets triggered
-    '''
-        
     debugger = frame.GetThread().GetProcess().GetTarget().GetDebugger()
-    debugger.HandleCommand('exp -l objc -O -- [[NSString alloc] initWithFormat:@"%@ (%p) -> %@.%s (%p)", (id)[(id)$arg1 class], $arg1, (id)[(id)$arg4 class], (char*)$arg3, $arg4]')
-    # debugger.SetAsync(False)
+    debugger.HandleCommand('exp -l objc -O -- [[NSString alloc] initWithFormat:@"%@ (%p) -> -[%@ %s] (%p)", (id)[(id)$arg1 class], $arg1, (id)[(id)$arg4 class], (char*)$arg3, $arg4]')
 
     return False
 
