@@ -143,7 +143,12 @@ def generateAddressInfo(addresses, options, target):
         if symbol:
             symbolOffset = a.GetLoadAddress(target) - symbol.addr.GetLoadAddress(target)
             symbolAddress = hex(symbol.addr.GetLoadAddress(target))
-            outputStr += '[{}] {} + {}\n\n'.format(ds.attrStr(symbolAddress, 'yellow'), ds.attrStr(symbol.name, 'cyan'), symbolOffset)
+            if a.GetLineEntry().IsValid():
+                entry = a.GetLineEntry()
+                sourceFile = entry.GetFileSpec().basename
+            else:
+                sourceFile = "No Source File"
+            outputStr += '[{}] {} + {} ({})\n\n'.format(ds.attrStr(symbolAddress, 'yellow'), ds.attrStr(symbol.name, 'cyan'), symbolOffset, sourceFile)
         else:
             outputStr +'error: '
     return outputStr

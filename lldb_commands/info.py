@@ -153,30 +153,27 @@ def tryMachOAddress(addr, target, options):
 
 def tryHeapAddress(addr, target, options):
     returnDescription = ""
-    cleanCommand = 'const void * ptr = (const void *){};'.format(addr.GetLoadAddress(target))
+    cleanCommand = 'void * ptr = (void *){};'.format(addr.GetLoadAddress(target))
     cleanCommand += 'BOOL verboseMode = {};'.format("YES" if options.verbose else "NO")
     cleanCommand += r'''
 
 
-@import Foundation;
-
-
-    
-    
+    @import Foundation;
 
     NSMutableString *retString;
     if ((void*)malloc_zone_from_ptr(ptr)) {
 
-      retString = (NSMutableString*)[[NSMutableString alloc] initWithFormat:@"%p heap pointer, %s, (0x%x bytes)", ptr, (char *)malloc_get_zone_name((malloc_zone_t*)malloc_zone_from_ptr(ptr)), (size_t)malloc_good_size((size_t)malloc_size(ptr))];
+      retString = (NSMutableString*)[[NSMutableString alloc] initWithFormat:@"%p heap pointer, (0x%x bytes)", ptr, (size_t)malloc_good_size((size_t)malloc_size(ptr))];
     }
     
     retString ? retString : nil;
     '''
 
     val = target.EvaluateExpression(cleanCommand, ds.genExpressionOptions())
-    if val.GetValueAsUnsigned() == 0 or val.description is None:
+    
+    if val.GetError().success == False or val.GetValueAsUnsigned() == 0 or val.description is None:
         return False, ""
-
+    
     returnDescription += val.description
     return True, returnDescription
 

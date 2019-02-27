@@ -55,7 +55,7 @@ def taptap(debugger, command, result, internal_dict):
 
 def breakpointHandler(frame, bp_loc, dict):
     debugger = frame.GetThread().GetProcess().GetTarget().GetDebugger()
-    debugger.HandleCommand('exp -l objc -O -- [[NSString alloc] initWithFormat:@"%@ (%p) -> -[%@ %s] (%p)", (id)[(id)$arg1 class], $arg1, (id)[(id)$arg4 class], (char*)$arg3, $arg4]')
+    debugger.HandleCommand('exp -l objc -O -- @import UIKit; [[NSString alloc] initWithFormat:@"%@ (%p) -> -[%@ %s] (%p)", (id)[(id)$arg1 class], $arg1, (id)[(id)$arg4 class], (char*)$arg3, $arg4]')
 
     return False
 
