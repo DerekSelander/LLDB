@@ -107,7 +107,7 @@ Examples:
     else:
         
         interpreter.HandleCommand('expression -lobjc -O -- (Class)NSClassFromString(@\"{}\")'.format(clean_command), res)
-        if 'nil' in res.GetOutput():
+        if not res.Succeeded() or  'nil' in res.GetOutput():
             result.SetError('Can\'t find class named "{}". Womp womp...'.format(clean_command))
             return
         objectiveC_class = 'NSClassFromString(@"{}")'.format(clean_command)
