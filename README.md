@@ -297,8 +297,67 @@ Dumps all ivars for an instance of a particular class which inherits from NSObje
 
     # Get all the ivars on a newly created instance of UIView
     (lldb) ivars [UIView new]
+    
+### dumpenv
 
-## overlaydbg
+Dumps the environment variables found in the process
+
+### keychain
+
+Dumps the keychain database relevant to the process
+
+### info
+
+Determine what the hey the address is. Determines if it's a heap, MachO or stack address
+
+    (lldb) info 0x00007ffee39fd540
+    0x00007ffee39fd540, stack address (SP: 0x7ffee39fd4e8, FP: 0x7ffee39fd540) mach_msg_trap 
+    
+    (lldb) info 0x7ff15e866800
+    0x7ff15e866800, 0x7ff15e866800 heap pointer, (0x600 bytes) 
+    
+    (lldb) info 0x1279232a6
+    0x1279232a6,   -[MKPlaceInfoViewController viewDidLoad]     <+0> `MapKit`__TEXT.__text + 0x1813d6 
+    
+### lsof
+
+List open file descriptors in process. (No args)
+
+### gg 
+
+Suspend the process (good game, AKA game over, weird one, I know). (No args)
+
+### dump_app_contents
+
+Dumps contents of application bundle. (No args)
+
+### mload 
+
+dlopen convenience method
+
+### pbpaste 
+
+Paste selected text from your mac to your iOS device. (No args, but make sure you have something in the clipboard)
+
+### bdel 
+
+Delete breakpoint by address 
+
+### data
+
+Dump the bytes of a NSData object
+
+### pexecutable
+
+Dumps the fullpath to the executable. (No args)
+
+### plocalmodulelist
+
+Dumps the local modules specific for the application. (No args)
+
+
+
+### overlaydbg
 
 Displays the UIDebuggingInformationOverlay on iOS in 11. Check out http://ryanipete.com/blog/ios/swift/objective-c/uidebugginginformationoverlay/ for instructions
 
