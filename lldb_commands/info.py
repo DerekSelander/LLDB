@@ -90,13 +90,15 @@ def handle_command(debugger, command, exe_ctx, result, internal_dict):
 
     
 def tryStackAddress(addr, target, options):
-    frame = target.GetProcess().GetSelectedThread().GetSelectedFrame()
-    address = addr.GetLoadAddress(target)
-    fp = frame.GetFP()
-    if address < fp and address > frame.GetSP():
-        return True, "{} is on the stack (FP {})".format(hex(address), hex(fp))
-    else:
-        return False, ""
+    for frame in target.GetProcess().GetSelectedThread().frames:
+	    address = addr.GetLoadAddress(target)
+	    fp = frame.GetFP()
+	    sp = frame.GetSP() 
+	    if address >= sp and address <= fp:
+	    	global a 
+	    	a = frame
+	        return True, "stack address (SP: {}, FP: {}) {}".format(hex(sp), hex(fp), frame.name)
+    return False, ""
 
 
 def tryMachOAddress(addr, target, options):
