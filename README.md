@@ -302,9 +302,23 @@ Dumps all ivars for an instance of a particular class which inherits from NSObje
 
 Dumps the environment variables found in the process
 
+    (lldb) dumpenv
+    
+    TESTMANAGERD_SIM_SOCK=/private/tmp/com.apple.launchd.9BmpbuRgyE/com.apple.testmanagerd.unix-domain.socket
+
+    MallocNanoZone=0
+    ...
+
 ### keychain
 
 Dumps the keychain database relevant to the process
+
+    (lldb) keychain
+    <__NSArrayM 0x600001fb1590>(
+    {
+    acct = "localdevice-AuthToken";
+    agrp = apple;
+    "v_Data (str)" = "A8CD94D2-13E3-40B...
 
 ### info
 
@@ -322,6 +336,12 @@ Determine what the hey the address is. Determines if it's a heap, MachO or stack
 ### lsof
 
 List open file descriptors in process. (No args)
+
+    (lldb) lsof 
+    0 /dev/null
+    1 /dev/null
+    2 /dev/null
+    4 /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/Library/CoreSimulator/Profiles/Runtimes/iOS.simruntime/Contents/Resources/RuntimeRoot/System/Library/KeyboardLayouts/USBKeyboardLayouts.bundle/uchrs/US.uchr
 
 ### gg 
 
