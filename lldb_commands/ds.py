@@ -996,7 +996,7 @@ def sys(debugger, command, exe_ctx, result, internal_dict):
             # result.SetError("NoneType for {}".format(cleanCommand))
             return
 
-        command = command.replace('$(' + cleanCommand + ')',  '"' + res.GetOutput().rstrip() + '"')
+        command = command.replace('$(' + cleanCommand + ')', res.GetOutput().rstrip())
     # command = re.search('\s*(?<=sys).*', command).group(0)
     my_env = os.environ.copy()
     my_env["PATH"] = "/usr/local/bin:" + my_env["PATH"]
