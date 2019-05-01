@@ -269,7 +269,7 @@ def generate_class_dump(target, options, clean_command=None):
     if options.class_type == 'objc':
         command_script += ' if ((((ds_cls_struct *)cls)->bits & 1UL) == 1) { continue; }\n'
     if options.class_type == 'swift':
-        command_script += 'if ((((ds_cls_struct *)cls)->bits & 1UL) == 0) { continue; }\n'
+        command_script += 'if ((((ds_cls_struct *)cls)->bits & 2UL) == 0) { continue; }\n'
 
     if not options.search_protocols and options.superclass is not None:
 
