@@ -10,9 +10,9 @@ command regex -h "Toggle view. Hides/Shows a view depending on it's current stat
 
 command regex  pprotocol 's/(.+)/expression -lobjc -O -- @import Foundation; NSMutableString *string = [NSMutableString string]; Protocol * prot = objc_getProtocol("%1"); [string appendFormat:@"\nProtocol: %s, %@\n", (char *)[prot name], (id)prot]; [string appendString:@"==========================================\n"]; for (int isRequired = 1; isRequired > -1; isRequired--) { [string appendFormat:@" (%@)\n", isRequired ? @"Required" : @"Optional"]; for (int isInstanceMethod = 0; isInstanceMethod < 2; isInstanceMethod++) { unsigned int ds_count = 0; struct objc_method_description * methods = (struct objc_method_description *)protocol_copyMethodDescriptionList(prot, (BOOL)isRequired, (BOOL)isInstanceMethod, &ds_count); for (int i = 0; i < ds_count; i++) { struct objc_method_description method = methods[i]; [string appendFormat:@"%@ %@, %s\n", isInstanceMethod ? @"-": @"+", NSStringFromSelector(method.name), method.types]; }}} string;/'
 
-command regex ivars -h "Dumps all ivars for an instance of a particular class which inherits from NSObject (iOS, NSObject subclass only)" -s "ivars [UIView new]" -- 's/(.+)/expression -lobjc -O -- [\`%1\` _ivarDescription]/'
+command regex ivars -h "Dumps all ivars for an instance of a particular class which inherits from NSObject (iOS, NSObject subclass only)" -s "ivars [UIView new]" -- 's/(.+)/expression -lobjc -O -- [%1 _ivarDescription]/'
 
-command regex methods -h "Dumps all methods implemented by the NSObject subclass (iOS, NSObject subclass only)" -s "methods UIView" -- 's/(.+)/expression -lobjc -O -- [\`%1\` _shortMethodDescription]/'
+command regex methods -h "Dumps all methods implemented by the NSObject subclass (iOS, NSObject subclass only)" -s "methods UIView" -- 's/(.+)/expression -lobjc -O -- [%1 _shortMethodDescription]/'
 
 command alias gg process int
 
