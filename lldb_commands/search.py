@@ -368,7 +368,7 @@ CFArrayGetValues(_ds_context->ptrRefResults, CFRangeMake(0, CFArrayGetCount(_ds_
 lldbheap.count = CFArrayGetCount(_ds_context->ptrRefResults);
 	'''
 
-	command_script += r'''
+    command_script += r'''
 free(set);
 free(_ds_context->ptrRefResults);
 free(_ds_context); 
