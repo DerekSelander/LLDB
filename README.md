@@ -6,13 +6,15 @@ A collection of LLDB aliases/regexes and Python scripts to aid in my debugging s
 
 ## Installation
 
-1. To Install, copy the **lldb_commands** folder to a dir of your choosing.
+1. To Install, copy/clone the **lldb_commands** folder to a dir of your choosing.
 2. Open up (or create) **~/.lldbinit** 
 3. Add the following command to your ~/.lldbinit file: `command script import /path/to/lldb_commands/dslldb.py`
 
 Boom! You're good to go!
 
 You can test to make sure everything worked successfully by just trying one of the commands in the debugger... i.e. `(lldb) help methods`
+
+I'd recommend cloning. That way when I announce some new script/fix, you can just `git pull` instead of repeating this whole process.
 
 ## LLDB Scripts
 
