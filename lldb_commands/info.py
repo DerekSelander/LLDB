@@ -97,7 +97,7 @@ def tryStackAddress(addr, target, options):
 	    if address >= sp and address <= fp:
 	    	global a 
 	    	a = frame
-	        return True, "stack address (SP: {}, FP: {}) {}".format(hex(sp), hex(fp), frame.name)
+	    	return True, "stack address (SP: {}, FP: {}) {}".format(hex(sp), hex(fp), frame.name)
     return False, ""
 
 
@@ -165,7 +165,7 @@ def tryHeapAddress(addr, target, options):
     NSMutableString *retString;
     if ((void*)malloc_zone_from_ptr(ptr)) {
 
-      retString = (NSMutableString*)[[NSMutableString alloc] initWithFormat:@"%p heap pointer, (0x%x bytes)", ptr, (size_t)malloc_good_size((size_t)malloc_size(ptr))];
+      retString = (NSMutableString*)[[NSMutableString alloc] initWithFormat:@"%p heap pointer, (0x%x bytes), zone: %p", ptr, (size_t)malloc_good_size((size_t)malloc_size(ptr)), (void*)malloc_zone_from_ptr(ptr)];
     }
     
     retString ? retString : nil;
