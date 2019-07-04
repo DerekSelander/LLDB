@@ -178,7 +178,7 @@ Perform a regular expression search for stuff in an executable
 
 ### biof
 
-    Break if on func. Syntax: biof [ModuleName] regex1 ||| [ModuleName2] regex2
+    Break if on func. Syntax: biof regex1 [OptionalModuleName] ||| regex2 RequiredModuleName
     Regex breakpoint that takes two regex inputs. The first regex creates a breakpoint on all matched functions.
     The second regex will make a breakpoint condition to stop only if the second regex breakpoint is in the stack trace
 
