@@ -22,17 +22,17 @@ def __lldb_init_module(debugger, internal_dict):
 
 def breakifonfunc(debugger, command, exe_ctx, result, internal_dict):
     '''
-    usage: biof [ModuleName] regex1 ||| [ModuleName2] regex2
+    usage: biof regex1 [Optional_ModuleName] ||| regex2  ModuleName1
     Regex breakpoint that stops only if the second regex breakpoint is in the stack trace
-    For example, to only stop if code in the Test module resulted the setTintColor: being called
+    For example, to only stop if code in the "Test" module resulted the setTintColor: being called
     biof setTintColor: ||| . Test 
     '''
     command_args = shlex.split(command, posix=False)
     parser = generateOptionParser()
     try:
         (options, args) = parser.parse_args(command_args)
-    except e:
-        result.SetError(e)
+    except:
+        result.SetError("Error parsing")
         return 
 
     # if len(args) >= 2:
