@@ -177,6 +177,10 @@ Perform a regular expression search for stuff in an executable
 
       # Dump all the global bss code referenced by DWARF. Ideal for accessing `static` variables when not in scope
       (lldb) lookup . -g HonoluluArt -l
+      
+      # Look for phrase "nominal" (Swift's nominal type descriptors) and get address, don't evaluate symbol
+      (lldb) lookup -G SwiftTest nominal -l 
+      
 
 ### biof
 
