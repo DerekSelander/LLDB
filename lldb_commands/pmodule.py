@@ -79,7 +79,7 @@ def pmodule(debugger, command, exe_ctx, result, internal_dict):
         result.AppendMessage(source)
         return
 
-    filename = '/tmp/lldb_dtrace_pmodule'
+    filename = '/tmp/lldb_dtrace_pmodule_' + ''.join(args)
     create_or_touch_filepath(filename, dtrace_script)
 
     copycommand = 'echo \"sudo {0}  -p {1}  2>/dev/null\" | pbcopy'
@@ -196,9 +196,9 @@ dtrace:::BEGIN
             if is_cplusplus:
                 dtrace_script += query_template.format('pid', module_name)
                 dtrace_script += generate_conditional_for_module_name(module_name, target, options)
-                dtrace_script += '{\n    printf("[%s] %s\\n", probemod, probefunc);\n'
+                dtrace_script += '{\n    printf("%Y [%s] %s\\n", walltimestamp, probemod, probefunc);\n'
             else:
-                dtrace_script += '{\n    printf("0x%012p %c[%s %s]\\n", uregs[R_RDI], probefunc[0], probemod, (string)&probefunc[1]);\n'
+                dtrace_script += '{\n    printf("%Y 0x%012p %c[%s %s]\\n", walltimestamp, uregs[R_RDI], probefunc[0], probemod, (string)&probefunc[1]);\n'
 
             # Logic to append counting at the termination of script
             if options.count:
