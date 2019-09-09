@@ -196,9 +196,15 @@ dtrace:::BEGIN
             if is_cplusplus:
                 dtrace_script += query_template.format('pid', module_name)
                 dtrace_script += generate_conditional_for_module_name(module_name, target, options)
-                dtrace_script += '{\n    printf("%Y [%s] %s\\n", walltimestamp, probemod, probefunc);\n'
+                if options.timestamp:
+                    dtrace_script += '{\n    printf("%Y [%s] %s\\n", walltimestamp, probemod, probefunc);\n'
+                else:
+                    dtrace_script += '{\n    printf("[%s] %s\\n", probemod, probefunc);\n'
             else:
-                dtrace_script += '{\n    printf("%Y 0x%012p %c[%s %s]\\n", walltimestamp, uregs[R_RDI], probefunc[0], probemod, (string)&probefunc[1]);\n'
+                if options.timestamp:
+                    dtrace_script += '{\n    printf("%Y 0x%012p %c[%s %s]\\n", walltimestamp, uregs[R_RDI], probefunc[0], probemod, (string)&probefunc[1]);\n'
+                else:
+                    dtrace_script += '{\n    printf("0x%012p %c[%s %s]\\n", uregs[R_RDI], probefunc[0], probemod, (string)&probefunc[1]);\n'
 
             # Logic to append counting at the termination of script
             if options.count:
@@ -261,6 +267,12 @@ def generate_option_parser():
                       default=False,
                       dest="flow_indent",
                       help="Adds the flow indent flag")
+
+    parser.add_option("-t", "--timestamp",
+                      action="store_true",
+                      default=False,
+                      dest="timestamp",
+                      help="Prints out an approximate timestamp of when the calls were made")
 
     parser.add_option("-g", "--debug",
                       action="store_true",
