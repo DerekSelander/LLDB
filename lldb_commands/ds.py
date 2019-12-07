@@ -1004,7 +1004,7 @@ def sys(debugger, command, exe_ctx, result, internal_dict):
     retOutput = ''
     if output[1]:
         retOutput += output[1]
-    retOutput += output[0] 
+    retOutput += output[0].decode("utf-8") 
     result.AppendMessage(retOutput)
 
 
