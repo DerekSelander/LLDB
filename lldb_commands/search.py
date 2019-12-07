@@ -156,7 +156,7 @@ Examples:
         for i in range(count):
             v = val.values[i].sbvalue
             offset = val.offsets[i].sbvalue.unsigned
-            val_description = ds.attrStr(str(v.GetTypeName()), 'cyan') + ' [' + ds.attrStr(str(v.GetValue()), 'yellow')  + ']' + ' + '  + ds.attrStr(str(offset), 'yellow')
+            val_description = ds.attrStr(str(v.GetTypeName()), 'cyan') + ' [' + ds.attrStr(str(v.GetValue()), 'yellow')  + ']' + ' + '  + ds.attrStr(hex(offset), 'yellow')
             result.AppendMessage(val_description)
     else:
 	    if options.barebones:
@@ -296,12 +296,14 @@ for (unsigned i = 0; i < count; i++) {
 	            continue;
 	        }
 
-
-
 	        // TODO, I don't think? This is malloc'ing anything but don't know yet
 		    NSString *className = (NSString *)NSStringFromClass(potentialClass);	        
 	        id obj = (__bridge id)(void *)potentialObject;
 
+	        if ((BOOL)[obj isProxy] && strchr((char*)[className UTF8String], '.') == 0) {
+	        	// printf("%s (debugging)\n", (char*)[className UTF8String]);
+	        	continue;
+	        }
 	        if (!(BOOL)[obj respondsToSelector:@selector(description)]) {
 	            continue;
 	        }
