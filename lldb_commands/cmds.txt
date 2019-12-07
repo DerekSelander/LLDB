@@ -12,6 +12,10 @@ command regex  pprotocol 's/(.+)/expression -lobjc -O -- @import Foundation; NSM
 
 command regex ivars -h "Dumps all ivars for an instance of a particular class which inherits from NSObject (iOS, NSObject subclass only)" -s "ivars [UIView new]" -- 's/(.+)/expression -lobjc -O -- [%1 _ivarDescription]/'
 
+command regex pcvc  -- 's/(.+)/expression -lobjc -O -- id currentView = (id)\`%1\`; while (currentView && !(id)[currentView _viewDelegate]) { currentView = (id)[currentView superview]; } [currentView _viewDelegate]; /'
+
+command regex retcount  -- 's/(.+)/expression -lobjc -O -- (int)[\`%1\` retainCount]; /'
+
 command regex methods -h "Dumps all methods implemented by the NSObject subclass (iOS, NSObject subclass only)" -s "methods UIView" -- 's/(.+)/expression -lobjc -O -- [%1 _shortMethodDescription]/'
 
 command alias gg process int
