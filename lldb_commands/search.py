@@ -291,13 +291,14 @@ for (unsigned i = 0; i < count; i++) {
 	            continue;
 	        }
 	        
+	        // TODO, I don't think? This is malloc'ing anything but don't know yet
+		    NSString *className = (NSString *)NSStringFromClass(potentialClass);	        
+		    
 	        // test 3
-	        if ((size_t)malloc_good_size((size_t)class_getInstanceSize(potentialClass)) != ranges[j].size) {
+	        if ((size_t)malloc_good_size((size_t)class_getInstanceSize(potentialClass)) != ranges[j].size && !(BOOL)[className containsString:@"Block"]) {
 	            continue;
 	        }
 
-	        // TODO, I don't think? This is malloc'ing anything but don't know yet
-		    NSString *className = (NSString *)NSStringFromClass(potentialClass);	        
 	        id obj = (__bridge id)(void *)potentialObject;
 
 	        if ((BOOL)[obj isProxy] && strchr((char*)[className UTF8String], '.') == 0) {
