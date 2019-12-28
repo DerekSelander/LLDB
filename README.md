@@ -226,7 +226,7 @@ Perform a regular expression search for stuff in an executable
 
 ### snoopie
 
-    Generates a DTrace sciprt that will only profile classes implemented
+    Generates a DTrace script that will only profile classes implemented
     in the main executable irregardless if binary is stripped or not. This is done via
     profiling objc_msgSend. The creation of this command is discussed in the book.
 
