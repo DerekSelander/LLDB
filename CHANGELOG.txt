@@ -1,0 +1,9 @@
+3.2
+    * search -r (fix, experimental) Blocks have variable size, use a less strict class_getInstanceSize check if class contains Block in name
+3.1
+    * search (fix), more stable when coming up against NSProxy instances
+    * retcount (new), gets retain count of ObjC referenced Object
+    * pcvc (new) 
+    * sys (fix) Python 3 fix
+3.0
+    * (documentation) lookup -g option example
