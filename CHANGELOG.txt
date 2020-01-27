@@ -1,3 +1,5 @@
+3.3
+    * Added "include" lldb command
 3.2
     * search -r (fix, experimental) Blocks have variable size, use a less strict class_getInstanceSize check if class contains Block in name
 3.1
