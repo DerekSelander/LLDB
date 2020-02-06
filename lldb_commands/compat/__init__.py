@@ -7,8 +7,17 @@
 # So later you can do things like:
 # from compat import thing_in_compat
 
+# unichr compatibility shim
+# In Python 3, use chr instead
+# When needed, do:
+# from compat import unichr
+#
+# We need to do this here because you can't squash
+# the exception handling into a one-line 'command script'
 try:
     _ = unichr(0)
+    # We need to actually do this assignment in order to
+    # export it in __all__
     unichr = unichr
 except NameError:
     unichr = chr
