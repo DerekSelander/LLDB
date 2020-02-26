@@ -101,11 +101,10 @@ def getApplicationGroups():
     command_script = r'''
     @import ObjectiveC;
     @import Foundation;
-    // Declare the private SecTask functions in your header file
+    // Declare the private SecTask functions
     void* (SecTaskCopyValueForEntitlement)(void* task, CFStringRef entitlement, CFErrorRef  _Nullable *error);
     void* (SecTaskCreateFromSelf)(CFAllocatorRef allocator);
 
-    // And call it in your code like this:
     CFErrorRef err = nil;
     NSArray* groups = (NSArray *)SecTaskCopyValueForEntitlement(SecTaskCreateFromSelf(NULL), CFSTR("com.apple.security.application-groups"), &err);
 
