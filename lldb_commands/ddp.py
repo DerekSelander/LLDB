@@ -51,6 +51,8 @@ def handle_command(debugger, command, result, internal_dict):
     if options.all_data_directories:
         groups = getApplicationGroups()
         for i in groups:
+            if i == None:
+                continue
             result.AppendMessage("group: {}\ndir: {}".format(i,getSharedDirForGroup(i)))
     if options.shared_directory:
         result.AppendMessage("Shared Dir for group: {}\n{}".format(options.shared_directory,getSharedDirForGroup(options.shared_directory)))
