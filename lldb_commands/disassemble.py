@@ -38,10 +38,10 @@ def handle_command(debugger, command, exe_ctx, result, internal_dict):
         sym = exe_ctx.frame.symbol
         output += generateAssemblyFromSymbol(sym, options, exe_ctx)
     elif args[0].startswith('0x'):
-        sym = target.ResolveLoadAddress(long(args[0], 16)).GetSymbol()
+        sym = target.ResolveLoadAddress(int(args[0], 16)).GetSymbol()
         output += generateAssemblyFromSymbol(sym, options, exe_ctx)
     elif args[0].isdigit():
-        sym = target.ResolveLoadAddress(long(args[0])).GetSymbol()
+        sym = target.ResolveLoadAddress(int(args[0])).GetSymbol()
         output += generateAssemblyFromSymbol(sym, options, exe_ctx)
     else:
         cleanCommand = ' '.join(args)
