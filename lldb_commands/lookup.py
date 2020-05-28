@@ -214,7 +214,7 @@ def generate_cstring_dict(target, command, options):
             moduleString = '\n' + ds.attrStr('****************************************************', 'cyan') + '\n{} hits in: {}'.format(str(len(returnDict)), ds.attrStr(m.file.basename, 'red')) + '\n' + ds.attrStr('****************************************************', 'cyan') + '\n'
 
             
-            for k, v in returnDict.iteritems():
+            for k, v in returnDict.items():
                 if options.load_address:
                     moduleString +=  ds.attrStr('[' + k + ']', 'yellow') + ' '
                 moduleString += ds.attrStr(v, 'cyan') + '\n'
