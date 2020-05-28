@@ -70,11 +70,10 @@ def processStackTraceStringFromAddresses(frameAddresses, target, options = None)
 
 
         if options and options.source:
-            if addr.GetLineEntry().IsValid():
-                lineEntry = addr.GetLineEntry().GetLine()
-                lineColumn = addr.GetLineEntry().GetColumn()
-                fileName = addr.GetLineEntry().GetFileSpec().GetFilename()
-                method_str = ds.attrStr('{}:{}:{}'.format(fileName, lineEntry, lineColumn), 'yellow')
+            if addr.GetCompileUnit().IsValid():
+                lineEntry = addr.GetCompileUnit().GetLineEntryAtIndex(0) if addr.GetCompileUnit().GetNumLineEntries() > 0 else 0
+                fileName = addr.GetCompileUnit().file.GetFilename()
+                method_str = ds.attrStr('{}:{}'.format(fileName, lineEntry), 'yellow')
             else:
                 method_str = ds.attrStr('?', 'red')
         else:
