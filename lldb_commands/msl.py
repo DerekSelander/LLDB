@@ -63,6 +63,7 @@ def processStackTraceStringFromAddresses(frameAddresses, target, options = None)
     frame_string = ''
     for index, frameAddr in enumerate(frameAddresses):
         addr = target.ResolveLoadAddress(frameAddr)
+        prevAddr = target.ResolveLoadAddress(frameAddr - 1)
         symbol = addr.symbol
         name = symbol.name
         offset_str = ''
@@ -70,10 +71,13 @@ def processStackTraceStringFromAddresses(frameAddresses, target, options = None)
 
 
         if options and options.source:
-            if addr.GetCompileUnit().IsValid():
-                lineEntry = addr.GetCompileUnit().GetLineEntryAtIndex(0) if addr.GetCompileUnit().GetNumLineEntries() > 0 else 0
-                fileName = addr.GetCompileUnit().file.GetFilename()
-                method_str = ds.attrStr('{}:{}'.format(fileName, lineEntry), 'yellow')
+            resolvedAddr = prevAddr if prevAddr.GetLineEntry().GetLine() != 0 else addr
+            if resolvedAddr.GetLineEntry().IsValid():
+                lineEntry = resolvedAddr.GetLineEntry()
+                line = lineEntry.GetLine() if lineEntry.GetLine() != 0 else "?"
+                column = lineEntry.GetColumn() if lineEntry.GetColumn() != 0 else "?"
+                fileName = resolvedAddr.GetCompileUnit().file.GetFilename()
+                method_str = ds.attrStr('{}:{}:{}'.format(fileName, line, column), 'yellow')
             else:
                 method_str = ds.attrStr('?', 'red')
         else:
