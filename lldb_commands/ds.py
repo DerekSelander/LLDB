@@ -972,7 +972,7 @@ def getType(typeStr, count=None):
         varType = lldb.eBasicTypeVoid
 
     t = target.GetBasicType(varType)
-    for _ in xrange(typeStr.count("*")):
+    for _ in range(typeStr.count("*")):
         t = t.GetPointerType()
 
     if count:
