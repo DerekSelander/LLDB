@@ -78,21 +78,21 @@ def getSectionName(section):
         return name
 
 def getSection(module=None, name=None):
-    if module is None:
+    if module == None:
         path = getTarget().executable.fullpath
         module = getTarget().module[path]
 
     if isinstance(module, str):
         module = getTarget().module[module]
-        if module is None:
+        if module == None:
             return None
 
     if isinstance(module, int):
         module = getTarget().modules[module]
-        if module is None:
+        if module == None:
             return None
 
-    if name is None:
+    if name == None:
         return module.sections
 
     sections = name.split('.')

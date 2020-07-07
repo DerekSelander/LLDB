@@ -62,11 +62,11 @@ def yoink(debugger, command, exe_ctx, result, internal_dict):
 
     response = res.GetOutput().split(',')
 
-    if len(response) is not 3:
+    if len(response) != 3:
         result.SetError('Bad Fromatting')
         return
 
-    if int(response[0], 16) is 0:
+    if int(response[0], 16) == 0:
         result.SetError('Couldn\'t open file {}'.format(clean_command))
         return
 

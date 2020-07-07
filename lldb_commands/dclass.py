@@ -123,7 +123,7 @@ def dclass(debugger, command, exe_ctx, result, internal_dict):
             outputMsg = "Dumping all private Objective-C frameworks"
         elif len(args) > 0 and args[0]:
             module = target.module[args[0]]
-            if module is None:
+            if module == None:
                 result.SetError( "Unable to open module name '{}', to see list of images use 'image list -b'".format(args[0]))
                 return
             modules = [module]
@@ -148,7 +148,7 @@ def dclass(debugger, command, exe_ctx, result, internal_dict):
         os.system('open -R ' + directory)
         return
 
-    if options.module is not None:
+    if options.module != None:
         options.module =  options.module.strip("\"\'")
         module = target.FindModule(lldb.SBFileSpec(options.module))
         if not module.IsValid():
@@ -159,7 +159,7 @@ def dclass(debugger, command, exe_ctx, result, internal_dict):
 
 
 
-    if options.conforms_to_protocol is not None:
+    if options.conforms_to_protocol != None:
         interpreter.HandleCommand('expression -lobjc -O -- (id)NSProtocolFromString(@\"{}\")'.format(options.conforms_to_protocol), res)
         if 'nil' in res.GetOutput() or not res.GetOutput():
             result.SetError("No such Protocol name '{}'".format(options.conforms_to_protocol))
@@ -229,7 +229,7 @@ def generate_class_dump(target, options, clean_command=None):
     else:
         command_script += 'Class *allClasses = objc_copyClassList(&count);\n'
 
-    if options.regular_expression is not None: 
+    if options.regular_expression !=  None: 
         command_script += '  NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:@"' + options.regular_expression + '" options:0 error:nil];\n'
 
     if options.search_protocols:
@@ -248,10 +248,10 @@ def generate_class_dump(target, options, clean_command=None):
         if ((BOOL)[dsclsName isEqualToString:@"_CNZombie_"] || (BOOL)[dsclsName isEqualToString:@"JSExport"] ||  (BOOL)[dsclsName isEqualToString:@"__NSGenericDeallocHandler"] || (BOOL)[dsclsName isEqualToString:@"_NSZombie_"] || (BOOL)[dsclsName isEqualToString:@"__NSMessageBuilder"] || (BOOL)[dsclsName isEqualToString:@"Object"]  )  { continue; }
         '''
 
-    if options.module is not None: 
+    if options.module != None: 
         command_script += generate_module_search_sections_string(options.module, target, options.search_protocols)
 
-    if not options.search_protocols and options.conforms_to_protocol is not None:
+    if not options.search_protocols and options.conforms_to_protocol != None:
       command_script +=  'if (!class_conformsToProtocol(cls, NSProtocolFromString(@"'+ options.conforms_to_protocol + '"))) { continue; }'
   
 
@@ -259,7 +259,7 @@ def generate_class_dump(target, options, clean_command=None):
         command_script += '  NSString *clsString = (NSString *)NSStringFromProtocol(ptl);\n'
     else:
         command_script += '  NSString *clsString = (NSString *)NSStringFromClass(cls);\n'
-    if options.regular_expression is not None:
+    if options.regular_expression != None:
         command_script += r'''
     NSUInteger matches = (NSUInteger)[regex numberOfMatchesInString:clsString options:0 range:NSMakeRange(0, [clsString length])];
     if (matches == 0) {
@@ -271,7 +271,7 @@ def generate_class_dump(target, options, clean_command=None):
     if options.class_type == 'swift':
         command_script += 'if ((((ds_cls_struct *)cls)->bits & 3UL) == 0) { continue; }\n'
 
-    if not options.search_protocols and options.superclass is not None:
+    if not options.search_protocols and options.superclass != None:
 
         command_script += 'NSString *parentClassName = @"' + options.superclass + '";'
         command_script += r'''
@@ -284,7 +284,7 @@ def generate_class_dump(target, options, clean_command=None):
         }
           '''
 
-    if not options.search_protocols and options.filter is None:
+    if not options.search_protocols and options.filter == None:
         if options.verbose: 
             command_script += r'''
         NSString *imageString = [[[[NSString alloc] initWithUTF8String:class_getImageName(cls)] lastPathComponent] stringByDeletingPathExtension];

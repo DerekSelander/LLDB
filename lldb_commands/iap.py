@@ -163,11 +163,11 @@ data ? [NSString stringWithFormat:@"%p,%p,%p,%@", data, (uintptr_t)[data bytes],
 
     response = res.GetOutput().split(',')
 
-    if len(response) is not 4:
+    if len(response) != 4:
         result.SetError('Bad Fromatting')
         return
 
-    if int(response[0], 16) is 0:
+    if int(response[0], 16) == 0:
         result.SetError('Couldn\'t open file {}'.format(clean_command))
         return
 

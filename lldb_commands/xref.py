@@ -116,7 +116,7 @@ def getCFAddress(addr, target):
     fileAddr = addr.file_addr
     executablePath = addr.module.file.fullpath
     dataSection = ds.getSection(module=executablePath, name='__DATA.__cfstring')
-    if dataSection is None:
+    if dataSection == None:
         return ''
     size = dataSection.size
     charPointerType = target.GetBasicType(lldb.eBasicTypeChar).GetPointerType()
