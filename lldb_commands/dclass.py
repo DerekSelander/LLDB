@@ -1415,7 +1415,7 @@ typedef struct class_rw_t {
     for (int i = 0; i < bmeth->count; i++) {
       NSString *methodType = (int)class_isMetaClass((Class)dsclass) ? @"+" : @"-";
       method_t *mt = (method_t*)(&bmeth->first);
-        [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@" %s%40s  %p\n", [methodType UTF8String], mt[i].name, mt[i].imp]];
+        [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@" %s%40s  %p\n", (const char *)[methodType UTF8String], mt[i].name, mt[i].imp]];
     }
     if ((int)class_isMetaClass((Class)dsclass) == NO) { 
       dsobjc_class* dsmetaclass = (dsobjc_class*)objc_getMetaClass(name);
@@ -1425,7 +1425,7 @@ typedef struct class_rw_t {
         for (int i = 0; i < bmetameth->count; i++) {
             NSString *methodType = (int)class_isMetaClass((Class)dsmetaclass) ? @"+" : @"-";
             method_t *mt = (method_t*)(&bmetameth->first);
-            [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@" %s%40s  %p\n", [methodType UTF8String], mt[i].name, mt[i].imp]];
+            [returnString appendString:(NSString*)[[NSString alloc] initWithFormat:@" %s%40s  %p\n", (const char *)[methodType UTF8String], mt[i].name, mt[i].imp]];
         } 
       }
     } 
