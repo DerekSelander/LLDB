@@ -66,7 +66,7 @@ command alias plibrary exp -l objc -O -- [(id)NSSearchPathForDirectoriesInDomain
 
 command alias avoid_step_libraries settings set target.process.thread.step-avoid-libraries libswiftCore.dylib libobjc.A.dylib
 
-command regex dumpmoduledata 's|(.+)|script m = [i for i in lldb.target.modules if i.file.GetFilename() == "%1"][0];  s = [i for i in m.sections if i.GetName() == "__DATA" ][0]; f = m.file.GetFilename(); lldb.debugger.HandleCommand("mem read --force -b -o /tmp/{}.mem -c {} -- {}".format(f, s.GetByteSize(), s.GetLoadAddress(lldb.target))); print("xxd -g 8 -e -o {} /tmp/{}.mem".format(s.GetLoadAddress(lldb.target), f))|'
+command regex dumpmoduledata 's|(.+)|script import time; _t = time.time(); m = [i for i in lldb.target.modules if i.file.GetFilename() == "%1"][0];  s = [i for i in m.sections if i.GetName() == "__DATA" ][0]; f = m.file.GetFilename(); print("xxd -c 8 -g 8 -e -o {} /tmp/{}.{}.mem".format(s.GetFileAddress(), f, _t)); lldb.debugger.HandleCommand("mem read --force -b -o /tmp/{}.{}.mem -c {} -- {}".format(f, _t, s.GetByteSize(), s.GetLoadAddress(lldb.target))); |'
 
 # Jailbreak stuff
 
