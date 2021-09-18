@@ -369,6 +369,10 @@ Paste selected text from your mac to your iOS device. (No args, but make sure yo
 
 Delete breakpoint by address 
 
+### cbd
+
+Disables a breakpoint stopped currently and continues process
+
 ### data
 
 Dump the bytes of a NSData object
