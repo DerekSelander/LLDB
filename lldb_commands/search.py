@@ -194,16 +194,15 @@ auto task_peek = [](task_t task, vm_address_t remote_address, vm_size_t size, vo
 };
 
 vm_address_t *zones = NULL;
-unsigned int count = 0;
+unsigned int ___count = 0;
 unsigned int maxresults = ''' + str(options.max_results) + r''';
-kern_return_t error = (kern_return_t)malloc_get_all_zones(0, 0, &zones, &count);
+kern_return_t error = (kern_return_t)malloc_get_all_zones(0, 0, &zones, &___count);
 
 DSSearchContext *_ds_context = (DSSearchContext *)calloc(1, sizeof(DSSearchContext));
 int classCount = (int)objc_getClassList(NULL, 0);
 CFMutableSetRef set = (CFMutableSetRef)CFSetCreateMutable(0, classCount, NULL);
 Class *classes = (__unsafe_unretained Class *)malloc(sizeof(Class) * classCount);
 objc_getClassList(classes, classCount);
-
 
 typedef struct malloc_introspection_t {
      kern_return_t (*enumerator)(task_t task, void *, unsigned type_mask, vm_address_t zone_address, memory_reader_t reader, vm_range_recorder_t recorder);
@@ -234,7 +233,7 @@ _ds_context->offsets = (int *)calloc(maxresults, sizeof(int));
     else:
         command_script += r'''_ds_context->query =  ''' + objectiveC_class + ';'
     command_script += r'''
-for (unsigned i = 0; i < count; i++) {
+for (unsigned i = 0; i < ___count; i++) {
     malloc_zone_t *zone = (malloc_zone_t *)zones[i];
     if (zone == NULL || zone->introspect == NULL){
         continue;
@@ -243,7 +242,7 @@ for (unsigned i = 0; i < count; i++) {
 
     //for each zone, enumerate using our enumerator callback
     zone->introspect->enumerator(0, _ds_context, 1, zones[i], task_peek, 
-    [] (task_t task, void *baton, unsigned type, vm_range_t *ranges, unsigned count) -> void {
+    [] (task_t task, void *baton, unsigned type, vm_range_t *ranges, unsigned ___count) -> void {
 
         DSSearchContext *_ds_context =  (DSSearchContext *)baton;
         CFMutableSetRef classesSet = _ds_context->classesSet;
@@ -253,7 +252,7 @@ for (unsigned i = 0; i < count; i++) {
         int maxCount = ''' + str(options.max_results) + ''';
 
       
-        for (int j = 0; j < count; j++) {
+        for (int j = 0; j < ___count; j++) {
             if (CFSetGetCount(results) >= maxCount) {
                 break;
             }

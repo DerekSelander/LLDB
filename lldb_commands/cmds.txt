@@ -68,6 +68,9 @@ command alias avoid_step_libraries settings set target.process.thread.step-avoid
 
 command regex dumpmoduledata 's|(.+)|script import time; _t = time.time(); m = [i for i in lldb.target.modules if i.file.GetFilename() == "%1"][0];  s = [i for i in m.sections if i.GetName() == "__DATA" ][0]; f = m.file.GetFilename(); print("xxd -c 8 -g 8 -e -o {} /tmp/{}.{}.mem".format(s.GetFileAddress(), f, _t)); lldb.debugger.HandleCommand("mem read --force -b -o /tmp/{}.{}.mem -c {} -- {}".format(f, _t, s.GetByteSize(), s.GetLoadAddress(lldb.target))); |'
 
+command regex msg_header_b -h "Dump the mach_msg_header_t in raw bytes" -- 's/(.+)/mem read -fY -c \`((mach_msg_header_t*)%1)->msgh_size\` -- \`%1\`/'
+command regex msg_header_w -h "Dump the mach_msg_header_t in raw bytes" -- 's|(.+)|x/\`((mach_msg_header_t*)%1)->msgh_size / 4\`wx %1|' 
+
 # Jailbreak stuff
 
 command alias qqq process connect connect://localhost:1234
