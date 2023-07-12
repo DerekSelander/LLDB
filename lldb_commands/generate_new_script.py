@@ -28,7 +28,7 @@ from stat import *
 
 def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(
-        'command script add -f generate_new_script.generate_new_script __generate_script -h "generates new LLDB script"')
+        'command script add -o -f generate_new_script.generate_new_script __generate_script -h "generates new LLDB script"')
 
 
 def generate_new_script(debugger, command, exe_ctx, result, internal_dict):
@@ -75,13 +75,12 @@ def generate_class_file(filename, options):
 
 import lldb
 import os
-import shlex
-import optparse
+import argparse
 
 def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand('''
 
-    script +=  "'command script add -c " + filename + ".LLDBCustomCommand " + resolved_name + "')"
+    script +=  "'command script add -o -c " + filename + ".LLDBCustomCommand " + resolved_name + "')"
     script += r'''
 
 class LLDBCustomCommand:
@@ -93,14 +92,17 @@ class LLDBCustomCommand:
     def __call__(self, debugger, command, exe_ctx, result): 
         # This is where you handle the command
 
-        command_args = shlex.split(command, posix=False)
-
+        command_args = command.split()
         parser = self.generate_option_parser()
-        try:
-            (options, args) = parser.parse_args(command_args)
-        except:
-            result.SetError(parser.usage)
-            return
+
+        options = []
+        args = []
+        if len(command_args):
+            try:
+                (options, args) = parser.parse_args(command_args)
+            except:
+                result.SetError(parser.usage)
+                return
 
         # Uncomment if you are expecting at least one argument
         # clean_command = shlex.split(args[0])[0]
@@ -109,7 +111,7 @@ class LLDBCustomCommand:
 
     def generate_option_parser(self):
         usage = "usage: %prog [options] path/to/item"
-        parser = optparse.OptionParser(usage=usage, prog="''' + resolved_name + r'''")
+        parser = argparse.ArgumentParser(usage=usage, prog="''' + resolved_name + r'''")
         parser.add_option("-m", "--module",
                           action="store",
                           default=None,
@@ -137,13 +139,12 @@ def generate_function_file(filename, options):
 
 import lldb
 import os
-import shlex
-import optparse
+import argparse
 
 def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand(
     '''
-    script += '\'command script add -f {}.handle_command {} -h "{}"\')'.format(filename, resolved_name, "Short documentation here")
+    script += '\'command script add -o -f {}.handle_command {} -h "{}"\')'.format(filename, resolved_name, "Short documentation here")
     script += r'''
 
 def handle_command(debugger, command, exe_ctx, result, internal_dict):
@@ -152,13 +153,16 @@ def handle_command(debugger, command, exe_ctx, result, internal_dict):
     
     script += r'''
 
-    command_args = shlex.split(command, posix=False)
+    command_args = command.split()
     parser = generate_option_parser()
-    try:
-        (options, args) = parser.parse_args(command_args)
-    except:
-        result.SetError(parser.usage)
-        return
+    options = []
+    args = []
+    if len(command_args):
+        try:
+            (options, args) = parser.parse_args(command_args)
+        except:
+            result.SetError(parser.usage)
+            return
 
     # Uncomment if you are expecting at least one argument
     # clean_command = shlex.split(args[0])[0]
@@ -170,13 +174,13 @@ def handle_command(debugger, command, exe_ctx, result, internal_dict):
 
 def generate_option_parser():
     usage = "usage: %prog [options] TODO Description Here :]"
-    parser = optparse.OptionParser(usage=usage, prog="''' + resolved_name + r'''")
-    parser.add_option("-m", "--module",
+    parser = argparse.ArgumentParser(usage=usage, prog="''' + resolved_name + r'''")
+    parser.add_argument("-m", "--module",
                       action="store",
                       default=None,
                       dest="module",
                       help="This is a placeholder option to show you how to use options with strings")
-    parser.add_option("-c", "--check_if_true",
+    parser.add_argument("-c", "--check_if_true",
                       action="store_true",
                       default=False,
                       dest="store_true",
