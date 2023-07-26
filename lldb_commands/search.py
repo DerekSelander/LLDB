@@ -56,16 +56,16 @@ def search(debugger, command, exe_ctx, result, internal_dict):
 Examples:
 
     # Find all UIViews and subclasses of UIViews
-    find UIView
+    search UIView
 
     # Find all UIStatusBar instances
-    find UIStatusBar
+    search UIStatusBar
 
     # Find all UIViews, ignore subclasses
-    find UIView  -e
+    search UIView  -e
 
     # Find all instances of UIViews (and subclasses) where tag == 5
-    find UIView -c "[obj tag] == 5"
+    search UIView -c "[obj tag] == 5"
     '''
 
     if not ds.isProcStopped():
