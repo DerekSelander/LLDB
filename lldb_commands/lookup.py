@@ -322,7 +322,7 @@ def generate_main_executable_class_address_script(bundlePath = None, options=Non
 
 
     command_script += r'''
-  const char *path = [[dsbundle executablePath] UTF8String];
+  const char *path = (const char*)[[dsbundle executablePath] UTF8String];
   const char **allClasses = objc_copyClassNamesForImage(path, &count);
   for (int i = 0; i < count; i++) {
     Class cls = objc_getClass(allClasses[i]);

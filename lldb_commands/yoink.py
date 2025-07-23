@@ -51,7 +51,7 @@ def yoink(debugger, command, exe_ctx, result, internal_dict):
 
     clean_command = ('').join(args)
     command_script = '''expression -lobjc -O -- @import Foundation; id data = [NSData dataWithContentsOfFile:@\"{}\"];
-[NSString stringWithFormat:@\"%p,%p,%p\", data, (uintptr_t)[data bytes], (uintptr_t)[data length] + (uintptr_t)[data bytes]]'''.format(clean_command)
+[NSString stringWithFormat:@\"%@,%p,%p\", data, (uintptr_t)[data bytes], (uintptr_t)[data length] + (uintptr_t)[data bytes]]'''.format(clean_command)
     res = lldb.SBCommandReturnObject()
     interpreter = debugger.GetCommandInterpreter()
 
