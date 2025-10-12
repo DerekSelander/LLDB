@@ -210,36 +210,54 @@ def generate_class_dump(target, options, clean_command=None):
     command_script = r'''
   @import ObjectiveC;
   @import Foundation;
-  unsigned int count = 0;
+  @import CoreFoundation;
+  @import Darwin;
+  unsigned int ds_classCount = 0;
 
-  typedef struct ds_cls_struct {
-    void *isa;
-    void *supercls;
-    void *buckets;
-    uint32_t _mask;
-    uint32_t _occupied;
-    uintptr_t bits;
-  } ds_cls_struct;
+  typedef BOOL (*ds_class_isSwift_t)(Class);
+  static ds_class_isSwift_t ds_class_isSwift = NULL;
+
+  BOOL (^ds_runtimeClassIsSwift)(Class) = ^BOOL(Class candidate) {
+    void *defaultHandle = (void *)-2;
+    if (!candidate) { return NO; }
+    if (!ds_class_isSwift) {
+      ds_class_isSwift = (ds_class_isSwift_t)dlsym(defaultHandle, "class_isSwift");
+      if (!ds_class_isSwift) {
+        ds_class_isSwift = (ds_class_isSwift_t)dlsym(defaultHandle, "objc_runtime_isSwift");
+      }
+    }
+    if (ds_class_isSwift) {
+      return ds_class_isSwift(candidate);
+    }
+    const char *name = class_getName(candidate);
+    if (!name) { return NO; }
+    for (const char *cursor = name; *cursor; cursor++) {
+      if (*cursor == '.') {
+        return YES;
+      }
+    }
+    return NO;
+  };
 
   '''
     if options.search_protocols:
-        command_script += 'Protocol **allProtocols = objc_copyProtocolList(&count);\n'
+        command_script += 'Protocol **allProtocols = objc_copyProtocolList(&ds_classCount);\n'
     elif clean_command:
-        command_script += '  const char **allClasses = objc_copyClassNamesForImage("' + clean_command + '", &count);'
+        command_script += '  const char **allClasses = objc_copyClassNamesForImage("' + clean_command + '", &ds_classCount);'
     else:
-        command_script += 'Class *allClasses = objc_copyClassList(&count);\n'
+        command_script += 'Class *allClasses = objc_copyClassList(&ds_classCount);\n'
 
     if options.regular_expression !=  None: 
         command_script += '  NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:@"' + options.regular_expression + '" options:0 error:nil];\n'
 
     if options.search_protocols:
         command_script += '''  NSMutableString *classesString = [NSMutableString string];
-  for (int i = 0; i < count; i++) {
+  for (int i = 0; i < ds_classCount; i++) {
     Protocol *ptl =  allProtocols[i];
         '''
     else: 
         command_script += '''  NSMutableString *classesString = [NSMutableString string];
-      for (int i = 0; i < count; i++) {
+      for (int i = 0; i < ds_classCount; i++) {
         Class cls =  '''
         command_script += 'objc_getClass(allClasses[i]);' if clean_command else 'allClasses[i];'
         command_script += '''
@@ -267,9 +285,9 @@ def generate_class_dump(target, options, clean_command=None):
     }
         '''
     if options.class_type == 'objc':
-        command_script += ' if ((((ds_cls_struct *)cls)->bits & 3UL) != 0) { continue; }\n'
+        command_script += ' if (ds_runtimeClassIsSwift(cls)) { continue; }\n'
     if options.class_type == 'swift':
-        command_script += 'if ((((ds_cls_struct *)cls)->bits & 3UL) == 0) { continue; }\n'
+        command_script += 'if (!ds_runtimeClassIsSwift(cls)) { continue; }\n'
 
     if not options.search_protocols and options.superclass != None:
 
